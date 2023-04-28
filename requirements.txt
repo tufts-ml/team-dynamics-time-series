@@ -1,0 +1,22 @@
+numpy
+statsmodels 
+scipy
+
+seaborn 
+matplotlib
+
+jax 
+jaxlib #jax requires jaxlib 
+jax_dataclasses
+
+tensorflow_probability
+dynamax
+
+cython # for Linderman's ssm package 
+
+# `ssm` repo below is for forward backward algo (ssm.messages.hmm_expected_states)
+# we get an error if we try to install from pip; the github repo is newer.
+# for some reason doing an editable install to this package pip install -e .
+# requires that the below is installed manually.
+#
+# -e git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm 

@@ -1,0 +1,30 @@
+# alphabetically ordered
+*.egg-info
+*.ipynb
+*.pyc
+*.xml
+.coverage*
+.DS_Store
+.hypothesis
+.idea
+.ipynb_checkpoints
+dist
+env
+pip-wheel-metadata
+py2-env
+
+#folders I don't want to track
+PDFs/
+plots/
+slides/
+
+#latex outputs
+reports/*.aux
+reports/*.bbl
+reports/*.blg
+reports/*.log
+reports/*.out
+reports/*.toc
+
+
+

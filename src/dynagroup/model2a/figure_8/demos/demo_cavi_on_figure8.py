@@ -249,7 +249,7 @@ for j in range(DIMS.J):
 ### Plot forecasting test
 
 plot_fit_and_forecast_on_slice(
-    sample,
+    sample.xs,
     params_learned,
     VES_summary,
     VEZ_summaries,

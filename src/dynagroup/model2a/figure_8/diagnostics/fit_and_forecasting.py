@@ -12,7 +12,8 @@ from dynagroup.model2a.figure_8.generate import (
     log_probs_for_one_step_ahead_system_transitions,
 )
 from dynagroup.params import AllParameters_JAX, dims_from_params
-from dynagroup.sampler import Sample_JAX, sample_team_dynamics
+from dynagroup.sampler import sample_team_dynamics
+from dynagroup.types import JaxNumpyArray3D
 
 
 ###
@@ -40,7 +41,7 @@ def find_last_index_in_interval_where_array_value_is_close_to_desired_point(
 
 
 def plot_fit_and_forecast_on_slice(
-    sample: Sample_JAX,
+    continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
@@ -51,6 +52,7 @@ def plot_fit_and_forecast_on_slice(
 ) -> None:
     """
     Arguments:
+        continuous_states: jnp.array with shape (T, J, D)
         T_slice: The number of timesteps in the slice that we work with for fitting and forecasting
         entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
             indices provided.
@@ -59,7 +61,7 @@ def plot_fit_and_forecast_on_slice(
     ###
     # Upfront info
     ###
-    T, J, _ = np.shape(sample.xs)
+    T, J, _ = np.shape(continuous_states)
     if entity_idxs is None:
         entity_idxs = [j for j in range(J)]
 
@@ -70,7 +72,7 @@ def plot_fit_and_forecast_on_slice(
         ###
         # Derived info
         ###
-        sample_entity = sample.xs[:, j]  # TxD
+        sample_entity = continuous_states[:, j]  # TxD
         DIMS = dims_from_params(params)
         D, K = DIMS.D, DIMS.K
         if DIMS.L == 2:
@@ -99,8 +101,8 @@ def plot_fit_and_forecast_on_slice(
         plt.close("all")
         fig1 = plt.figure(figsize=(4, 6))
         im = plt.scatter(
-            sample.xs[:, j, 0],
-            sample.xs[:, j, 1],
+            continuous_states[:, j, 0],
+            continuous_states[:, j, 1],
             c=[i for i in range(T)],
             cmap="cool",
             alpha=1.0,
@@ -118,8 +120,8 @@ def plot_fit_and_forecast_on_slice(
         plt.close("all")
         fig = plt.figure(figsize=(4, 6))
         plt.scatter(
-            sample.xs[t_0 : t_0 + T_slice, j, 0],
-            sample.xs[t_0 : t_0 + T_slice, j, 1],
+            continuous_states[t_0 : t_0 + T_slice, j, 0],
+            continuous_states[t_0 : t_0 + T_slice, j, 1],
             c=[i for i in range(t_0, t_0 + T_slice)],
             cmap="cool",
             alpha=1.0,

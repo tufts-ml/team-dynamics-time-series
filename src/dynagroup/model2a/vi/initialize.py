@@ -188,7 +188,7 @@ def make_data_free_initialization_of_ETP_JAX(
     elif method_for_Psis == "zeros":
         Psis = jnp.zeros((J, L, K, D_t))
     else:
-        raise ValueError("What is the emthod for Psis?")
+        raise ValueError("What is the method for Psis?")
     Omegas = jnp.zeros((J, L, K, M_e))
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 
@@ -201,8 +201,7 @@ def make_tpm_only_initialization_of_ETP_JAX(
     # make a tpm
     tpm = make_fixed_sticky_tpm(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
-    # Psis = jnp.zeros((J,K,L, D_t))
-    Psis = jnp.zeros((J, K, L, D_t))
+    Psis = jnp.zeros((J, L, K, D_t))
     Omegas = jnp.zeros((J, L, K, M_e))
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 

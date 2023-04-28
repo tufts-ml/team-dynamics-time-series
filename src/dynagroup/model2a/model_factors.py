@@ -178,11 +178,14 @@ def compute_log_entity_transition_probability_matrices_JAX(
         xs,
     )
     bias_from_recurrence = jnp.einsum(
-        "jlkd,tjd->tjlk", ETP_JAX.Psis, x_tildes[:-1]
+        "jlkd,tjd->tjkl", ETP_JAX.Psis, x_tildes[:-1]
+    )  # (T-1, J, K, L)
+    bias_from_recurrence_reordered_axes = jnp.moveaxis(
+        bias_from_recurrence, [2, 3], [3, 2]
     )  # (T-1, J, L, K)
     log_potentials = (
-        bias_from_recurrence[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
-    )  # (T-1, J, L, K, K)
+        bias_from_recurrence_reordered_axes[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
+    )  # (T-1, J, L, None, K) + (1,J,L, K,K ) = (T-1, J, L, K, K)
     return normalize_log_potentials_by_axis_JAX(log_potentials, axis=4)
 
 

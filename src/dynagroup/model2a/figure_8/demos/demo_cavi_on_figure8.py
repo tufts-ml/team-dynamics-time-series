@@ -1,3 +1,4 @@
+import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -44,7 +45,6 @@ from dynagroup.plotting.entity_regime_changepoints import (
 )
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
-from dynagroup.sampler import jax_sample_from_sample
 from dynagroup.util import normalize_log_potentials_by_axis
 
 
@@ -199,7 +199,7 @@ if show_plots_after_learning:
 
 
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-    jax_sample_from_sample(sample),
+    jnp.asarray(sample.xs),
     n_iterations,
     initialization_results,
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
@@ -211,6 +211,8 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     ),
     num_M_step_iters,
     system_transition_prior,
+    true_system_regimes=sample.s,
+    true_entity_regimes=sample.zs,
 )
 
 ####

@@ -17,6 +17,7 @@ py2-env
 PDFs/
 plots/
 slides/
+devel/
 
 #latex outputs
 reports/*.aux

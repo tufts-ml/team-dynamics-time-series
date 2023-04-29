@@ -32,11 +32,6 @@ from dynagroup.model2a.figure_8.initialize import (
     smart_initialize_model_2a,
 )
 from dynagroup.model2a.figure_8.model_factors import figure8_model_JAX
-from dynagroup.model2a.vi.core import (
-    M_step_toggles_from_strings,
-    SystemTransitionPrior_JAX,
-    run_CAVI_with_JAX,
-)
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -44,6 +39,11 @@ from dynagroup.plotting.entity_regime_changepoints import (
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
 from dynagroup.util import normalize_log_potentials_by_axis
+from dynagroup.vi.core import (
+    M_step_toggles_from_strings,
+    SystemTransitionPrior_JAX,
+    run_CAVI_with_JAX,
+)
 
 
 """
@@ -74,7 +74,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 
 # For model adjustments
-model_adjustment = "one_system_regime"  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For inference
 n_iterations = 10
@@ -89,7 +89,7 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_new_model_dataclass/"
+save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_moved_vi/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

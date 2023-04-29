@@ -17,8 +17,6 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
 )
 from dynagroup.model import Model
-from dynagroup.model2a.vi.dims import variational_dims_from_summaries_JAX
-from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
 from dynagroup.params import (
     AllParameters_JAX,
     CSP_with_unconstrained_covariances_from_ordinary_CSP,
@@ -44,6 +42,8 @@ from dynagroup.util import (
     normalize_log_potentials_by_axis_JAX,
     normalize_potentials_by_axis_JAX,
 )
+from dynagroup.vi.dims import variational_dims_from_summaries_JAX
+from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 ###

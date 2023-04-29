@@ -19,15 +19,6 @@ from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
 )
-from dynagroup.model2a.vi.E_step import run_VES_step_JAX
-from dynagroup.model2a.vi.M_step_and_ELBO import (
-    ELBO_Decomposed,
-    compute_elbo_decomposed,
-    run_M_step_for_ETP_via_gradient_descent,
-    run_M_step_for_STP_in_closed_form,
-    run_M_step_in_closed_form_for_continuous_state_params_JAX,
-)
-from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
 from dynagroup.params import (
     AllParameters_JAX,
     ContinuousStateParameters_JAX,
@@ -38,6 +29,15 @@ from dynagroup.params import (
     SystemTransitionParameters_JAX,
 )
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray3D
+from dynagroup.vi.E_step import run_VES_step_JAX
+from dynagroup.vi.M_step_and_ELBO import (
+    ELBO_Decomposed,
+    compute_elbo_decomposed,
+    run_M_step_for_ETP_via_gradient_descent,
+    run_M_step_for_STP_in_closed_form,
+    run_M_step_in_closed_form_for_continuous_state_params_JAX,
+)
+from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 ###

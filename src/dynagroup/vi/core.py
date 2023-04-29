@@ -9,8 +9,10 @@ from dynagroup.hmm_posterior import (
 from dynagroup.initialize import InitializationResults
 from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model import Model
-from dynagroup.model2a.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
-from dynagroup.model2a.vi.M_step_and_ELBO import (
+from dynagroup.params import AllParameters_JAX
+from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggles,
     M_step_toggles_from_strings,
     compute_elbo_decomposed,
@@ -19,9 +21,7 @@ from dynagroup.model2a.vi.M_step_and_ELBO import (
     run_M_step_for_IP,
     run_M_step_for_STP,
 )
-from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
-from dynagroup.params import AllParameters_JAX
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(

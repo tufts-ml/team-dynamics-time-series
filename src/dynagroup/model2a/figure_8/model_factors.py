@@ -39,7 +39,7 @@ def compute_log_system_transition_probability_matrices(
 ):
     """
     Compute log system transition probability matrices.
-    These are time varying
+    These are time varying (although )
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -66,13 +66,29 @@ def compute_log_system_transition_probability_matrices(
     return log_probs
 
 
+# TODO: For Model 1,  the log system transition probability matrices
+# can have recurrent feedback from the entities.  So to generalize
+# the model factors, we'll have to update the `compute_log_system_transition_probability_matrices`
+# function accordingly.
+
+# TODO: For Model 2a, this function needs to use covariates and Upsilon!.
+
+
 def compute_log_system_transition_probability_matrices_JAX(
     STP: SystemTransitionParameters_JAX,
-    T: int,
+    T_minus_1: int,
 ):
     """
     Compute log system transition probability matrices.
-    These are time varying
+    These are time varying, but only if at least one of the following conditions are true:
+        * system-level covariates exist (in which case the function signature needs to be updated).
+            The covariate effect is governed by the parameters in STP.Upsilon
+        * there is recurrent feedback from the previous entities zs[t-1], as in Model 1.
+            The recurrence effect is governed by the parameters in STP.Gammas
+
+    Arguments:
+        T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
+            system regime probabilities are governed by the initial parameters.
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -83,7 +99,7 @@ def compute_log_system_transition_probability_matrices_JAX(
         L: number of system-level regimes
     """
     # TODO: Incorporate covariates
-    return jnp.tile(STP.Pi, (T - 1, 1, 1))  # (T-1, J, K, K)
+    return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
 
 
 def compute_log_entity_transition_probability_matrices(

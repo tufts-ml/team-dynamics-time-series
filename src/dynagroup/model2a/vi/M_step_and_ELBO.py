@@ -17,7 +17,7 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     HMM_Posterior_Summary_NUMPY,
 )
-from dynagroup.model2a.model_factors import (
+from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_entity_transition_probability_matrices,
     compute_log_entity_transition_probability_matrices_JAX,
@@ -362,7 +362,7 @@ def compute_expected_log_system_transitions_JAX(
     variational_probs = VES_summary.expected_joints
     # ` log_transition_matrices` has shape (T-1,L,L)
     log_transition_matrices = compute_log_system_transition_probability_matrices_JAX(
-        STP, T=np.shape(variational_probs)[0] + 1
+        STP, T_minus_1=np.shape(variational_probs)[0]
     )
 
     return jnp.sum(variational_probs * log_transition_matrices)

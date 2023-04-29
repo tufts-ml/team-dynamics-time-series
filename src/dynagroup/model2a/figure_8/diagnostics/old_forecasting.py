@@ -1,3 +1,5 @@
+from typing import Callable
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -8,10 +10,6 @@ from dynagroup.model2a.figure_8.centers import (
 from dynagroup.model2a.figure_8.diagnostics.trajectories import (
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.figure_8.generate import (
-    log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
-    log_probs_for_one_step_ahead_system_transitions,
-)
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
 
@@ -19,6 +17,9 @@ from dynagroup.sampler import sample_team_dynamics
 def plot_results_of_old_forecasting_test(
     params: AllParameters,
     T: int,
+    compute_log_system_transition_probability_matrices_JAX: Callable,
+    compute_log_entity_transition_probability_matrices_JAX: Callable,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
     title_prefix: str = "generated",
 ) -> None:
     #### CONFIGS
@@ -41,8 +42,9 @@ def plot_results_of_old_forecasting_test(
         sample = sample_team_dynamics(
             params,
             T,
-            log_probs_for_one_step_ahead_system_transitions,
-            log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
+            compute_log_system_transition_probability_matrices_JAX,
+            compute_log_entity_transition_probability_matrices_JAX,
+            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
             seed=seed,
             fixed_system_regimes=fixed_system_regimes,
             fixed_init_entity_regimes=fixed_init_entity_regimes,

@@ -19,6 +19,7 @@ np.set_printoptions(suppress=True, precision=3)
 
 
 """
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the top-down meta-switching model.
 Model 2a refers to the fact that here we'll take the x's to be observed.
 """
@@ -28,7 +29,9 @@ Model 2a refers to the fact that here we'll take the x's to be observed.
 # One step ahead transitions
 ###
 
-# TODO: Relate one-step ahead transitions to the total transitions
+# TODO: Need to rewrite the generic Model 2a functions so that they come from the
+# Model Factors; this is the new way of using sample_team_dynamics.  For an example,
+# see the Figure8 code.
 
 
 def log_probs_for_one_step_ahead_system_transitions(

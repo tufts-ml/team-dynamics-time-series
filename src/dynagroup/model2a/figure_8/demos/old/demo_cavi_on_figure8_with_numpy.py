@@ -22,6 +22,7 @@ from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
 """
 Demo Model 2a.
 
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the "top-down meta-switching model" from the notes.
     This model has the advantage that there is no exponential complexity
     in the number of entities.

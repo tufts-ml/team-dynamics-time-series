@@ -12,7 +12,7 @@ from dynagroup.hmm_posterior import (
     compute_hmm_posterior_summary_JAX,
     compute_hmm_posterior_summary_NUMPY,
 )
-from dynagroup.model2a.model_factors import (
+from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions,
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices,
@@ -281,7 +281,7 @@ def run_VES_step_JAX(
     L = len(IP.pi_system)
 
     # `transitions` is (T-1) x L x L
-    log_transitions = compute_log_system_transition_probability_matrices_JAX(STP, T)
+    log_transitions = compute_log_system_transition_probability_matrices_JAX(STP, T - 1)
 
     # `inital_log_emission` has shape (L,)
     initial_log_emission_for_each_system_regime = jnp.sum(

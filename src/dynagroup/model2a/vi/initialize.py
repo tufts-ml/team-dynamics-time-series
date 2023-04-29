@@ -13,7 +13,7 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_hmm_posterior_summaries_JAX,
 )
-from dynagroup.model2a.model_factors import (
+from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
 )

@@ -25,6 +25,10 @@ from dynagroup.model2a.figure_8.generate import (
     sample,
     times_of_system_regime_changepoints,
 )
+from dynagroup.model2a.figure_8.model_factors import (
+    compute_log_entity_transition_probability_matrices_JAX,
+    compute_log_system_transition_probability_matrices_JAX,
+)
 from dynagroup.model2a.figure_8.recurrence import (
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
 )
@@ -51,6 +55,7 @@ from dynagroup.util import normalize_log_potentials_by_axis
 """
 Demo Model 2a.
 
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the "top-down meta-switching model" from the notes.
     This model has the advantage that there is no exponential complexity
     in the number of entities.
@@ -90,12 +95,12 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/figure8_post_bugfix/"
+save_dir = "/Users/mwojno01/Desktop/figure8_devel_test/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
 T_slice_for_forecasting = 200
-
+T_slice_for_old_forecasting = 200
 
 ###
 # PLOT SAMPLE
@@ -187,10 +192,20 @@ if show_plots_after_init:
 
 if show_plots_after_learning:
     plot_results_of_old_forecasting_test(
-        params_true, T=50, title_prefix="forecasted (via true params)"
+        params_true,
+        T_slice_for_old_forecasting,
+        compute_log_system_transition_probability_matrices_JAX,
+        compute_log_entity_transition_probability_matrices_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        title_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
-        params_init, T=50, title_prefix="forecasted (via init params)"
+        params_init,
+        T_slice_for_old_forecasting,
+        compute_log_system_transition_probability_matrices_JAX,
+        compute_log_entity_transition_probability_matrices_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        title_prefix="forecasted (via init params)",
     )
 
 ###
@@ -254,6 +269,9 @@ plot_fit_and_forecast_on_slice(
     VES_summary,
     VEZ_summaries,
     T_slice_for_forecasting,
+    compute_log_system_transition_probability_matrices_JAX,
+    compute_log_entity_transition_probability_matrices_JAX,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     seeds_for_forecasting,
     save_dir,
     entity_idxs_for_forecasting,
@@ -262,10 +280,20 @@ plot_fit_and_forecast_on_slice(
 ### Plot Old Forecasting test
 if show_plots_after_learning:
     plot_results_of_old_forecasting_test(
-        params_true, T=50, title_prefix="forecasted (via true params)"
+        params_true,
+        T_slice_for_old_forecasting,
+        compute_log_system_transition_probability_matrices_JAX,
+        compute_log_entity_transition_probability_matrices_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        title_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
-        params_learned, T=50, title_prefix="forecasted (via learned params)"
+        params_learned,
+        T_slice_for_old_forecasting,
+        compute_log_system_transition_probability_matrices_JAX,
+        compute_log_entity_transition_probability_matrices_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        title_prefix="forecasted (via learned params)",
     )
 
 

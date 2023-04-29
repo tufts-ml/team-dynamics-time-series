@@ -1,12 +1,12 @@
 import numpy as np
 import numpy.random as npr
-from scipy.special import logsumexp
 
-from dynagroup.model2a.figure_8.recurrence import (
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
+from dynagroup.model2a.figure_8.model_factors import (
+    compute_log_entity_transition_probability_matrices_JAX,
+    compute_log_system_transition_probability_matrices_JAX,
 )
-from dynagroup.model2a.generic.generate import (
-    log_probs_for_one_step_ahead_system_transitions,
+from dynagroup.model2a.figure_8.recurrence import (
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
 )
 from dynagroup.params import (
     AllParameters,
@@ -18,7 +18,7 @@ from dynagroup.params import (
 )
 from dynagroup.sampler import sample_team_dynamics
 from dynagroup.sticky import sample_sticky_transition_matrix
-from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray4D
+from dynagroup.types import NumpyArray4D
 from dynagroup.util import generate_random_covariance_matrix
 
 
@@ -26,59 +26,15 @@ np.set_printoptions(suppress=True, precision=3)
 
 
 """
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the top-down meta-switching model.
 Model 2a refers to the fact that here we'll take the x's to be observed.
 """
 
 
 ###
-# One step ahead transitions
+# Parameter Construction
 ###
-
-
-def log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model(
-    ETP: EntityTransitionParameters_MetaSwitch,
-    prev_entity_regimes: NumpyArray1D,
-    prev_states: NumpyArray2D,
-    curr_system_regime: int,
-) -> NumpyArray2D:
-    """
-    Attributes:
-        prev_entity_regimes :  has shape (J,)
-            Each entry is in {1,...,K}
-            Gives values of zs (entity regimes) for each entity j at previous timestep
-        prev_states :  has shape (J,D)
-            Gives values of continuous latent state, x in R^D,
-            for each entity j at previous timestep
-        curr_system_regime  : int
-            In {1,...,L}.
-            Gives value of s (system regime) at previous timestep
-    Returns:
-        np.array of shape (J,K)
-            The j-th row gives a probability vector over {1,...,K}
-    """
-
-    # TODO : Allow covariates
-
-    J, L, K, _ = np.shape(ETP.Psis)
-    # arbitrary_d_value = 0
-
-    log_probs_unnormalized = np.zeros((J, K))
-    for j in range(J):
-        # contribution from recurrence
-        log_probs_unnormalized[j] += ETP.Psis[
-            j, curr_system_regime
-        ] @ transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix(
-            prev_states[j]
-        )
-        # contribution from endogenous transition preferences
-        log_probs_unnormalized[j] += ETP.Ps[j, curr_system_regime, prev_entity_regimes[j], :]
-
-    # normalize
-    log_normalizers = logsumexp(log_probs_unnormalized, axis=1)[:, None]
-    log_probs = log_probs_unnormalized - log_normalizers
-
-    return log_probs
 
 
 def make_Psis_for_figure_8_experiment(
@@ -320,8 +276,9 @@ ALL_PARAMS = AllParameters(STP, ETP, CSP, EP, IP)
 sample = sample_team_dynamics(
     ALL_PARAMS,
     T,
-    log_probs_for_one_step_ahead_system_transitions,
-    log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
+    compute_log_system_transition_probability_matrices_JAX,
+    compute_log_entity_transition_probability_matrices_JAX,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     seed=SEED,
     fixed_system_regimes=fixed_system_regimes,
 )

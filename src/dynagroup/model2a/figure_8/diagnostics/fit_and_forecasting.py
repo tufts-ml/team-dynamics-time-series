@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -6,10 +6,6 @@ from matplotlib import pyplot as plt
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
-)
-from dynagroup.model2a.figure_8.generate import (
-    log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
-    log_probs_for_one_step_ahead_system_transitions,
 )
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
@@ -46,6 +42,9 @@ def plot_fit_and_forecast_on_slice(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     T_slice: int,
+    compute_log_system_transition_probability_matrices_JAX: Callable,
+    compute_log_entity_transition_probability_matrices_JAX: Callable,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
     forecast_seeds: List[int],
     save_dir: str,
     entity_idxs: Optional[List[int]] = None,
@@ -169,8 +168,9 @@ def plot_fit_and_forecast_on_slice(
             sample_ahead = sample_team_dynamics(
                 params,
                 T_slice,
-                log_probs_for_one_step_ahead_system_transitions,
-                log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
+                compute_log_system_transition_probability_matrices_JAX,
+                compute_log_entity_transition_probability_matrices_JAX,
+                transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
                 seed=forecast_seed,
                 fixed_system_regimes=fixed_system_regimes,
                 fixed_init_entity_regimes=fixed_init_entity_regimes,

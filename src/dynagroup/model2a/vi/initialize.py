@@ -292,7 +292,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         )
         log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,
-            continuous_states,
+            continuous_states[:-1],
             transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         )
         # TODO: The averaging should make sense, because for the purposes of initialziation, we have constructed the entity-level transition probs to be identical

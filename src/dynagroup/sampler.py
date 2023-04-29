@@ -164,6 +164,7 @@ def sample_team_dynamics(
         log_probs_next_entities = log_probs_for_one_step_ahead_entity_transitions(
             AP.ETP, zs[t - 1], xs[t - 1], s[t]
         )
+        breakpoint()
 
         for j in range(dims.J):
             z_probs[t, j, :] = np.exp(log_probs_next_entities[j])

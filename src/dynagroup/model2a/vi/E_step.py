@@ -129,7 +129,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
     log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
         ETP,
-        continuous_states_JAX,
+        continuous_states_JAX[:-1],
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
     expected_log_transition_matrices = jnp.einsum(
@@ -409,7 +409,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
     log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
         ETP,
-        continuous_states,
+        continuous_states[:-1],
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
 

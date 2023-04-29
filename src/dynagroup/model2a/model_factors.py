@@ -138,7 +138,7 @@ def compute_log_entity_transition_probability_matrices(
 
 def compute_log_entity_transition_probability_matrices_JAX(
     ETP_JAX: EntityTransitionParameters_JAX,
-    xs: JaxNumpyArray3D,
+    x_prevs: JaxNumpyArray3D,
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
 ) -> JaxNumpyArray5D:
     """
@@ -147,8 +147,10 @@ def compute_log_entity_transition_probability_matrices_JAX(
     Arguments:
         ETP_JAX:
             See `EntityTransitionParameters` class definition for more details.
-        xs : jnp.array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
+        x_prevs : jnp.array of shape (T-1,J,D) where the (t,j)-th entry is in R^D
+            for t=1,...,T-1.   If `sample` is an instance of the `Sample` class, this
+            object can be obtained by doing sample.xs[:-1], which gives all the x's except
+            the one at the final timestep.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
 
@@ -157,6 +159,7 @@ def compute_log_entity_transition_probability_matrices_JAX(
             the j-th entity transitioning from regime k to regime k'
             when transitioning into time t+1 under the l-th system regime at time t+1.
             That is, it gives P(z_{t+1}^j = k' | z_t^j =k, s_{t+1}=l).
+            for t=1,...,T-1.
 
     Notation:
         T: number of timesteps
@@ -169,13 +172,13 @@ def compute_log_entity_transition_probability_matrices_JAX(
             lambda x: x
         )
     # TODO: Add covariates
-    x_tildes = jnp.apply_along_axis(
+    x_prev_tildes = jnp.apply_along_axis(
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         2,
-        xs,
+        x_prevs,
     )
     bias_from_recurrence = jnp.einsum(
-        "jlkd,tjd->tjkl", ETP_JAX.Psis, x_tildes[:-1]
+        "jlkd,tjd->tjkl", ETP_JAX.Psis, x_prev_tildes
     )  # (T-1, J, K, L)
     bias_from_recurrence_reordered_axes = jnp.moveaxis(
         bias_from_recurrence, [2, 3], [3, 2]

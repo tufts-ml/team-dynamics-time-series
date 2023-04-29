@@ -329,7 +329,7 @@ def compute_expected_log_entity_transitions_JAX(
     )
     log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
         ETP,
-        continuous_states,
+        continuous_states[:-1],
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
     )
     return jnp.sum(variational_probs * log_transition_matrices)

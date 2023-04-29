@@ -2,7 +2,7 @@ import functools
 import warnings
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -15,18 +15,13 @@ from statsmodels.tools.tools import add_constant
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
-    HMM_Posterior_Summary_NUMPY,
 )
 from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_entity_transition_probability_matrices,
     compute_log_entity_transition_probability_matrices_JAX,
     compute_log_system_transition_probability_matrices_JAX,
 )
-from dynagroup.model2a.vi.dims import (
-    variational_dims_from_summaries,
-    variational_dims_from_summaries_JAX,
-)
+from dynagroup.model2a.vi.dims import variational_dims_from_summaries_JAX
 from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
 from dynagroup.params import (
     AllParameters_JAX,
@@ -35,7 +30,6 @@ from dynagroup.params import (
     ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
     ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch,
     EntityTransitionParameters_JAX,
-    EntityTransitionParameters_MetaSwitch,
     EntityTransitionParameters_MetaSwitch_JAX,
     EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX,
     InitializationParameters_JAX,
@@ -235,38 +229,6 @@ def run_M_step_for_init_params_JAX(
     return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
-def compute_variational_posterior_on_entity_transitions(
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-):
-    """
-    Returns:
-        np.array of shape (T-1,J,L,K,K).  The (t,j,l,k,k')-th element gives the VARIATIONAL
-            probability of the the j-th entity transitioning from regime k to regime k'
-            when transitioning into time t+1 under the l-th system regime at time t+1.
-            That is, it gives Q(z_{t+1}^j = k',  z_t^j =k) Q(s_{t+1}=l).
-            This gives a probability distribution over all triplets (l,k,k').
-    """
-    DIMS = variational_dims_from_summaries(VES_summary, VEZ_summaries)
-
-    variational_probs = np.ones((DIMS.T - 1, DIMS.J, DIMS.L, DIMS.K, DIMS.K))
-    for j in range(DIMS.J):
-        for l in range(DIMS.L):
-            for k in range(DIMS.K):
-                for k_prime in range(DIMS.K):
-                    variational_probs[:, j, l, k, k_prime] *= VES_summary.expected_regimes[1:, l]
-                    variational_probs[:, j, l, k, k_prime] *= VEZ_summaries[j].expected_joints[
-                        :, k, k_prime
-                    ]
-
-    # TODO: write test confirming that I am intrepreting K and K prime in the right order
-    # when extracting the info from VEZ_summaries.
-
-    # TODO: write test confirming that this gives a valid probability distribution over all triplets (l,k,k')
-    # We should have np.sum(variational_probs[t,j])==1 for all t,j.
-    return variational_probs
-
-
 def compute_variational_posterior_on_entity_transitions_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
@@ -289,28 +251,6 @@ def compute_variational_posterior_on_entity_transitions_JAX(
         VES_summary.expected_regimes[1:, None, :, None, None]
         * VEZ_summaries.expected_joints[:, :, None, :, :]
     )
-
-
-def compute_expected_log_entity_transitions(
-    continuous_states: NumpyArray3D,
-    ETP: EntityTransitionParameters_MetaSwitch,
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
-) -> float:
-    """
-    Arguments:
-        continuous_states: has shape (T, J, D)
-    """
-    variational_probs = compute_variational_posterior_on_entity_transitions(
-        VES_summary, VEZ_summaries
-    )
-    log_transition_matrices = compute_log_entity_transition_probability_matrices(
-        ETP,
-        continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
-    )
-    return np.sum(variational_probs * log_transition_matrices)
 
 
 def compute_expected_log_entity_transitions_JAX(
@@ -366,28 +306,6 @@ def compute_expected_log_system_transitions_JAX(
     )
 
     return jnp.sum(variational_probs * log_transition_matrices)
-
-
-def compute_objective_for_entity_transition_parameters(
-    continuous_states: NumpyArray3D,
-    ETP: EntityTransitionParameters_MetaSwitch,
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
-) -> float:
-    expected_log_transitions = compute_expected_log_entity_transitions(
-        continuous_states,
-        ETP,
-        VES_summary,
-        VEZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
-    )
-    log_prior = 0.0  # TODO: Add prior?
-    energy_non_constant = expected_log_transitions + log_prior
-
-    # Normalize and negate for minimization
-    DIMS = variational_dims_from_summaries(VES_summary, VEZ_summaries)
-    return -energy_non_constant / DIMS.T
 
 
 def compute_objective_for_entity_transition_parameters_JAX(

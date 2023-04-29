@@ -5,6 +5,10 @@ import numpy as np
 from jax.scipy.stats import multivariate_normal as mvn_JAX
 from scipy.stats import multivariate_normal as mvn
 
+from dynagroup.model import Model
+from dynagroup.model2a.figure_8.recurrence import (
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+)
 from dynagroup.params import (
     ContinuousStateParameters,
     ContinuousStateParameters_JAX,
@@ -30,6 +34,12 @@ from dynagroup.util import (
 """
 Gives the system transition, entity transitions, 
 dynamics, emission, and init functions for the model.
+
+We include both JAX and NUMPY versions.
+    * JAX is for AD, and also speed (since it's vectorized)
+    * NUMPY is for readability.
+
+We can compare the two in unit tests.
 """
 
 
@@ -258,6 +268,8 @@ def compute_log_continuous_state_emissions_JAX(
     CSP: ContinuousStateParameters_JAX,
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
+    compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable,
 ):
     """
     Compute the log (autoregressive, switching) emissions for the continuous states, where we have
@@ -281,17 +293,12 @@ def compute_log_continuous_state_emissions_JAX(
         K: number of entity-level regimes
         D: dimension of continuous states
     """
-    # TODO: Have this be computed from `compute_log_continuous_state_emissions_after_initial_timestep_JAX`
-    # and `compute_log_continuous_state_emissions_at_initial_timestep_JAX` to avoid DRY.
-
-    T = len(continuous_states)
-    K = np.shape(CSP.As)[1]
 
     ### Initial times
     # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    means_init_time, covs_init_time = IP.mu_0s, IP.Sigma_0s
-    log_pdfs_init_time = mvn_JAX.logpdf(
-        continuous_states[0, :, None, :], means_init_time, covs_init_time
+    log_pdfs_init_time = compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+        IP,
+        continuous_states,
     )
 
     # Pre-vectorized version for clarity
@@ -302,21 +309,8 @@ def compute_log_continuous_state_emissions_JAX(
     #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
 
     #### Remaining times
-    # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    # TODO: DO I need to tile the covs and the continuous states?
-    means_remaining_times = jnp.einsum(
-        "jkde,tje->tjkd", CSP.As, continuous_states[:-1]
-    )  # (T-1,J,K,D)
-    means_remaining_times += CSP.bs[None, :, :, :]
-    covs_remaining_times = jnp.tile(CSP.Qs, (T - 1, 1, 1, 1, 1))  # (T-1,J,K,D, D)
-    continuous_states_remaining_times_axes_poorly_ordered = jnp.tile(
-        continuous_states[1:], (K, 1, 1, 1)
-    )  # (K,T-1,J,D)
-    continuous_states_remaining_times = jnp.moveaxis(
-        continuous_states_remaining_times_axes_poorly_ordered, [0, 1, 2], [2, 0, 1]
-    )  # WANT: (T_1,J,K,D)
-    log_pdfs_remaining_times = mvn_JAX.logpdf(
-        continuous_states_remaining_times, means_remaining_times, covs_remaining_times
+    log_pdfs_remaining_times = compute_log_continuous_state_emissions_after_initial_timestep_JAX(
+        CSP, continuous_states
     )
 
     # Pre-vectorized version for clarity
@@ -443,3 +437,13 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
     #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
 
     return log_pdfs_init_time
+
+
+figure8_model_JAX = Model(
+    compute_log_continuous_state_emissions_JAX,
+    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+    compute_log_system_transition_probability_matrices_JAX,
+    compute_log_entity_transition_probability_matrices_JAX,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+)

@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -6,7 +6,9 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
 )
+from dynagroup.initialize import InitializationResults
 from dynagroup.metrics import compute_regime_labeling_accuracy
+from dynagroup.model import Model
 from dynagroup.model2a.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.model2a.vi.M_step_and_ELBO import (
     M_Step_Toggles,
@@ -17,7 +19,6 @@ from dynagroup.model2a.vi.M_step_and_ELBO import (
     run_M_step_for_IP,
     run_M_step_for_STP,
 )
-from dynagroup.model2a.vi.initialize import InitializationResults
 from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
 from dynagroup.params import AllParameters_JAX
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
@@ -27,7 +28,7 @@ def run_CAVI_with_JAX(
     continuous_states: JaxNumpyArray3D,
     n_iterations: int,
     initialization_results: InitializationResults,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
     M_step_toggles: Optional[M_Step_Toggles] = None,
     num_M_step_iters: int = 50,
     system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
@@ -94,7 +95,7 @@ def run_CAVI_with_JAX(
             VEZ_summaries,
             system_transition_prior,
             continuous_states,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
         print(
             f"After (possibly smart) initialization, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
@@ -113,7 +114,7 @@ def run_CAVI_with_JAX(
             all_params.IP,
             continuous_states,
             VEZ_summaries,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
 
         if verbose:
@@ -135,7 +136,7 @@ def run_CAVI_with_JAX(
             all_params.IP,
             continuous_states,
             VES_summary.expected_regimes,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
 
         if verbose:
@@ -161,7 +162,7 @@ def run_CAVI_with_JAX(
                 VEZ_summaries,
                 system_transition_prior,
                 continuous_states,
-                transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+                model,
             )
             print(
                 f"After E-step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
@@ -179,7 +180,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             i,
             num_M_step_iters,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
 
@@ -192,7 +193,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             i,
             num_M_step_iters,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
 
@@ -205,7 +206,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             i,
             num_M_step_iters,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
 
@@ -217,8 +218,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             i,
-            num_M_step_iters,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
 

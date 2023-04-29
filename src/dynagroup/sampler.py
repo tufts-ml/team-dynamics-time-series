@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -7,6 +7,7 @@ import numpy as np
 import numpy.random as npr
 from numpy.random import multivariate_normal as mvn
 
+from dynagroup.model import Model
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.types import (
     JaxNumpyArray1D,
@@ -87,9 +88,7 @@ def jax_sample_from_sample(sample: Sample) -> Sample_JAX:
 def sample_team_dynamics(
     AP: AllParameters,
     T: int,
-    compute_log_system_transition_probability_matrices_JAX: Callable,
-    compute_log_entity_transition_probability_matrices_JAX: Callable,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
     seed: int = 0,
     fixed_system_regimes: Optional[NumpyArray1D] = None,
     fixed_init_entity_regimes: Optional[NumpyArray1D] = None,
@@ -163,7 +162,7 @@ def sample_team_dynamics(
         ###
 
         if fixed_system_regimes is None:
-            log_probs_next_sys = compute_log_system_transition_probability_matrices_JAX(
+            log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
                 AP.STP, T_minus_1=1
             )
 
@@ -183,10 +182,10 @@ def sample_team_dynamics(
         #     AP.ETP, zs[t - 1], xs[t - 1], s[t]
         # )
 
-        log_probs_next_entities = compute_log_entity_transition_probability_matrices_JAX(
+        log_probs_next_entities = model.compute_log_entity_transition_probability_matrices_JAX(
             AP.ETP,
             xs[t - 1][None, :, :],
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         )
         # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
         z_probs = np.exp(

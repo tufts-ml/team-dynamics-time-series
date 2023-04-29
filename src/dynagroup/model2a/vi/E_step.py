@@ -1,5 +1,3 @@
-from typing import Callable
-
 import jax.numpy as jnp
 import numpy as np
 
@@ -9,11 +7,7 @@ from dynagroup.hmm_posterior import (
     compute_hmm_posterior_summaries_JAX,
     compute_hmm_posterior_summary_JAX,
 )
-from dynagroup.model2a.figure_8.model_factors import (
-    compute_log_continuous_state_emissions_JAX,
-    compute_log_entity_transition_probability_matrices_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-)
+from dynagroup.model import Model
 from dynagroup.params import (
     ContinuousStateParameters_JAX,
     EntityTransitionParameters_MetaSwitch_JAX,
@@ -32,7 +26,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     variationally_expected_joints_for_entity_regimes: JaxNumpyArray4D,
     continuous_states_JAX: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> JaxNumpyArray3D:
     """
     Compute expected log transition probability matrices, where the expectations are taken with
@@ -59,10 +53,10 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
         D: dimension of continuous states
     """
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
-    log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
+    log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states_JAX[:-1],
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
     expected_log_transition_matrices = jnp.einsum(
         "tjlkd, tjkd -> tjl",
@@ -85,7 +79,7 @@ def run_VES_step_JAX(
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> HMM_Posterior_Summary_JAX:
     """
     Overview:
@@ -131,7 +125,7 @@ def run_VES_step_JAX(
     L = len(IP.pi_system)
 
     # `transitions` is (T-1) x L x L
-    log_transitions = compute_log_system_transition_probability_matrices_JAX(STP, T - 1)
+    log_transitions = model.compute_log_system_transition_probability_matrices_JAX(STP, T - 1)
 
     # `inital_log_emission` has shape (L,)
     initial_log_emission_for_each_system_regime = jnp.sum(
@@ -146,7 +140,7 @@ def run_VES_step_JAX(
             ETP,
             VEZ_summaries.expected_joints,
             continuous_states,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
     )
 
@@ -174,7 +168,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     variationally_expected_system_regimes: JaxNumpyArray2D,
     continuous_states: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> JaxNumpyArray3D:
     """
     Compute expected log transition probability matrices, where the expectations are taken with
@@ -202,10 +196,10 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     """
 
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
-    log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
+    log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states[:-1],
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
 
     # TODO: This isn't working yet; needs initialization
@@ -231,7 +225,7 @@ def run_VEZ_step_JAX(
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     variationally_expected_system_regimes: JaxNumpyArray2D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> HMM_Posterior_Summaries_JAX:
     """
     Arguments:
@@ -262,7 +256,7 @@ def run_VEZ_step_JAX(
             ETP,
             variationally_expected_system_regimes,
             continuous_states,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
     )
     # REMARK 1: Transitions are unnormalized! However, it shouldn't matter.  The emissions are not normalized
@@ -278,5 +272,11 @@ def run_VEZ_step_JAX(
     # TODO: Below this is where I left off.  It's copy pasta'd!
 
     # log_state_emissions has shape (T,J,K)
-    log_state_emissions = compute_log_continuous_state_emissions_JAX(CSP, IP, continuous_states)
+    log_state_emissions = model.compute_log_continuous_state_emissions_JAX(
+        CSP,
+        IP,
+        continuous_states,
+        model.compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+        model.compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+    )
     return compute_hmm_posterior_summaries_JAX(log_transitions, log_state_emissions, IP.pi_entities)

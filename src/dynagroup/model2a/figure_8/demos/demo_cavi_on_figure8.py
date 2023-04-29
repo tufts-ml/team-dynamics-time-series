@@ -25,23 +25,17 @@ from dynagroup.model2a.figure_8.generate import (
     sample,
     times_of_system_regime_changepoints,
 )
-from dynagroup.model2a.figure_8.model_factors import (
-    compute_log_entity_transition_probability_matrices_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-)
-from dynagroup.model2a.figure_8.recurrence import (
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
-)
-from dynagroup.model2a.vi.core import (
-    M_step_toggles_from_strings,
-    SystemTransitionPrior_JAX,
-    run_CAVI_with_JAX,
-)
-from dynagroup.model2a.vi.initialize import (
+from dynagroup.model2a.figure_8.initialize import (
     compute_elbo_from_initialization_results,
     inspect_entity_level_segmentations_over_EM_iterations,
     inspect_system_level_segmentations_over_EM_iterations,
     smart_initialize_model_2a,
+)
+from dynagroup.model2a.figure_8.model_factors import figure8_model_JAX
+from dynagroup.model2a.vi.core import (
+    M_step_toggles_from_strings,
+    SystemTransitionPrior_JAX,
+    run_CAVI_with_JAX,
 )
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
@@ -95,7 +89,7 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/figure8_devel_test/"
+save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_new_model_dataclass/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -128,6 +122,11 @@ if show_plots_of_samples:
     plot_unfolded_time_series(sample.xs, period_to_use=4)
 
 ###
+# SPECIFY MODEL
+###
+model = figure8_model_JAX
+
+###
 # MAKE PRIOR
 ###
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
@@ -139,8 +138,8 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 if model_adjustment == "one_system_regime":
     DIMS.L = 1
 elif model_adjustment == "remove_recurrence":
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (  # noqa
-        lambda x_vec: np.zeros(DIMS.D_t)
+    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (
+        lambda x_vec: np.zeros(DIMS.D_t)  # noqa
     )
 
 ###
@@ -157,7 +156,7 @@ print("Running smart initialization.")
 initialization_results = smart_initialize_model_2a(
     DIMS,
     sample.xs,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    figure8_model_JAX,
     seed_for_initialization,
 )
 params_init = initialization_results.params
@@ -174,7 +173,7 @@ elbo_init = compute_elbo_from_initialization_results(
     initialization_results,
     system_transition_prior,
     sample.xs,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -194,17 +193,13 @@ if show_plots_after_learning:
     plot_results_of_old_forecasting_test(
         params_true,
         T_slice_for_old_forecasting,
-        compute_log_system_transition_probability_matrices_JAX,
-        compute_log_entity_transition_probability_matrices_JAX,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         title_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
         params_init,
         T_slice_for_old_forecasting,
-        compute_log_system_transition_probability_matrices_JAX,
-        compute_log_entity_transition_probability_matrices_JAX,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         title_prefix="forecasted (via init params)",
     )
 
@@ -217,7 +212,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
     n_iterations,
     initialization_results,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -269,9 +264,7 @@ plot_fit_and_forecast_on_slice(
     VES_summary,
     VEZ_summaries,
     T_slice_for_forecasting,
-    compute_log_system_transition_probability_matrices_JAX,
-    compute_log_entity_transition_probability_matrices_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model,
     seeds_for_forecasting,
     save_dir,
     entity_idxs_for_forecasting,
@@ -282,17 +275,13 @@ if show_plots_after_learning:
     plot_results_of_old_forecasting_test(
         params_true,
         T_slice_for_old_forecasting,
-        compute_log_system_transition_probability_matrices_JAX,
-        compute_log_entity_transition_probability_matrices_JAX,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         title_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
         params_learned,
         T_slice_for_old_forecasting,
-        compute_log_system_transition_probability_matrices_JAX,
-        compute_log_entity_transition_probability_matrices_JAX,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         title_prefix="forecasted (via learned params)",
     )
 
@@ -348,19 +337,19 @@ for j in range(DIMS.J):
 investigate_entity_transition_probs_in_different_contexts(
     params_true.ETP,
     sample.xs,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
 )
 input("Above is report with TRUE params.  Press any key to continue.")
 investigate_entity_transition_probs_in_different_contexts(
     params_init.ETP,
     sample.xs,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
 )
 input("Above is report with INITIALIZED params.  Press any key to continue.")
 investigate_entity_transition_probs_in_different_contexts(
     params_learned.ETP,
     sample.xs,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     save_dir,
 )
 input("Above is report with LEARNED params.  Press any key to continue.")

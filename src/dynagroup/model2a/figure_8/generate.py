@@ -1,13 +1,7 @@
 import numpy as np
 import numpy.random as npr
 
-from dynagroup.model2a.figure_8.model_factors import (
-    compute_log_entity_transition_probability_matrices_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-)
-from dynagroup.model2a.figure_8.recurrence import (
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
-)
+from dynagroup.model2a.figure_8.model_factors import figure8_model_JAX
 from dynagroup.params import (
     AllParameters,
     ContinuousStateParameters,
@@ -276,9 +270,7 @@ ALL_PARAMS = AllParameters(STP, ETP, CSP, EP, IP)
 sample = sample_team_dynamics(
     ALL_PARAMS,
     T,
-    compute_log_system_transition_probability_matrices_JAX,
-    compute_log_entity_transition_probability_matrices_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model=figure8_model_JAX,
     seed=SEED,
     fixed_system_regimes=fixed_system_regimes,
 )

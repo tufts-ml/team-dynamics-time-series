@@ -9,7 +9,7 @@ from dynagroup.model2a.figure_8.generate import (
     times_of_system_regime_changepoints,
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
 )
-from dynagroup.model2a.vi.initialize import smart_initialize_model_2a
+from dynagroup.model2a.figure_8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.vi_numpy.core_numpy import run_CAVI_with_numpy
 from dynagroup.params import dims_from_params
 from dynagroup.plotting.entity_regime_changepoints import (

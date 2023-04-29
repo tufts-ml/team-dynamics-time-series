@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from itertools import groupby
-from typing import Callable, Union
+from typing import Union
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -13,6 +13,8 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_hmm_posterior_summaries_JAX,
 )
+from dynagroup.initialize import InitializationResults
+from dynagroup.model import Model
 from dynagroup.model2a.figure_8.model_factors import (
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
@@ -87,19 +89,6 @@ class RawInitializationResults:
     top: ResultsFromTopHalfInit
     IP: InitializationParameters_JAX
     EP: EmissionsParameters_JAX
-
-
-@dataclass
-class InitializationResults:
-    """
-    Compared to `RawInitializationResults`, this representation is useful for feeding into the CAVI function.
-    """
-
-    params: AllParameters_JAX
-    ES_summary: HMM_Posterior_Summary_JAX
-    EZ_summaries: HMM_Posterior_Summaries_JAX
-    record_of_most_likely_system_states: NumpyArray2D  # Txnum_EM_iterations
-    record_of_most_likely_entity_states: NumpyArray3D  # TxJx num_EM_iterations
 
 
 ###
@@ -266,7 +255,7 @@ def fit_ARHMM_to_bottom_half_of_model(
     CSP_JAX: ContinuousStateParameters_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
     num_EM_iterations: int,
 ) -> ResultsFromBottomHalfInit:
     """
@@ -288,12 +277,16 @@ def fit_ARHMM_to_bottom_half_of_model(
         # Get ingredients for HMM.
         ###
         log_state_emissions = compute_log_continuous_state_emissions_JAX(
-            CSP_JAX, IP_JAX, continuous_states
+            CSP_JAX,
+            IP_JAX,
+            continuous_states,
+            model.compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+            model.compute_log_continuous_state_emissions_after_initial_timestep_JAX,
         )
         log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,
             continuous_states[:-1],
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         )
         # TODO: The averaging should make sense, because for the purposes of initialziation, we have constructed the entity-level transition probs to be identical
         # for the system-level regimes
@@ -348,7 +341,7 @@ def fit_ARHMM_to_top_half_of_model(
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_JAX,
     EZ_summaries: HMM_Posterior_Summaries_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
     num_EM_iterations: int,
     num_M_step_iterations_for_ETP_gradient_descent: int,
     verbose: bool = True,
@@ -370,7 +363,7 @@ def fit_ARHMM_to_top_half_of_model(
             IP_JAX,
             continuous_states,
             EZ_summaries,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
 
         record_of_most_likely_states[:, i] = np.argmax(ES_summary.expected_regimes, axis=1)
@@ -383,7 +376,7 @@ def fit_ARHMM_to_top_half_of_model(
             continuous_states,
             i,
             num_M_step_iterations_for_ETP_gradient_descent,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
 
@@ -400,7 +393,7 @@ def fit_ARHMM_to_top_half_of_model(
 def smart_initialize_model_2a_in_a_raw_manner(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
     seed: int = 0,
     verbose: bool = True,
 ) -> RawInitializationResults:
@@ -444,7 +437,7 @@ def smart_initialize_model_2a_in_a_raw_manner(
         CSP_JAX,
         ETP_JAX,
         IP_JAX,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         num_EM_iterations=5,
     )
 
@@ -469,7 +462,7 @@ def smart_initialize_model_2a_in_a_raw_manner(
         ETP_JAX,
         IP_JAX,
         results_bottom.EZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         num_EM_iterations,
         num_M_step_iterations_for_ETP_gradient_descent,
         verbose=verbose,
@@ -480,7 +473,7 @@ def smart_initialize_model_2a_in_a_raw_manner(
 def smart_initialize_model_2a(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
     seed: int = 0,
     verbose: bool = True,
 ) -> InitializationResults:
@@ -492,7 +485,7 @@ def smart_initialize_model_2a(
     results_raw = smart_initialize_model_2a_in_a_raw_manner(
         DIMS,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
         seed,
         verbose,
     )
@@ -562,7 +555,7 @@ def compute_elbo_from_initialization_results(
     initialization_results: InitializationResults,
     system_transition_prior: SystemTransitionPrior_JAX,
     continuous_states: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    model: Model,
 ) -> ELBO_Decomposed:
     elbo_decomposed = compute_elbo_decomposed(
         initialization_results.params,
@@ -570,6 +563,6 @@ def compute_elbo_from_initialization_results(
         initialization_results.EZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     return elbo_decomposed.elbo

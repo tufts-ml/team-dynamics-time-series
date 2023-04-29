@@ -145,11 +145,8 @@ def compute_log_entity_transition_probability_matrices_JAX(
     Compute log entity transition probability matrices.
 
     Arguments:
-        Psis: Transition parameter representing recurrence effect,
-            jnp.array of shape (T,L,K,D)
-        Ps: Transition parameter representing baseline transition preferences.
-            jnp.array of shape (T,J,K,K)
-            See `EntityTransitionParameters` class definiton for more details.
+        ETP_JAX:
+            See `EntityTransitionParameters` class definition for more details.
         xs : jnp.array of shape (T,J,D) where the (t,j)-th entry is
             in R^D
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D

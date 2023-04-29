@@ -10,7 +10,6 @@ from dynagroup.params import (
     InitializationParameters,
     SystemTransitionParameters,
 )
-from dynagroup.sampler import sample_team_dynamics
 from dynagroup.sticky import sample_sticky_transition_matrix
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.util import generate_random_covariance_matrix, random_rotation
@@ -195,31 +194,33 @@ IP = InitializationParameters(pi_system, pi_entities, mu_0s, Sigma_0s)
 # All Parameters
 ALL_PARAMS = AllParameters(STP, ETP, CSP, EP, IP)
 
-###
-# Make sample
-###
+# ###
+# # Make sample
+# ###
 
-sample = sample_team_dynamics(
-    ALL_PARAMS,
-    T,
-    log_probs_for_one_step_ahead_system_transitions,
-    log_probs_for_one_step_ahead_entity_transitions,
-    seed=SEED,
-)
+# from dynagroup.sampler import sample_team_dynamics
+#
+# sample = sample_team_dynamics(
+#     ALL_PARAMS,
+#     T,
+#     log_probs_for_one_step_ahead_system_transitions,
+#     log_probs_for_one_step_ahead_entity_transitions,
+#     seed=SEED,
+# )
 
-# check that sample is "interesting" (e.g. non constant)
-# if it's not, initialize parameters with "strength" -- N(0,alpha)
-# instead of N(0,1)
+# # check that sample is "interesting" (e.g. non constant)
+# # if it's not, initialize parameters with "strength" -- N(0,alpha)
+# # instead of N(0,1)
 
-###
-# Plot sample
-###
+# ###
+# # Plot sample
+# ###
 
-if __name__ == "__main__":
-    from dynagroup.plotting.sampling import plot_sample_with_system_regimes
+# if __name__ == "__main__":
+#     from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 
-    for j in range(J):
-        print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(
-            sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
-        )
+#     for j in range(J):
+#         print(f"Now plotting results for entity {j}")
+#         plot_sample_with_system_regimes(
+#             sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
+#         )

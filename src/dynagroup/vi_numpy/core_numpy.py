@@ -4,10 +4,10 @@ import numpy as np
 
 from dynagroup.hmm_posterior import HMM_Posterior_Summary_NUMPY
 from dynagroup.metrics import compute_regime_labeling_accuracy
-from dynagroup.model2a.vi.E_step import run_VES_step_NUMPY, run_VEZ_step_NUMPY
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.sampler import Sample
 from dynagroup.types import NumpyArray2D, NumpyArray4D
+from dynagroup.vi.E_step import run_VES_step_NUMPY, run_VEZ_step_NUMPY
 
 
 """

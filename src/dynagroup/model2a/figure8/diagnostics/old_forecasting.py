@@ -1,16 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dynagroup.model2a.figure_8.centers import (
+from dynagroup.model import Model
+from dynagroup.model2a.figure8.centers import (
     compute_circle_locations_from_CSP,
     compute_regime_labels_for_up_circle_by_entity,
 )
-from dynagroup.model2a.figure_8.diagnostics.trajectories import (
+from dynagroup.model2a.figure8.diagnostics.trajectories import (
     plot_deterministic_trajectories,
-)
-from dynagroup.model2a.figure_8.generate import (
-    log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
-    log_probs_for_one_step_ahead_system_transitions,
 )
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
@@ -19,6 +16,7 @@ from dynagroup.sampler import sample_team_dynamics
 def plot_results_of_old_forecasting_test(
     params: AllParameters,
     T: int,
+    model: Model,
     title_prefix: str = "generated",
 ) -> None:
     #### CONFIGS
@@ -41,8 +39,7 @@ def plot_results_of_old_forecasting_test(
         sample = sample_team_dynamics(
             params,
             T,
-            log_probs_for_one_step_ahead_system_transitions,
-            log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
+            model,
             seed=seed,
             fixed_system_regimes=fixed_system_regimes,
             fixed_init_entity_regimes=fixed_init_entity_regimes,

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -7,59 +7,38 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
 )
-from dynagroup.model2a.figure_8.generate import (
-    log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
-    log_probs_for_one_step_ahead_system_transitions,
-)
+from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX, dims_from_params
-from dynagroup.sampler import Sample_JAX, sample_team_dynamics
-
-
-###
-# HELPERS
-###
-
-
-def find_last_index_in_interval_where_array_value_is_close_to_desired_point(
-    array: np.array,
-    desired_point: np.array,
-    starting_index: int,
-    ending_index: int,
-) -> float:
-    closeness_threshold = 0.15
-
-    for t in reversed(range(starting_index, ending_index)):
-        if np.linalg.norm(array[t] - desired_point) < closeness_threshold:
-            return t
-    return np.nan
-
-
-###
-# MAIN
-###
+from dynagroup.sampler import sample_team_dynamics
+from dynagroup.types import JaxNumpyArray3D
 
 
 def plot_fit_and_forecast_on_slice(
-    sample: Sample_JAX,
+    continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     T_slice: int,
+    model: Model,
     forecast_seeds: List[int],
     save_dir: str,
-    entity_idxs: Optional[List[int]] = None,
+    entity_idxs: Optional[List[int]],
+    find_t0_for_entity_sample: Callable,
+    y_lim: Optional[Tuple] = None,
 ) -> None:
     """
     Arguments:
+        continuous_states: jnp.array with shape (T, J, D)
         T_slice: The number of timesteps in the slice that we work with for fitting and forecasting
         entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
             indices provided.
+        find_t0_for_entity_sample: Function converting entity sample (in (T,D)) to initial time for forecasting
     """
 
     ###
     # Upfront info
     ###
-    T, J, _ = np.shape(sample.xs)
+    T, J, _ = np.shape(continuous_states)
     if entity_idxs is None:
         entity_idxs = [j for j in range(J)]
 
@@ -70,7 +49,7 @@ def plot_fit_and_forecast_on_slice(
         ###
         # Derived info
         ###
-        sample_entity = sample.xs[:, j]  # TxD
+        sample_entity = continuous_states[:, j]  # TxD
         DIMS = dims_from_params(params)
         D, K = DIMS.D, DIMS.K
         if DIMS.L == 2:
@@ -79,16 +58,9 @@ def plot_fit_and_forecast_on_slice(
             tag = f"flat_SDM_entity_{j}"
 
         ###
-        # Find starting point
+        # Find starting point for entity
         ###
-        # I want to work with when we transition from up to down (timesteps 100-200)
-        starting_x_of_interest = np.array([1, 1])
-        t_0 = find_last_index_in_interval_where_array_value_is_close_to_desired_point(
-            sample_entity,
-            starting_x_of_interest,
-            starting_index=0,
-            ending_index=100,
-        )
+        t_0 = find_t0_for_entity_sample(sample_entity)
         x_0 = sample_entity[t_0]
 
         ###
@@ -99,8 +71,8 @@ def plot_fit_and_forecast_on_slice(
         plt.close("all")
         fig1 = plt.figure(figsize=(4, 6))
         im = plt.scatter(
-            sample.xs[:, j, 0],
-            sample.xs[:, j, 1],
+            continuous_states[:, j, 0],
+            continuous_states[:, j, 1],
             c=[i for i in range(T)],
             cmap="cool",
             alpha=1.0,
@@ -118,8 +90,8 @@ def plot_fit_and_forecast_on_slice(
         plt.close("all")
         fig = plt.figure(figsize=(4, 6))
         plt.scatter(
-            sample.xs[t_0 : t_0 + T_slice, j, 0],
-            sample.xs[t_0 : t_0 + T_slice, j, 1],
+            continuous_states[t_0 : t_0 + T_slice, j, 0],
+            continuous_states[t_0 : t_0 + T_slice, j, 1],
             c=[i for i in range(t_0, t_0 + T_slice)],
             cmap="cool",
             alpha=1.0,
@@ -167,8 +139,7 @@ def plot_fit_and_forecast_on_slice(
             sample_ahead = sample_team_dynamics(
                 params,
                 T_slice,
-                log_probs_for_one_step_ahead_system_transitions,
-                log_probs_for_one_step_ahead_entity_transitions__for_figure_8_model,
+                model,
                 seed=forecast_seed,
                 fixed_system_regimes=fixed_system_regimes,
                 fixed_init_entity_regimes=fixed_init_entity_regimes,
@@ -184,7 +155,8 @@ def plot_fit_and_forecast_on_slice(
                 cmap="cool",
                 alpha=1.0,
             )
-            plt.ylim(-2.5, 2.5)
+            if y_lim:
+                plt.ylim(y_lim)
             fig1.savefig(save_dir + f"{tag}_sample_ahead_forecast_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))

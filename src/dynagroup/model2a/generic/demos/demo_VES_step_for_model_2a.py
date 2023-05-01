@@ -1,6 +1,6 @@
 import numpy as np
 
-from dynagroup.model2a.figure_8.diagnostics import compute_regime_labeling_accuracy
+from dynagroup.model2a.figure8.diagnostics import compute_regime_labeling_accuracy
 from dynagroup.model2a.generic.generate import ALL_PARAMS, ETP, STP, sample
 from dynagroup.model2a.vi import generate_expected_joints_uniformly, run_VES_step
 from dynagroup.params import dims_from_params
@@ -9,6 +9,7 @@ from dynagroup.params import dims_from_params
 """
 Demo Model 2a.
 
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the "top-down meta-switching model" from the notes.
     This model has the advantage that there is no exponential complexity
     in the number of entities.

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -7,6 +7,7 @@ import numpy as np
 import numpy.random as npr
 from numpy.random import multivariate_normal as mvn
 
+from dynagroup.model import Model
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.types import (
     JaxNumpyArray1D,
@@ -87,8 +88,7 @@ def jax_sample_from_sample(sample: Sample) -> Sample_JAX:
 def sample_team_dynamics(
     AP: AllParameters,
     T: int,
-    log_probs_for_one_step_ahead_system_transitions: Callable,
-    log_probs_for_one_step_ahead_entity_transitions: Callable,
+    model: Model,
     seed: int = 0,
     fixed_system_regimes: Optional[NumpyArray1D] = None,
     fixed_init_entity_regimes: Optional[NumpyArray1D] = None,
@@ -123,7 +123,7 @@ def sample_team_dynamics(
     z_probs = np.zeros((T, dims.J, dims.K))
     zs = np.zeros((T, dims.J), dtype=int)
     xs = np.zeros((T, dims.J, dims.D))
-    ys = np.zeros((T, dims.J, dims.N))
+    ys = np.full((T, dims.J, dims.N), np.nan)
 
     ### initialize
     if fixed_system_regimes is None:
@@ -149,38 +149,72 @@ def sample_team_dynamics(
         C = AP.EP.Cs[j]
         d = AP.EP.ds[j]
         R = AP.EP.Rs[j]
-        ys[0, j] = mvn(C @ xs[0, j] + d, R)
+        emissions_exist = C or d or R
+        if emissions_exist:
+            ys[0, j] = mvn(C @ xs[0, j] + d, R)
 
     ### generate
     for t in range(1, T):
-        ### sample next system regime
-        if fixed_system_regimes is None:
-            log_probs_next_sys = log_probs_for_one_step_ahead_system_transitions(
-                AP.STP, zs[t - 1], s[t - 1]
-            )
-            s[t] = npr.choice(range(dims.L), p=np.exp(log_probs_next_sys))
+        # `dummy_time_index` allows us to use the model factors but apply them to the case
+        # where we're looking at a single time observation at a time
+        dummy_time_index = 0
 
-        ### sample next entity regimes
-        log_probs_next_entities = log_probs_for_one_step_ahead_entity_transitions(
-            AP.ETP, zs[t - 1], xs[t - 1], s[t]
+        ###
+        # Sample next system regime
+        ###
+
+        if fixed_system_regimes is None:
+            log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
+                AP.STP, T_minus_1=1
+            )
+
+            # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
+            # TODO: To handle Model 1, the system transitions probabilities should depend
+            # on the previous entity regimes, zs[t-1].
+            s_probs = np.exp(log_probs_next_sys[dummy_time_index, s[t - 1]])
+            s[t] = npr.choice(range(dims.L), p=s_probs)
+
+        ###
+        # Sample next entity regimes
+        ###
+
+        #  Old way of doing it
+        #
+        # log_probs_next_entities = log_probs_for_one_step_ahead_entity_transitions(
+        #     AP.ETP, zs[t - 1], xs[t - 1], s[t]
+        # )
+
+        log_probs_next_entities = model.compute_log_entity_transition_probability_matrices_JAX(
+            AP.ETP,
+            xs[t - 1][None, :, :],
+            model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        )
+        # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
+        z_probs = np.exp(
+            log_probs_next_entities[dummy_time_index, np.arange(dims.J), s[t], zs[t - 1], :]
         )
 
         for j in range(dims.J):
-            z_probs[t, j, :] = np.exp(log_probs_next_entities[j])
-            zs[t, j] = npr.choice(range(dims.K), p=np.exp(log_probs_next_entities[j]))
+            zs[t, j] = npr.choice(range(dims.K), p=z_probs[j])
 
-        ### sample next entity continuous states
+        ###
+        # Sample next entity continuous states
+        ###
         for j in range(dims.J):
             A = AP.CSP.As[j, zs[t, j]]
             b = AP.CSP.bs[j, zs[t, j]]
             Q = AP.CSP.Qs[j, zs[t, j]]
             xs[t, j] = mvn(A @ xs[t - 1, j] + b, Q)
 
-        ### sample next entity observations
+        ###
+        # Sample next entity observations
+        ###
         for j in range(dims.J):
             C = AP.EP.Cs[j]
             d = AP.EP.ds[j]
             R = AP.EP.Rs[j]
-            ys[t, j] = mvn(C @ xs[t, j] + d, R)
+            emissions_exist = C or d or R
+            if emissions_exist:
+                ys[t, j] = mvn(C @ xs[t, j] + d, R)
 
     return Sample(s, z_probs, zs, xs, ys)

@@ -123,7 +123,7 @@ def sample_team_dynamics(
     z_probs = np.zeros((T, dims.J, dims.K))
     zs = np.zeros((T, dims.J), dtype=int)
     xs = np.zeros((T, dims.J, dims.D))
-    ys = np.zeros((T, dims.J, dims.N))
+    ys = np.full((T, dims.J, dims.N), np.nan)
 
     ### initialize
     if fixed_system_regimes is None:
@@ -149,7 +149,9 @@ def sample_team_dynamics(
         C = AP.EP.Cs[j]
         d = AP.EP.ds[j]
         R = AP.EP.Rs[j]
-        ys[0, j] = mvn(C @ xs[0, j] + d, R)
+        emissions_exist = C or d or R
+        if emissions_exist:
+            ys[0, j] = mvn(C @ xs[0, j] + d, R)
 
     ### generate
     for t in range(1, T):
@@ -211,6 +213,8 @@ def sample_team_dynamics(
             C = AP.EP.Cs[j]
             d = AP.EP.ds[j]
             R = AP.EP.Rs[j]
-            ys[t, j] = mvn(C @ xs[t, j] + d, R)
+            emissions_exist = C or d or R
+            if emissions_exist:
+                ys[t, j] = mvn(C @ xs[t, j] + d, R)
 
     return Sample(s, z_probs, zs, xs, ys)

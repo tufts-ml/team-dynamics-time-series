@@ -56,6 +56,7 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
         starting_index=0,
         ending_index=100,
     )
+
     return plot_fit_and_forecast_on_slice(
         continuous_states,
         params,
@@ -67,4 +68,5 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
         save_dir,
         entity_idxs,
         find_t0_for_entity_sample,
+        y_lim=(-2.5, 2.5),
     )

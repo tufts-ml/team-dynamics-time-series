@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -24,6 +24,7 @@ def plot_fit_and_forecast_on_slice(
     save_dir: str,
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
+    y_lim: Optional[Tuple] = None,
 ) -> None:
     """
     Arguments:
@@ -154,7 +155,8 @@ def plot_fit_and_forecast_on_slice(
                 cmap="cool",
                 alpha=1.0,
             )
-            plt.ylim(-2.5, 2.5)
+            if y_lim:
+                plt.ylim(y_lim)
             fig1.savefig(save_dir + f"{tag}_sample_ahead_forecast_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))

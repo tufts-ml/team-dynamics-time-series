@@ -2,7 +2,7 @@ import functools
 import warnings
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Optional
+from typing import Optional
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -15,19 +15,8 @@ from statsmodels.tools.tools import add_constant
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
-    HMM_Posterior_Summary_NUMPY,
 )
-from dynagroup.model2a.model_factors import (
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_entity_transition_probability_matrices,
-    compute_log_entity_transition_probability_matrices_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-)
-from dynagroup.model2a.vi.dims import (
-    variational_dims_from_summaries,
-    variational_dims_from_summaries_JAX,
-)
-from dynagroup.model2a.vi.prior import SystemTransitionPrior_JAX
+from dynagroup.model import Model
 from dynagroup.params import (
     AllParameters_JAX,
     CSP_with_unconstrained_covariances_from_ordinary_CSP,
@@ -35,7 +24,6 @@ from dynagroup.params import (
     ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
     ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch,
     EntityTransitionParameters_JAX,
-    EntityTransitionParameters_MetaSwitch,
     EntityTransitionParameters_MetaSwitch_JAX,
     EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX,
     InitializationParameters_JAX,
@@ -54,6 +42,8 @@ from dynagroup.util import (
     normalize_log_potentials_by_axis_JAX,
     normalize_potentials_by_axis_JAX,
 )
+from dynagroup.vi.dims import variational_dims_from_summaries_JAX
+from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 ###
@@ -102,13 +92,16 @@ def compute_energy(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> float:
     energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states)
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
     energy_post_init_negated_and_divided_by_num_timesteps += (
         compute_objective_for_system_transition_parameters_JAX(
-            STP, VES_summary, system_transition_prior
+            STP,
+            VES_summary,
+            system_transition_prior,
+            model,
         )
     )
     energy_post_init_negated_and_divided_by_num_timesteps += (
@@ -117,7 +110,7 @@ def compute_energy(
             continuous_states,
             VES_summary,
             VEZ_summaries,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
         )
     )
 
@@ -126,6 +119,7 @@ def compute_energy(
             CSP,
             continuous_states,
             VEZ_summaries,
+            model,
         )
     )
 
@@ -148,7 +142,7 @@ def compute_elbo_decomposed(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> ELBO_Decomposed:
     energy = compute_energy(
         all_params.STP,
@@ -159,7 +153,7 @@ def compute_elbo_decomposed(
         VEZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     entropy = compute_entropy(VES_summary, VEZ_summaries)
     elbo = energy + entropy
@@ -235,38 +229,6 @@ def run_M_step_for_init_params_JAX(
     return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
-def compute_variational_posterior_on_entity_transitions(
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-):
-    """
-    Returns:
-        np.array of shape (T-1,J,L,K,K).  The (t,j,l,k,k')-th element gives the VARIATIONAL
-            probability of the the j-th entity transitioning from regime k to regime k'
-            when transitioning into time t+1 under the l-th system regime at time t+1.
-            That is, it gives Q(z_{t+1}^j = k',  z_t^j =k) Q(s_{t+1}=l).
-            This gives a probability distribution over all triplets (l,k,k').
-    """
-    DIMS = variational_dims_from_summaries(VES_summary, VEZ_summaries)
-
-    variational_probs = np.ones((DIMS.T - 1, DIMS.J, DIMS.L, DIMS.K, DIMS.K))
-    for j in range(DIMS.J):
-        for l in range(DIMS.L):
-            for k in range(DIMS.K):
-                for k_prime in range(DIMS.K):
-                    variational_probs[:, j, l, k, k_prime] *= VES_summary.expected_regimes[1:, l]
-                    variational_probs[:, j, l, k, k_prime] *= VEZ_summaries[j].expected_joints[
-                        :, k, k_prime
-                    ]
-
-    # TODO: write test confirming that I am intrepreting K and K prime in the right order
-    # when extracting the info from VEZ_summaries.
-
-    # TODO: write test confirming that this gives a valid probability distribution over all triplets (l,k,k')
-    # We should have np.sum(variational_probs[t,j])==1 for all t,j.
-    return variational_probs
-
-
 def compute_variational_posterior_on_entity_transitions_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
@@ -291,34 +253,12 @@ def compute_variational_posterior_on_entity_transitions_JAX(
     )
 
 
-def compute_expected_log_entity_transitions(
-    continuous_states: NumpyArray3D,
-    ETP: EntityTransitionParameters_MetaSwitch,
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
-) -> float:
-    """
-    Arguments:
-        continuous_states: has shape (T, J, D)
-    """
-    variational_probs = compute_variational_posterior_on_entity_transitions(
-        VES_summary, VEZ_summaries
-    )
-    log_transition_matrices = compute_log_entity_transition_probability_matrices(
-        ETP,
-        continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
-    )
-    return np.sum(variational_probs * log_transition_matrices)
-
-
 def compute_expected_log_entity_transitions_JAX(
     continuous_states: JaxNumpyArray3D,
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
+    model: Model,
 ) -> float:
     """
     Arguments:
@@ -327,10 +267,10 @@ def compute_expected_log_entity_transitions_JAX(
     variational_probs = compute_variational_posterior_on_entity_transitions_JAX(
         VES_summary, VEZ_summaries
     )
-    log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
+    log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
-        continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
+        continuous_states[:-1],
+        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
     return jnp.sum(variational_probs * log_transition_matrices)
 
@@ -339,10 +279,11 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
     CSP: ContinuousStateParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    model: Model,
 ) -> float:
     variational_probs = VEZ_summaries.expected_regimes[1:]
     log_continuous_state_dynamics = (
-        compute_log_continuous_state_emissions_after_initial_timestep_JAX(
+        model.compute_log_continuous_state_emissions_after_initial_timestep_JAX(
             CSP,
             continuous_states,
         )
@@ -353,6 +294,7 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
 def compute_expected_log_system_transitions_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
+    model: Model,
 ) -> float:
     """
     Arguments:
@@ -361,33 +303,11 @@ def compute_expected_log_system_transitions_JAX(
     # `variational_probs` has shape (T-1,L,L); entry (t,l,l') gives q(s_{t+1}=l', s_t=1)
     variational_probs = VES_summary.expected_joints
     # ` log_transition_matrices` has shape (T-1,L,L)
-    log_transition_matrices = compute_log_system_transition_probability_matrices_JAX(
-        STP, T=np.shape(variational_probs)[0] + 1
+    log_transition_matrices = model.compute_log_system_transition_probability_matrices_JAX(
+        STP, T_minus_1=np.shape(variational_probs)[0]
     )
 
     return jnp.sum(variational_probs * log_transition_matrices)
-
-
-def compute_objective_for_entity_transition_parameters(
-    continuous_states: NumpyArray3D,
-    ETP: EntityTransitionParameters_MetaSwitch,
-    VES_summary: HMM_Posterior_Summary_NUMPY,
-    VEZ_summaries: List[HMM_Posterior_Summary_NUMPY],
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
-) -> float:
-    expected_log_transitions = compute_expected_log_entity_transitions(
-        continuous_states,
-        ETP,
-        VES_summary,
-        VEZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
-    )
-    log_prior = 0.0  # TODO: Add prior?
-    energy_non_constant = expected_log_transitions + log_prior
-
-    # Normalize and negate for minimization
-    DIMS = variational_dims_from_summaries(VES_summary, VEZ_summaries)
-    return -energy_non_constant / DIMS.T
 
 
 def compute_objective_for_entity_transition_parameters_JAX(
@@ -395,7 +315,7 @@ def compute_objective_for_entity_transition_parameters_JAX(
     continuous_states: JaxNumpyArray3D,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> float:
     # TODO: Combine with `compute_objective_for_system_transition_parameters_JAX` ?
     expected_log_transitions = compute_expected_log_entity_transitions_JAX(
@@ -403,7 +323,7 @@ def compute_objective_for_entity_transition_parameters_JAX(
         ETP,
         VES_summary,
         VEZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     log_prior = 0.0  # TODO: Add prior?
     energy = expected_log_transitions + log_prior
@@ -418,7 +338,7 @@ def compute_objective_for_entity_transition_parameters_with_unconstrained_tpms_J
     continuous_states: JaxNumpyArray3D,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    model: Model,
 ) -> float:
     ETP = ordinary_ETP_MetaSwitch_from_ETP_MetaSwitch_with_unconstrained_tpms(ETP_WUC)
     return compute_objective_for_entity_transition_parameters_JAX(
@@ -426,7 +346,7 @@ def compute_objective_for_entity_transition_parameters_with_unconstrained_tpms_J
         continuous_states,
         VES_summary,
         VEZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
 
 
@@ -434,9 +354,10 @@ def compute_objective_for_system_transition_parameters_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
+    model: Model,
 ) -> float:
     # TODO: Combine with `compute_objective_for_entity_transition_parameters_JAX` ?
-    expected_log_transitions = compute_expected_log_system_transitions_JAX(STP, VES_summary)
+    expected_log_transitions = compute_expected_log_system_transitions_JAX(STP, VES_summary, model)
     if system_transition_prior is not None:
         log_prior = evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant(
             normalize_log_potentials_by_axis_JAX(STP.Pi, axis=1),
@@ -454,12 +375,14 @@ def compute_objective_for_system_transition_parameters_with_unconstrained_tpms_J
     STP_WUC: SystemTransitionParameters_WithUnconstrainedTPMs_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
+    model: Model,
 ) -> float:
     STP = ordinary_STP_from_STP_with_unconstrained_tpms(STP_WUC)
     return compute_objective_for_system_transition_parameters_JAX(
         STP,
         VES_summary,
         system_transition_prior,
+        model,
     )
 
 
@@ -467,12 +390,14 @@ def compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX
     CSP: ContinuousStateParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    model: Model,
 ) -> float:
     expected_log_state_dynamics = (
         compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
             CSP,
             continuous_states,
             VEZ_summaries,
+            model,
         )
     )
     log_prior = 0.0
@@ -485,12 +410,14 @@ def compute_objective_for_continuous_state_parameters_with_unconstrained_covaria
     CSP_WUC: ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    model: Model,
 ) -> float:
     CSP = ordinary_CSP_from_CSP_with_unconstrained_covariances(CSP_WUC)
     return compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX(
         CSP,
         continuous_states,
         VEZ_summaries,
+        model,
     )
 
 
@@ -537,9 +464,7 @@ def run_M_step_for_ETP_via_gradient_descent(
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Optional[
-        Callable
-    ] = None,
+    model: Model,
     verbose: bool = True,
 ) -> EntityTransitionParameters_JAX:
     ### Do gradient descent on unconstrained parameters.
@@ -550,7 +475,7 @@ def run_M_step_for_ETP_via_gradient_descent(
         continuous_states=continuous_states,
         VES_summary=VES_summary,
         VEZ_summaries=VEZ_summaries,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX=transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model=model,
     )
 
     # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
@@ -585,9 +510,7 @@ def run_M_step_for_ETP(
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Optional[
-        Callable
-    ] = None,
+    model: Model,
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_ETP == M_Step_Toggle_Value.OFF:
@@ -606,7 +529,7 @@ def run_M_step_for_ETP(
             continuous_states,
             iteration,
             num_M_step_iters,
-            transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            model,
             verbose,
         )
     else:
@@ -622,7 +545,7 @@ def run_M_step_for_ETP(
         VEZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     if verbose:
         print(
@@ -667,9 +590,7 @@ def run_M_step_for_STP(
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Optional[
-        Callable
-    ] = None,
+    model: Model,
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_STP == M_Step_Toggle_Value.OFF:
@@ -684,6 +605,7 @@ def run_M_step_for_STP(
             compute_objective_for_system_transition_parameters_with_unconstrained_tpms_JAX,
             VES_summary=VES_summary,
             system_transition_prior=system_transition_prior,
+            model=model,
         )
 
         # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
@@ -721,7 +643,7 @@ def run_M_step_for_STP(
         VEZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     if verbose:
         print(
@@ -739,9 +661,7 @@ def run_M_step_for_CSP(
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Optional[
-        Callable
-    ] = None,
+    model: Model,
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_CSP == M_Step_Toggle_Value.OFF:
@@ -764,6 +684,7 @@ def run_M_step_for_CSP(
             compute_objective_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX,
             continuous_states=continuous_states,
             VEZ_summaries=VEZ_summaries,
+            model=model,
         )
 
         optimizer_state_for_state_dynamics = None
@@ -798,7 +719,7 @@ def run_M_step_for_CSP(
         VEZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     if verbose:
         print(
@@ -815,10 +736,7 @@ def run_M_step_for_IP(
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: NumpyArray3D,
     iteration: int,
-    num_M_step_iters: int,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Optional[
-        Callable
-    ] = None,
+    model: Model,
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_IP == M_Step_Toggle_Value.OFF:
@@ -850,7 +768,7 @@ def run_M_step_for_IP(
         VEZ_summaries,
         system_transition_prior,
         continuous_states,
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model,
     )
     if verbose:
         print(

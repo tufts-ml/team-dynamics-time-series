@@ -10,7 +10,6 @@ from dynagroup.params import (
     InitializationParameters,
     SystemTransitionParameters,
 )
-from dynagroup.sampler import sample_team_dynamics
 from dynagroup.sticky import sample_sticky_transition_matrix
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.util import generate_random_covariance_matrix, random_rotation
@@ -20,6 +19,7 @@ np.set_printoptions(suppress=True, precision=3)
 
 
 """
+Model 1 is the model with "top-level" recurrence from entity regimes to system regimes.
 Model 2 is the top-down meta-switching model.
 Model 2a refers to the fact that here we'll take the x's to be observed.
 """
@@ -29,7 +29,9 @@ Model 2a refers to the fact that here we'll take the x's to be observed.
 # One step ahead transitions
 ###
 
-# TODO: Relate one-step ahead transitions to the total transitions
+# TODO: Need to rewrite the generic Model 2a functions so that they come from the
+# Model Factors; this is the new way of using sample_team_dynamics.  For an example,
+# see the Figure8 code.
 
 
 def log_probs_for_one_step_ahead_system_transitions(
@@ -195,31 +197,33 @@ IP = InitializationParameters(pi_system, pi_entities, mu_0s, Sigma_0s)
 # All Parameters
 ALL_PARAMS = AllParameters(STP, ETP, CSP, EP, IP)
 
-###
-# Make sample
-###
+# ###
+# # Make sample
+# ###
 
-sample = sample_team_dynamics(
-    ALL_PARAMS,
-    T,
-    log_probs_for_one_step_ahead_system_transitions,
-    log_probs_for_one_step_ahead_entity_transitions,
-    seed=SEED,
-)
+# from dynagroup.sampler import sample_team_dynamics
+#
+# sample = sample_team_dynamics(
+#     ALL_PARAMS,
+#     T,
+#     log_probs_for_one_step_ahead_system_transitions,
+#     log_probs_for_one_step_ahead_entity_transitions,
+#     seed=SEED,
+# )
 
-# check that sample is "interesting" (e.g. non constant)
-# if it's not, initialize parameters with "strength" -- N(0,alpha)
-# instead of N(0,1)
+# # check that sample is "interesting" (e.g. non constant)
+# # if it's not, initialize parameters with "strength" -- N(0,alpha)
+# # instead of N(0,1)
 
-###
-# Plot sample
-###
+# ###
+# # Plot sample
+# ###
 
-if __name__ == "__main__":
-    from dynagroup.plotting.sampling import plot_sample_with_system_regimes
+# if __name__ == "__main__":
+#     from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 
-    for j in range(J):
-        print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(
-            sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
-        )
+#     for j in range(J):
+#         print(f"Now plotting results for entity {j}")
+#         plot_sample_with_system_regimes(
+#             sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
+#         )

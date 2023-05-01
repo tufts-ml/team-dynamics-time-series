@@ -5,6 +5,10 @@ import numpy as np
 from jax.scipy.stats import multivariate_normal as mvn_JAX
 from scipy.stats import multivariate_normal as mvn
 
+from dynagroup.model import Model
+from dynagroup.model2a.figure8.recurrence import (
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+)
 from dynagroup.params import (
     ContinuousStateParameters,
     ContinuousStateParameters_JAX,
@@ -30,6 +34,12 @@ from dynagroup.util import (
 """
 Gives the system transition, entity transitions, 
 dynamics, emission, and init functions for the model.
+
+We include both JAX and NUMPY versions.
+    * JAX is for AD, and also speed (since it's vectorized)
+    * NUMPY is for readability.
+
+We can compare the two in unit tests.
 """
 
 
@@ -39,7 +49,7 @@ def compute_log_system_transition_probability_matrices(
 ):
     """
     Compute log system transition probability matrices.
-    These are time varying
+    These are time varying (although )
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -66,13 +76,29 @@ def compute_log_system_transition_probability_matrices(
     return log_probs
 
 
+# TODO: For Model 1,  the log system transition probability matrices
+# can have recurrent feedback from the entities.  So to generalize
+# the model factors, we'll have to update the `compute_log_system_transition_probability_matrices`
+# function accordingly.
+
+# TODO: For Model 2a, this function needs to use covariates and Upsilon!.
+
+
 def compute_log_system_transition_probability_matrices_JAX(
     STP: SystemTransitionParameters_JAX,
-    T: int,
+    T_minus_1: int,
 ):
     """
     Compute log system transition probability matrices.
-    These are time varying
+    These are time varying, but only if at least one of the following conditions are true:
+        * system-level covariates exist (in which case the function signature needs to be updated).
+            The covariate effect is governed by the parameters in STP.Upsilon
+        * there is recurrent feedback from the previous entities zs[t-1], as in Model 1.
+            The recurrence effect is governed by the parameters in STP.Gammas
+
+    Arguments:
+        T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
+            system regime probabilities are governed by the initial parameters.
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -83,7 +109,7 @@ def compute_log_system_transition_probability_matrices_JAX(
         L: number of system-level regimes
     """
     # TODO: Incorporate covariates
-    return jnp.tile(STP.Pi, (T - 1, 1, 1))  # (T-1, J, K, K)
+    return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
 
 
 def compute_log_entity_transition_probability_matrices(
@@ -138,20 +164,19 @@ def compute_log_entity_transition_probability_matrices(
 
 def compute_log_entity_transition_probability_matrices_JAX(
     ETP_JAX: EntityTransitionParameters_JAX,
-    xs: JaxNumpyArray3D,
+    x_prevs: JaxNumpyArray3D,
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
 ) -> JaxNumpyArray5D:
     """
     Compute log entity transition probability matrices.
 
     Arguments:
-        Psis: Transition parameter representing recurrence effect,
-            jnp.array of shape (T,L,K,D)
-        Ps: Transition parameter representing baseline transition preferences.
-            jnp.array of shape (T,J,K,K)
-            See `EntityTransitionParameters` class definiton for more details.
-        xs : jnp.array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
+        ETP_JAX:
+            See `EntityTransitionParameters` class definition for more details.
+        x_prevs : jnp.array of shape (T-1,J,D) where the (t,j)-th entry is in R^D
+            for t=1,...,T-1.   If `sample` is an instance of the `Sample` class, this
+            object can be obtained by doing sample.xs[:-1], which gives all the x's except
+            the one at the final timestep.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
 
@@ -160,6 +185,7 @@ def compute_log_entity_transition_probability_matrices_JAX(
             the j-th entity transitioning from regime k to regime k'
             when transitioning into time t+1 under the l-th system regime at time t+1.
             That is, it gives P(z_{t+1}^j = k' | z_t^j =k, s_{t+1}=l).
+            for t=1,...,T-1.
 
     Notation:
         T: number of timesteps
@@ -172,17 +198,20 @@ def compute_log_entity_transition_probability_matrices_JAX(
             lambda x: x
         )
     # TODO: Add covariates
-    x_tildes = jnp.apply_along_axis(
+    x_prev_tildes = jnp.apply_along_axis(
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         2,
-        xs,
+        x_prevs,
     )
     bias_from_recurrence = jnp.einsum(
-        "jlkd,tjd->tjlk", ETP_JAX.Psis, x_tildes[:-1]
+        "jlkd,tjd->tjkl", ETP_JAX.Psis, x_prev_tildes
+    )  # (T-1, J, K, L)
+    bias_from_recurrence_reordered_axes = jnp.moveaxis(
+        bias_from_recurrence, [2, 3], [3, 2]
     )  # (T-1, J, L, K)
     log_potentials = (
-        bias_from_recurrence[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
-    )  # (T-1, J, L, K, K)
+        bias_from_recurrence_reordered_axes[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
+    )  # (T-1, J, L, None, K) + (1,J,L, K,K ) = (T-1, J, L, K, K)
     return normalize_log_potentials_by_axis_JAX(log_potentials, axis=4)
 
 
@@ -239,6 +268,8 @@ def compute_log_continuous_state_emissions_JAX(
     CSP: ContinuousStateParameters_JAX,
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
+    compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable,
 ):
     """
     Compute the log (autoregressive, switching) emissions for the continuous states, where we have
@@ -262,17 +293,12 @@ def compute_log_continuous_state_emissions_JAX(
         K: number of entity-level regimes
         D: dimension of continuous states
     """
-    # TODO: Have this be computed from `compute_log_continuous_state_emissions_after_initial_timestep_JAX`
-    # and `compute_log_continuous_state_emissions_at_initial_timestep_JAX` to avoid DRY.
-
-    T = len(continuous_states)
-    K = np.shape(CSP.As)[1]
 
     ### Initial times
     # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    means_init_time, covs_init_time = IP.mu_0s, IP.Sigma_0s
-    log_pdfs_init_time = mvn_JAX.logpdf(
-        continuous_states[0, :, None, :], means_init_time, covs_init_time
+    log_pdfs_init_time = compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+        IP,
+        continuous_states,
     )
 
     # Pre-vectorized version for clarity
@@ -283,21 +309,8 @@ def compute_log_continuous_state_emissions_JAX(
     #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
 
     #### Remaining times
-    # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    # TODO: DO I need to tile the covs and the continuous states?
-    means_remaining_times = jnp.einsum(
-        "jkde,tje->tjkd", CSP.As, continuous_states[:-1]
-    )  # (T-1,J,K,D)
-    means_remaining_times += CSP.bs[None, :, :, :]
-    covs_remaining_times = jnp.tile(CSP.Qs, (T - 1, 1, 1, 1, 1))  # (T-1,J,K,D, D)
-    continuous_states_remaining_times_axes_poorly_ordered = jnp.tile(
-        continuous_states[1:], (K, 1, 1, 1)
-    )  # (K,T-1,J,D)
-    continuous_states_remaining_times = jnp.moveaxis(
-        continuous_states_remaining_times_axes_poorly_ordered, [0, 1, 2], [2, 0, 1]
-    )  # WANT: (T_1,J,K,D)
-    log_pdfs_remaining_times = mvn_JAX.logpdf(
-        continuous_states_remaining_times, means_remaining_times, covs_remaining_times
+    log_pdfs_remaining_times = compute_log_continuous_state_emissions_after_initial_timestep_JAX(
+        CSP, continuous_states
     )
 
     # Pre-vectorized version for clarity
@@ -424,3 +437,13 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
     #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
 
     return log_pdfs_init_time
+
+
+figure8_model_JAX = Model(
+    compute_log_continuous_state_emissions_JAX,
+    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+    compute_log_system_transition_probability_matrices_JAX,
+    compute_log_entity_transition_probability_matrices_JAX,
+    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+)

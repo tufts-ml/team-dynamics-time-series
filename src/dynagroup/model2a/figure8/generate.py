@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.random as npr
 
-from dynagroup.model2a.figure_8.model_factors import figure8_model_JAX
+from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.params import (
     AllParameters,
     ContinuousStateParameters,
@@ -283,7 +283,7 @@ sample = sample_team_dynamics(
 
 # if __name__ == "__main__":
 #
-# from dynagroup.model2a.figure_8.diagnostics.figure8 import (
+# from dynagroup.model2a.figure8.diagnostics.figure8 import (
 #    investigate_entity_transition_probs_in_different_contexts,
 # )
 

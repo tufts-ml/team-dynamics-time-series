@@ -6,7 +6,7 @@ from jax.scipy.stats import multivariate_normal as mvn_JAX
 from scipy.stats import multivariate_normal as mvn
 
 from dynagroup.model import Model
-from dynagroup.model2a.figure_8.recurrence import (
+from dynagroup.model2a.figure8.recurrence import (
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
 )
 from dynagroup.params import (

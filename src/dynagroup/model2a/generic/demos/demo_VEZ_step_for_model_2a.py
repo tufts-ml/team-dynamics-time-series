@@ -1,6 +1,6 @@
 import numpy as np
 
-from dynagroup.model2a.figure_8.diagnostics import compute_regime_labeling_accuracy
+from dynagroup.model2a.figure8.diagnostics import compute_regime_labeling_accuracy
 from dynagroup.model2a.generic.generate import ALL_PARAMS, CSP, ETP, IP, sample
 from dynagroup.model2a.vi import generate_expected_state_regimes_uniformly, run_VEZ_step
 from dynagroup.params import dims_from_params

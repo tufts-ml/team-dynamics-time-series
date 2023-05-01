@@ -15,7 +15,7 @@ from dynagroup.hmm_posterior import (
 )
 from dynagroup.initialize import InitializationResults
 from dynagroup.model import Model
-from dynagroup.model2a.figure_8.model_factors import (
+from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
 )

@@ -7,7 +7,7 @@ from dynagroup.hmm_posterior import (
     compute_hmm_posterior_summaries_NUMPY,
     compute_hmm_posterior_summary_NUMPY,
 )
-from dynagroup.model2a.figure_8.model_factors import (
+from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions,
     compute_log_entity_transition_probability_matrices,
     compute_log_system_transition_probability_matrices,

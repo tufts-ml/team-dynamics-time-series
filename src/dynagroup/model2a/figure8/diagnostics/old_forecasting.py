@@ -2,11 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dynagroup.model import Model
-from dynagroup.model2a.figure_8.centers import (
+from dynagroup.model2a.figure8.centers import (
     compute_circle_locations_from_CSP,
     compute_regime_labels_for_up_circle_by_entity,
 )
-from dynagroup.model2a.figure_8.diagnostics.trajectories import (
+from dynagroup.model2a.figure8.diagnostics.trajectories import (
     plot_deterministic_trajectories,
 )
 from dynagroup.params import AllParameters, dims_from_params

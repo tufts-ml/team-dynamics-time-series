@@ -4,34 +4,34 @@ from matplotlib import pyplot as plt
 
 from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.figure_8.diagnostics.entity_transitions import (
+from dynagroup.model2a.figure8.diagnostics.entity_transitions import (
     investigate_entity_transition_probs_in_different_contexts,
 )
-from dynagroup.model2a.figure_8.diagnostics.fit_and_forecasting import (
+from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
     plot_fit_and_forecast_on_slice_for_figure_8,
 )
-from dynagroup.model2a.figure_8.diagnostics.next_step import (
+from dynagroup.model2a.figure8.diagnostics.next_step import (
     compute_next_step_predictive_means,
 )
-from dynagroup.model2a.figure_8.diagnostics.old_forecasting import (
+from dynagroup.model2a.figure8.diagnostics.old_forecasting import (
     plot_results_of_old_forecasting_test,
 )
-from dynagroup.model2a.figure_8.diagnostics.trajectories import (
+from dynagroup.model2a.figure8.diagnostics.trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.figure_8.generate import (
+from dynagroup.model2a.figure8.generate import (
     ALL_PARAMS,
     sample,
     times_of_system_regime_changepoints,
 )
-from dynagroup.model2a.figure_8.initialize import (
+from dynagroup.model2a.figure8.initialize import (
     compute_elbo_from_initialization_results,
     inspect_entity_level_segmentations_over_EM_iterations,
     inspect_system_level_segmentations_over_EM_iterations,
     smart_initialize_model_2a,
 )
-from dynagroup.model2a.figure_8.model_factors import figure8_model_JAX
+from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,

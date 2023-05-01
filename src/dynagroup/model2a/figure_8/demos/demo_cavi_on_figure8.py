@@ -8,7 +8,7 @@ from dynagroup.model2a.figure_8.diagnostics.entity_transitions import (
     investigate_entity_transition_probs_in_different_contexts,
 )
 from dynagroup.model2a.figure_8.diagnostics.fit_and_forecasting import (
-    plot_fit_and_forecast_on_slice,
+    plot_fit_and_forecast_on_slice_for_figure_8,
 )
 from dynagroup.model2a.figure_8.diagnostics.next_step import (
     compute_next_step_predictive_means,
@@ -89,7 +89,7 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_moved_vi/"
+save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_new_fit_and_forecast/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -258,7 +258,7 @@ for j in range(DIMS.J):
 
 ### Plot forecasting test
 
-plot_fit_and_forecast_on_slice(
+plot_fit_and_forecast_on_slice_for_figure_8(
     sample.xs,
     params_learned,
     VES_summary,

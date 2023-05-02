@@ -74,7 +74,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 
 # For model adjustments
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For inference
 n_iterations = 10
@@ -89,7 +89,7 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/figure8_devel_test_new_fit_and_forecast/"
+save_dir = "/Users/mwojno01/Desktop/no_recurrence/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

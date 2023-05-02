@@ -149,7 +149,7 @@ def sample_team_dynamics(
         C = AP.EP.Cs[j]
         d = AP.EP.ds[j]
         R = AP.EP.Rs[j]
-        emissions_exist = C or d or R
+        emissions_exist = C.any() or d.any() or R.any()
         if emissions_exist:
             ys[0, j] = mvn(C @ xs[0, j] + d, R)
 
@@ -213,7 +213,7 @@ def sample_team_dynamics(
             C = AP.EP.Cs[j]
             d = AP.EP.ds[j]
             R = AP.EP.Rs[j]
-            emissions_exist = C or d or R
+            emissions_exist = C.any() or d.any() or R.any()
             if emissions_exist:
                 ys[t, j] = mvn(C @ xs[t, j] + d, R)
 

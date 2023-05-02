@@ -52,7 +52,7 @@ def plot_fit_and_forecast_on_slice(
         sample_entity = continuous_states[:, j]  # TxD
         DIMS = dims_from_params(params)
         D, K = DIMS.D, DIMS.K
-        if DIMS.L == 2:
+        if DIMS.L > 1:
             tag = f"HSDM_entity_{j}"
         elif DIMS.L == 1:
             tag = f"flat_SDM_entity_{j}"

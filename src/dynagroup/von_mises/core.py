@@ -1,7 +1,9 @@
 import functools
+import math
 from dataclasses import dataclass
 from typing import Optional
 
+import jax.numpy as jnp
 import numpy as np
 import scipy
 from scipy import stats
@@ -11,7 +13,7 @@ from scipy.special import (  # modified bessel of first kind
 from scipy.stats import vonmises
 
 from dynagroup.types import NumpyArray1D, NumpyArray2D
-from dynagroup.util import make_2d_rotation_matrix
+from dynagroup.util import make_2d_rotation_JAX, make_2d_rotation_matrix
 
 
 """
@@ -163,7 +165,7 @@ def equation_whose_root_is_the_kappa_MLE(kappa: float, RHS: float) -> float:
 
 
 ###
-# Inference
+# Inference for Von Mises: IID or random walk (without drift)
 ###
 
 
@@ -222,3 +224,50 @@ def estimate_von_mises_params(
         raise ValueError("What model type do you want?")
 
     return VonMisesParams(loc, kappa)
+
+
+###
+# [WIP] Inference for Von Mises: random walk WITH drift
+###
+
+
+def negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX(theta, points):
+    """
+    Estimates rotation matrix R=R(theta) for the Von Mises random walk with drift:
+        theta_t ~ VonMises(theta_{t-1} + angular_drift, kappa)
+
+    The von mises log likelihood, up to a contant in the drift angle theta, is given by
+        log_like(theta)= sum_{t=1}^T x_{t-1}^T R(theta) x_t  (*)
+    for some choice of x_0 and where x_t \in R^2 is the "point" representation of the angle theta_t, i.e.
+        x_t := [cos(theta_t), sin(theta_t)]
+
+    The equation (*) is clear from the von Mises likelihood (presented in terms of points x.)
+    For instance, see  Banerjee et al 2005 JMLR.
+
+    Arguments:
+        theta : drift angle
+        points: has shape (T,2)
+    """
+    # Note: i'm discarding the parts of von mises log likelihood that are irrelevant to finding the drift
+    # TODO: Can't I just optimize the above equation in closed form?
+    R = make_2d_rotation_JAX(theta)
+    next_points = points[1:]
+    rotated_previous_points = (R @ points[:-1].T).T
+    dot_products = jnp.einsum("td,td->t", next_points, rotated_previous_points)
+    return -jnp.sum(dot_products)
+
+
+###
+# Initialization for inference for Von Mises (random walk WITH drift ) via an intuitive estimator
+###
+
+
+def _angle_between_zero_and_2pi(v1, v2):
+    "returns value between 0 and 2pi"
+    return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
+
+def compute_mean_angle_between_neighbors(angles):
+    points = points_from_angles(angles)
+    neighbor_angles = [_angle_between_zero_and_2pi(x, y) for (x, y) in zip(points[1:], points[:-1])]
+    return np.mean(neighbor_angles)

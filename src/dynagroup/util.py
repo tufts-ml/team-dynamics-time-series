@@ -60,6 +60,10 @@ def generate_random_covariance_matrix(dim, var=1.0):
     return np.dot(A, A.transpose())
 
 
+def make_2d_rotation_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+
+
 def random_rotation(n, theta=None):
     """
     From Linderman's state space modeling repo
@@ -77,7 +81,7 @@ def random_rotation(n, theta=None):
     if n == 1:
         return np.random.rand() * np.eye(1)
 
-    rot = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+    rot = make_2d_rotation_matrix(theta)
     out = np.eye(n)
     out[:2, :2] = rot
     q = np.linalg.qr(np.random.randn(n, n))[0]

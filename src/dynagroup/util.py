@@ -64,6 +64,10 @@ def make_2d_rotation_matrix(theta):
     return np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
 
 
+def make_2d_rotation_JAX(theta):
+    return jnp.array([[jnp.cos(theta), -jnp.sin(theta)], [jnp.sin(theta), jnp.cos(theta)]])
+
+
 def random_rotation(n, theta=None):
     """
     From Linderman's state space modeling repo

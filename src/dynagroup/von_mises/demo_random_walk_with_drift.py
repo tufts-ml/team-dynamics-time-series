@@ -5,12 +5,9 @@ np.set_printoptions(precision=3, suppress=True)
 
 from matplotlib import pyplot as plt
 
-from dynagroup.von_mises.core import (
-    VonMisesModelType,
-    estimate_von_mises_params,
-    points_from_angles,
-    sample_from_von_mises_random_walk_with_drift,
-)
+from dynagroup.von_mises.generate import sample_from_von_mises_random_walk_with_drift
+from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.util import points_from_angles
 
 
 """

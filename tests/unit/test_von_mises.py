@@ -1,14 +1,16 @@
 import numpy as np
 from scipy.stats import vonmises
 
-from dynagroup.von_mises.core import (
-    VonMisesModelType,
-    angles_from_points,
-    estimate_von_mises_params,
-    points_from_angles,
+from dynagroup.von_mises.generate import (
     sample_from_von_mises_random_walk,
     sample_from_von_mises_random_walk_with_drift,
 )
+from dynagroup.von_mises.inference import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+    points_from_angles,
+)
+from dynagroup.von_mises.util import angles_from_points
 
 
 def test__points_from_angles__then__angles_from_points():

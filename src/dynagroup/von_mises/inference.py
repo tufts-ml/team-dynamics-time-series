@@ -11,10 +11,10 @@ from scipy import stats
 from scipy.special import (  # modified bessel of first kind
     iv as modified_bessel_first_kind,
 )
-from scipy.stats import vonmises
 
-from dynagroup.types import NumpyArray1D, NumpyArray2D
-from dynagroup.util import make_2d_rotation_JAX, make_2d_rotation_matrix
+from dynagroup.types import NumpyArray1D
+from dynagroup.util import make_2d_rotation_JAX
+from dynagroup.von_mises.util import points_from_angles
 
 
 """
@@ -57,8 +57,9 @@ class VonMisesParams:
         drift: an angle in [-pi, pi].
         kappa: concentration parameter, a non-negative real.
             When kappa=0, the Von Mises distribution is uniform on the circle
-        ar_coef : in [0,1]
+        ar_coef : currently in {0,1}
             This parameter is optional. When set to 0, we get IID samples.
+            it might make sense t have the ar coef be in [0,1], but i'm not sure.
 
     References:
         https://stats.stackexchange.com/questions/18692/estimating-kappa-of-von-mises-distribution
@@ -68,63 +69,6 @@ class VonMisesParams:
     drift: float
     kappa: float
     ar_coef: Optional[float] = 0.0
-
-
-###
-# Sampling
-###
-
-
-def sample_from_von_mises_random_walk(
-    kappa: float,
-    T: int,
-    init_angle: float,
-) -> NumpyArray1D:
-    """
-    Returns T samples from a von Mises random walk,
-        theta_t ~ VonMises(theta_{t-1}, kappa)
-
-    Arguments:
-        kappa: concentration parameter for von mises distribution
-        init_angle: In [-pi, pi]
-    """
-
-    angles = np.zeros(T)
-    angles[0] = init_angle
-    for t in range(1, T):
-        angles[t] = vonmises.rvs(kappa, loc=angles[t - 1])
-    return angles
-
-
-def sample_from_von_mises_random_walk_with_drift(
-    kappa: float,
-    T: int,
-    init_angle: float,
-    drift_angle: Optional[float],
-) -> NumpyArray1D:
-    """
-    Returns T samples from a von Mises random walk with drift,
-        theta_t ~ VonMises(theta_{t-1} + angular_drift, kappa)
-    We create the angular drift by rotating the previous value by the drift angle
-
-    Arguments:
-        kappa: concentration parameter for von mises distribution
-        init_angle: In [-pi, pi]
-        drift_angle: In [-pi, pi]
-            If drift_angle = 0, this produces an identity rotaton matrix
-            to operate on the previous observation
-    """
-
-    # The rotation matrix `R` is the identity if the drift angle is 0.0
-    R = make_2d_rotation_matrix(drift_angle)
-
-    angles = np.zeros(T)
-    angles[0] = init_angle
-    for t in range(1, T):
-        mu_t_as_point = (R @ points_from_angles(angles[t - 1]).T).T
-        mu_t = angles_from_points(mu_t_as_point)[0]
-        angles[t] = vonmises.rvs(kappa, loc=mu_t)
-    return angles
 
 
 ###
@@ -147,18 +91,6 @@ def _compute_norm_of_mean_Cartesian_coordinate(angles: NumpyArray1D) -> float:
     """
     points = points_from_angles(angles)
     return np.linalg.norm(np.mean(points, 0))
-
-
-def points_from_angles(angles: NumpyArray1D) -> NumpyArray2D:
-    """Compute the Cartesian coordinates of a point on the unit circle, given the angle."""
-    xs = np.cos(angles)
-    ys = np.sin(angles)
-    return np.vstack((xs, ys)).T
-
-
-def angles_from_points(points: NumpyArray2D) -> NumpyArray1D:
-    """Compute the angle of a point on the unit circle, given its Cartesian coordinates."""
-    return np.arctan2(points[:, 1], points[:, 0])
 
 
 def equation_whose_root_is_the_kappa_MLE(kappa: float, RHS: float) -> float:

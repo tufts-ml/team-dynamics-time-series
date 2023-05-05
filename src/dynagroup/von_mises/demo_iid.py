@@ -2,11 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.stats import vonmises
 
-from dynagroup.von_mises.core import (
-    VonMisesModelType,
-    estimate_von_mises_params,
-    points_from_angles,
-)
+from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.util import points_from_angles
 
 
 """

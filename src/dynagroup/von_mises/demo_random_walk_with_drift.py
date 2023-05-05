@@ -75,5 +75,5 @@ for true_drift_angle in true_drift_angles:
 
         print(
             f"\nTrue kappa {kappa_true:.02f}. Estimated kappa : {params_learned.kappa : .02f}."
-            f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {params_learned.loc :.02f}."
+            f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {params_learned.drift :.02f}."
         )

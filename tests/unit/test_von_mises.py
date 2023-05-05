@@ -25,10 +25,10 @@ def test_that__estimate_von_mises_params__gives_approximately_correct_parameters
         for loc_true in np.array([0, -0.5, 0.5]) * np.pi:
             angles = vonmises.rvs(kappa_true, loc=loc_true, size=T)
             params_learned = estimate_von_mises_params(angles, VonMisesModelType.IID)
-            print(f"True loc: {loc_true:.02f}, Estimated: {params_learned.loc:.02f}")
+            print(f"True loc: {loc_true:.02f}, Estimated: {params_learned.drift:.02f}")
             print(f"True kappa: {kappa_true:.02f}, Estimated: {params_learned.kappa:.02f}")
             assert np.isclose(params_learned.kappa, kappa_true, rtol=0.20)
-            assert np.isclose(params_learned.loc, loc_true, atol=np.pi / 16)
+            assert np.isclose(params_learned.drift, loc_true, atol=np.pi / 16)
 
 
 def test_that__estimate_von_mises_params__gives_approximately_correct_concentration_parameter_for_a_von_mises_random_walk():
@@ -52,6 +52,6 @@ def test_that__estimate_von_mises_params__gives_approximately_correct_parameters
         )
         params_learned = estimate_von_mises_params(angles, VonMisesModelType.RANDOM_WALK_WITH_DRIFT)
         print(f"True kappa: {kappa_true:.02f}, Estimated: {params_learned.kappa:.02f}")
-        print(f"True drift: {true_drift_angle:.02f}, Estimated: {params_learned.loc:.02f}")
+        print(f"True drift: {true_drift_angle:.02f}, Estimated: {params_learned.drift:.02f}")
         assert np.isclose(params_learned.kappa, kappa_true, rtol=0.20)
-        assert np.isclose(params_learned.loc, true_drift_angle, rtol=0.20)
+        assert np.isclose(params_learned.drift, true_drift_angle, rtol=0.20)

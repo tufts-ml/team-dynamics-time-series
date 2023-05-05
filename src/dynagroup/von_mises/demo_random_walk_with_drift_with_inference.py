@@ -5,6 +5,7 @@ np.set_printoptions(precision=3, suppress=True)
 
 from dynagroup.von_mises.core import (
     estimate_drift_angle_for_von_mises_random_walk_with_drift,
+    estimate_kappa_for_random_walk_with_drift,
     sample_from_von_mises_random_walk_with_drift,
 )
 
@@ -14,8 +15,8 @@ We show that we can do inference (by gradient descent, at least for now) on the 
 from a Von Mises random walk with drift.
 
 TODO:
-- Add inference for the concentration parameter, kappa
 - Integrate with the other inference code for IID and random walk without drift.  See "model_type" 
+- Extend to where we have a weight on the random walk part (so we can recover IID as a special case.)
 """
 
 
@@ -25,7 +26,7 @@ TODO:
 
 # sampling
 T = 1000
-kappa_true = 100.0
+kappa_true = 100
 plot_angle_time_series = False
 plot_time_series_on_circle = True
 init_angle = 0.0
@@ -50,8 +51,11 @@ for true_drift_angle in true_drift_angles:
         optimizer_init_strategy,
     )
 
+    estimated_kappa = estimate_kappa_for_random_walk_with_drift(angles, estimated_drift_angle)
+
     print(
-        f"Kappa true {kappa_true:.03}. True drift {true_drift_angle:.03}. Estimated drift: {estimated_drift_angle:.03}."
+        f"\nTrue kappa {kappa_true:.02f}. Estimated kappa : {estimated_kappa : .02f}."
+        f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {estimated_drift_angle:.02f}."
     )
 
     # # TMP: from a devel script

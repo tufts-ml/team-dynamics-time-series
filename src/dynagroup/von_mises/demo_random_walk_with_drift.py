@@ -1,14 +1,32 @@
 import numpy as np
+
+
+np.set_printoptions(precision=3, suppress=True)
+
 from matplotlib import pyplot as plt
 
 from dynagroup.von_mises.core import (
+    estimate_drift_angle_for_von_mises_random_walk_with_drift,
+    estimate_kappa_for_random_walk_with_drift,
     points_from_angles,
     sample_from_von_mises_random_walk_with_drift,
 )
 
 
 """
-We sample from, and (eventually) do inference on, a von Mises random walk with drift.
+Demo of a von Mises random walk with drift.
+
+1. We show samples.
+2. We show inference works. 
+    - For the concentration parameter, kappa, we do "closed form" inference (up to numerically solving the root of an equation involving 
+        modified bessel functions). 
+    - For the drift parameter, we do gradient descent (at least for now; Eric seems to have worked out a closed-form solution, although
+        I will probably generalize this anyways.)
+
+TODO:
+- Integrate with the other inference code for IID and random walk without drift.  See "model_type" 
+- Extend to where we have a weight on the random walk part (so we can recover IID as a special case.)
+
 """
 
 ###
@@ -16,40 +34,49 @@ We sample from, and (eventually) do inference on, a von Mises random walk with d
 ###
 
 T = 25
-kappa_trues = [100, 10, 1]
+kappa_trues = [100, 50, 1]
 plot_angle_time_series = False
 plot_time_series_on_circle = True
 init_angle = 0.0
-drift_angle = np.pi / 25
+true_drift_angles = np.array([1 / 24, 1 / 12, 1 / 4, 1 / 2, 1]) * np.pi
 
-for kappa_true in kappa_trues:
-    ###
-    # Sample from a Von Mises Random Walk with Drift
-    ###
-    angles = sample_from_von_mises_random_walk_with_drift(kappa_true, T, init_angle, drift_angle)
+for true_drift_angle in true_drift_angles:
+    for kappa_true in kappa_trues:
+        ###
+        # Sample from a Von Mises Random Walk with Drift
+        ###
+        angles = sample_from_von_mises_random_walk_with_drift(
+            kappa_true, T, init_angle, true_drift_angle
+        )
 
-    ###
-    # Plot samples
-    ###
+        ###
+        # Plot samples
+        ###
+        if plot_angle_time_series and true_drift_angle == true_drift_angles[0]:
+            plt.scatter(np.arange(T), angles, c=np.arange(T), cmap="cool")
+            plt.xlabel("time")
+            plt.ylabel(r"angle $\in [-\pi, \pi]$")
+            plt.tight_layout()
+            plt.show()
 
-    if plot_angle_time_series:
-        plt.scatter(np.arange(T), angles, c=np.arange(T), cmap="cool")
-        plt.xlabel("time")
-        plt.ylabel(r"angle $\in [-\pi, \pi]$")
-        plt.tight_layout()
-        plt.show()
+        if plot_time_series_on_circle and true_drift_angle == true_drift_angles[0]:
+            points = points_from_angles(angles)
+            plt.scatter(points[:, 0], points[:, 1], c=np.arange(len(points)), cmap="cool")
+            plt.title(
+                f"Samples of a von Mises random walk with drift \n (drift angle={true_drift_angle:.02f}, kappa={kappa_true:.02f})"
+            )
+            plt.xlim(-1.1, 1.1)
+            plt.ylim(-1.1, 1.1)
+            plt.show()
 
-    if plot_time_series_on_circle:
-        points = points_from_angles(angles)
-        plt.scatter(points[:, 0], points[:, 1], c=np.arange(len(points)), cmap="cool")
-        plt.title(f"Samples of a von Mises random walk with drift (kappa={kappa_true:.02f})")
-        plt.xlim(-1.1, 1.1)
-        plt.ylim(-1.1, 1.1)
-        plt.show()
+        ####
+        # Estimate parameters
+        ###
 
-    # ####
-    # # Estimate parameters
-    # ###
+        estimated_drift_angle = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
+        estimated_kappa = estimate_kappa_for_random_walk_with_drift(angles, estimated_drift_angle)
 
-    # params_learned = estimate_von_mises_params(angles, VonMisesModelType.IID)
-    # print(f"True kappa: {kappa_true:.02f}, Estimated: {params_learned.kappa:.02f}")
+        print(
+            f"\nTrue kappa {kappa_true:.02f}. Estimated kappa : {estimated_kappa : .02f}."
+            f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {estimated_drift_angle:.02f}."
+        )

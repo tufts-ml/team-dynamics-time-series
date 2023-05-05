@@ -173,6 +173,25 @@ def equation_whose_root_is_the_kappa_MLE(kappa: float, RHS: float) -> float:
 ###
 
 
+def _estimate_kappa_for_general_von_mises_model(RHS: float) -> float:
+    """
+    Estimate the concentration parameter, kappa, for a von mises model (IID, Random Walk, Random Walk with drift)
+    Each model has a different RHS for the estimating equation
+
+        c'(kappa)/c(kappa) - RHS =0
+
+    where c(kappa) is the normalizing constant.  See Appendix A.1, Banerjee et al 2005 JMLR for the IID case,
+    and my notes for the other cases.
+    """
+    this_equation = functools.partial(
+        equation_whose_root_is_the_kappa_MLE,
+        RHS=RHS,
+    )
+    # TODO: Don't hardcode kappa init.
+    kappa_init = 1.0
+    return scipy.optimize.fsolve(this_equation, kappa_init)[0]
+
+
 def estimate_kappa_for_iid_samples(angles: np.array):
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
@@ -180,12 +199,7 @@ def estimate_kappa_for_iid_samples(angles: np.array):
     by the argument in Appendix A.1, Banerjee et al 2005 JMLR,  Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
     """
     norm_of_cartesian_mean = _compute_norm_of_mean_Cartesian_coordinate(angles)
-    this_equation = functools.partial(
-        equation_whose_root_is_the_kappa_MLE, RHS=norm_of_cartesian_mean
-    )
-    # TODO: Don't hardcode kappa init.
-    kappa_init = 1.0
-    return scipy.optimize.fsolve(this_equation, kappa_init)[0]
+    return _estimate_kappa_for_general_von_mises_model(norm_of_cartesian_mean)
 
 
 def estimate_kappa_for_random_walk(angles: np.array):
@@ -201,11 +215,25 @@ def estimate_kappa_for_random_walk(angles: np.array):
     # We could also posit an initial measurement x_0 and then estimate this from T measurements.
 
     RHS = np.mean(np.einsum("td,td->t", points[1:], points[:-1]))
-    this_equation = functools.partial(equation_whose_root_is_the_kappa_MLE, RHS=RHS)
+    return _estimate_kappa_for_general_von_mises_model(RHS)
 
-    # TODO: Don't hardcode kappa init.
-    kappa_init = 1.0
-    return scipy.optimize.fsolve(this_equation, kappa_init)[0]
+
+def estimate_kappa_for_random_walk_with_drift(angles: np.array, drift_angle: float):
+    """
+    We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
+    of a Von Mises random walk with drift.  The computation of this equation can be obtained from MTW's notes,
+    and/or by a slight tweak to the argument in Appendix A.1, Banerjee et al 2005 JMLR,
+    Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
+    """
+    observed_points = points_from_angles(angles)
+    mean_angles = angles[:-1] + drift_angle
+    mean_points = points_from_angles(mean_angles)
+
+    # TODO: We are ignoring the first measurement and estimating this from T-1 measurements.
+    # We could also posit an initial measurement x_0 and then estimate this from T measurements.
+
+    RHS = np.mean(np.einsum("td,td->t", observed_points[1:], mean_points))
+    return _estimate_kappa_for_general_von_mises_model(RHS)
 
 
 def estimate_von_mises_params(

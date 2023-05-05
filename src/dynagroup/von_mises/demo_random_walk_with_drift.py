@@ -6,8 +6,8 @@ np.set_printoptions(precision=3, suppress=True)
 from matplotlib import pyplot as plt
 
 from dynagroup.von_mises.core import (
-    estimate_drift_angle_for_von_mises_random_walk_with_drift,
-    estimate_kappa_for_random_walk_with_drift,
+    VonMisesModelType,
+    estimate_von_mises_params,
     points_from_angles,
     sample_from_von_mises_random_walk_with_drift,
 )
@@ -24,7 +24,6 @@ Demo of a von Mises random walk with drift.
         I will probably generalize this anyways.)
 
 TODO:
-- Integrate with the other inference code for IID and random walk without drift.  See "model_type" 
 - Extend to where we have a weight on the random walk part (so we can recover IID as a special case.)
 
 """
@@ -72,11 +71,9 @@ for true_drift_angle in true_drift_angles:
         ####
         # Estimate parameters
         ###
-
-        estimated_drift_angle = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
-        estimated_kappa = estimate_kappa_for_random_walk_with_drift(angles, estimated_drift_angle)
+        params_learned = estimate_von_mises_params(angles, VonMisesModelType.RANDOM_WALK_WITH_DRIFT)
 
         print(
-            f"\nTrue kappa {kappa_true:.02f}. Estimated kappa : {estimated_kappa : .02f}."
-            f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {estimated_drift_angle:.02f}."
+            f"\nTrue kappa {kappa_true:.02f}. Estimated kappa : {params_learned.kappa : .02f}."
+            f"\nTrue drift {true_drift_angle:.02f}. Estimated drift: {params_learned.drift :.02f}."
         )

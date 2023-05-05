@@ -39,24 +39,29 @@ class VonMisesModelType:
 
     IID = 1
     RANDOM_WALK = 2
+    RANDOM_WALK_WITH_DRIFT = 3
 
 
 @dataclass
 class VonMisesParams:
     """
     Attributes:
-        loc: an angle in [-pi, pi].
-            This parameter is optional, because it not needed to model a Von Mises random walk (see `VonMisesModelType`)
         kappa: concentration parameter, a non-negative real.
             When kappa=0, the Von Mises distribution is uniform on the circle
+        loc: an angle in [-pi, pi].
+            This parameter is optional, because it not needed to model a Von Mises random walk (see `VonMisesModelType`)
+        drift: an angle in [-pi, pi]
+            This parameter is optional, because it is not needed for models without it
+            (namely IID or RANDOM_WALK ; see `VonMisesModelType`)
 
     References:
         https://stats.stackexchange.com/questions/18692/estimating-kappa-of-von-mises-distribution
         https://www.jmlr.org/papers/volume6/banerjee05a/banerjee05a.pdf
     """
 
-    loc: Optional[float]
     kappa: float
+    loc: Optional[float] = None
+    drift: Optional[float] = None
 
 
 ###
@@ -250,14 +255,20 @@ def estimate_von_mises_params(
         # Compute the MoM estimate for the mean direction
         loc = stats.circmean(angles, high=np.pi, low=-np.pi)
         kappa = estimate_kappa_for_iid_samples(angles)
+        drift = None
         # TODO: Is it weird to use MOM for one estimate and ML for another?
     elif model_type == VonMisesModelType.RANDOM_WALK:
         loc = None
         kappa = estimate_kappa_for_random_walk(angles)
+        drift = None
+    elif model_type == VonMisesModelType.RANDOM_WALK_WITH_DRIFT:
+        loc = None
+        drift = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
+        kappa = estimate_kappa_for_random_walk_with_drift(angles, drift)
     else:
         raise ValueError("What model type do you want?")
 
-    return VonMisesParams(loc, kappa)
+    return VonMisesParams(kappa, loc, drift)
 
 
 ###

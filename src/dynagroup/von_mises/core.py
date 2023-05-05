@@ -272,17 +272,17 @@ def estimate_von_mises_params(
 
 
 ###
-# [WIP] Inference for Von Mises: random walk WITH drift
+# Inference for Von Mises random walk WITH drift
 ###
 
 
-def negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX(theta, points):
+def negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX(drift_angle, points):
     """
     Estimates rotation matrix R=R(theta) for the Von Mises random walk with drift:
-        theta_t ~ VonMises(theta_{t-1} + angular_drift, kappa)
+        theta_t ~ VonMises(theta_{t-1} + drift_angle, kappa)
 
     The von mises log likelihood, up to a contant in the drift angle theta, is given by
-        log_like(theta)= sum_{t=1}^T x_{t-1}^T R(theta) x_t  (*)
+        log_like(theta)= sum_{t=1}^T x_t^T R(theta) x_{t-1}  (*)
     for some choice of x_0 and where x_t \in R^2 is the "point" representation of the angle theta_t, i.e.
         x_t := [cos(theta_t), sin(theta_t)]
 
@@ -295,7 +295,7 @@ def negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX(theta, poi
     """
     # Note: i'm discarding the parts of von mises log likelihood that are irrelevant to finding the drift
     # TODO: Can't I just optimize the above equation in closed form?
-    R = make_2d_rotation_JAX(theta)
+    R = make_2d_rotation_JAX(drift_angle)
     next_points = points[1:]
     rotated_previous_points = (R @ points[:-1].T).T
     dot_products = jnp.einsum("td,td->t", next_points, rotated_previous_points)

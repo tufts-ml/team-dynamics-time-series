@@ -99,9 +99,15 @@ def random_rotation(n, theta=None):
 
 def unconstrained_tpm_from_tpm(tpm_or_tpms: jnp.array) -> jnp.array:
     """
+    Represents a tpm over K destinations in unconstrained space R^{K-1} through a bijection
+    If X is the unconstrained representation of a pmf and Y is the pmf, we can write
+        Y = g(X) = exp([X 0]) / sum(exp([X 0])).
+    i.e., we identify the softmax by forcing the last potential to be 0.
+    See https://github.com/tensorflow/probability/blob/v0.19.0/tensorflow_probability/python/bijectors/softmax_centered.py#LL34C30-L34C72.
+
     Arguments:
         tpm_or_tpms: A jnp.array whose last two axes give a  tpm (a transition probability matrix), of size (K,K) (say),
-            whose (k,k')-th entry gives the probablity of transitioning FROM the k-th state
+            whose (k,k')-th entry gives the probability of transitioning FROM the k-th state
             to the k'-th state, and where each k-th row is constrained to live on the simplex.
 
             So for instance, `tpm_or_tpms` could have shape (J,L,K,K),
@@ -111,6 +117,7 @@ def unconstrained_tpm_from_tpm(tpm_or_tpms: jnp.array) -> jnp.array:
     Returns:
         A (...,K,K-1) matrix whose values in the last axis are unconstrained reals; there is a bijection betweeen
         the set of (K-1)-vectors and the simplex with K entries.
+
 
     Remark:
         The entries of the tpm must live in (0,1).  It cannot contain exact 0's or exact 1's.

@@ -81,3 +81,7 @@ for drift_angle in drift_angles:
         f"Kappa true {kappa_true:.03}. True drift {drift_angle:.03}. Estimated drift: {theta_hat:.03}. Optimizer init: {optimizer_init_angle :.03f}."
     )
     print(f"The mean angle between neighbors is {mean_angle_between_neighbors:.03f}")
+
+    # # TMP: from a devel script
+    # theta_eric=closed_form_ML_from_eric(points)
+    # print(f"Eric's closed form solution is {theta_eric:.03f}")

@@ -46,16 +46,15 @@ class VonMisesModelType:
 class VonMisesParams:
     """
     Parameters for governing a Von Mises Autoregression with Drift
-        theta_t ~ VonMises(ar_coef*theta_{t-1} + loc, kappa)
+        theta_t ~ VonMises(ar_coef*theta_{t-1} + drift, kappa)
 
     Note the special cases:
-        - If ar_coef==1 and drift_angle!=0, then this is a random walk with drift, and the
-            drift angle is `loc`.
+        - If ar_coef==1 and drift!=0, then this is a random walk with drift.
         - If ar_coef==1 and drift_angle==0, then this is a random walk without drift.
-        - If ar_coef==0, then this gives IID samples.
+        - If ar_coef==0, then this gives IID samples with location=drift.
 
     Attributes:
-        loc: an angle in [-pi, pi].
+        drift: an angle in [-pi, pi].
         kappa: concentration parameter, a non-negative real.
             When kappa=0, the Von Mises distribution is uniform on the circle
         ar_coef : in [0,1]
@@ -66,7 +65,7 @@ class VonMisesParams:
         https://www.jmlr.org/papers/volume6/banerjee05a/banerjee05a.pdf
     """
 
-    loc: float
+    drift: float
     kappa: float
     ar_coef: Optional[float] = 0.0
 
@@ -267,11 +266,11 @@ def estimate_von_mises_params(
     elif model_type == VonMisesModelType.RANDOM_WALK:
         drift = 0.0
         kappa = estimate_kappa_for_random_walk(angles)
-        return VonMisesParams(loc=drift, kappa=kappa)
+        return VonMisesParams(drift, kappa=kappa)
     elif model_type == VonMisesModelType.RANDOM_WALK_WITH_DRIFT:
         drift = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
         kappa = estimate_kappa_for_random_walk_with_drift(angles, drift)
-        return VonMisesParams(loc=drift, kappa=kappa)
+        return VonMisesParams(drift, kappa=kappa)
     else:
         raise ValueError("What model type do you want?")
 

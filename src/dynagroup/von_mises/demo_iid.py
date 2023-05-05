@@ -54,5 +54,5 @@ for loc_true in locs_true:
         ###
 
         params_learned = estimate_von_mises_params(angles, VonMisesModelType.IID)
-        print(f"True loc: {loc_true:.02f}, Estimated: {params_learned.loc:.02f}")
+        print(f"True loc: {loc_true:.02f}, Estimated: {params_learned.drift:.02f}")
         print(f"True kappa: {kappa_true:.02f}, Estimated: {params_learned.kappa:.02f}")

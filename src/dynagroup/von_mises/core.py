@@ -120,14 +120,17 @@ def sample_from_von_mises_random_walk_with_drift(
 ###
 
 
-def _compute_r_bar(angles: NumpyArray1D) -> float:
+def _compute_norm_of_mean_Cartesian_coordinate(angles: NumpyArray1D) -> float:
     """
+    If {theta_i} are angles, then we convert to Cartesian coordinates {x_i}, and then compute
+    the norm of the mean,  i.e. || mean x_i ||
+
     This is an intermediate quantity for estimating kappa, the concentration parameter
     for the von Mises distribution
 
-    According to https://stats.stackexchange.com/questions/18692/estimating-kappa-of-von-mises-distribution,
-    r_bar is the Euclidean distance from the barycenter to the origin (i.e. the norm of the barycenter)
-        r_bar = || mean x_i ||
+    For reference, see https://stats.stackexchange.com/questions/18692/estimating-kappa-of-von-mises-distribution,
+    where we might call this r_bar,  the Euclidean distance from the barycenter to the origin (i.e. the norm of the barycenter)
+    r_bar = || mean x_i ||
 
     """
     points = points_from_angles(angles)
@@ -135,12 +138,14 @@ def _compute_r_bar(angles: NumpyArray1D) -> float:
 
 
 def points_from_angles(angles: NumpyArray1D) -> NumpyArray2D:
+    """Compute the Cartesian coordinates of a point on the unit circle, given the angle."""
     xs = np.cos(angles)
     ys = np.sin(angles)
     return np.vstack((xs, ys)).T
 
 
 def angles_from_points(points: NumpyArray2D) -> NumpyArray1D:
+    """Compute the angle of a point on the unit circle, given its Cartesian coordinates."""
     return np.arctan2(points[:, 1], points[:, 0])
 
 
@@ -152,9 +157,7 @@ def equation_whose_root_is_the_kappa_MLE(kappa: float, RHS: float) -> float:
 
     where I_r() is the modified Bessel function of the first kind and order r.
 
-    For iid samples, the RHS is given by _compute_r_bar(), which
-        gives r_bar, the the norm of the barycenter:  r_bar = || mean x_i ||
-
+    For iid samples, the RHS is given by the norm of the mean point, i.e. || mean x_i ||
     For a Von Mises random walk, the RHS is given by the mean of x_{t-1}^T x_t
 
     References
@@ -175,8 +178,10 @@ def estimate_kappa_for_iid_samples(angles: np.array):
     given iid samples from a Von Mises distribution (on the circle).  The computation of this equation can be obtained
     by the argument in Appendix A.1, Banerjee et al 2005 JMLR,  Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
     """
-    r_bar = _compute_r_bar(angles)
-    this_equation = functools.partial(equation_whose_root_is_the_kappa_MLE, RHS=r_bar)
+    norm_of_cartesian_mean = _compute_norm_of_mean_Cartesian_coordinate(angles)
+    this_equation = functools.partial(
+        equation_whose_root_is_the_kappa_MLE, RHS=norm_of_cartesian_mean
+    )
     # TODO: Don't hardcode kappa init.
     kappa_init = 1.0
     return scipy.optimize.fsolve(this_equation, kappa_init)[0]

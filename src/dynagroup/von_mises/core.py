@@ -1,9 +1,9 @@
 import functools
 import math
-from dataclasses import dataclass
 from typing import Optional
 
 import jax.numpy as jnp
+import jax_dataclasses as jdc
 import numpy as np
 import scipy
 from dynamax.utils.optimize import run_gradient_descent
@@ -42,26 +42,33 @@ class VonMisesModelType:
     RANDOM_WALK_WITH_DRIFT = 3
 
 
-@dataclass
+@jdc.pytree_dataclass
 class VonMisesParams:
     """
+    Parameters for governing a Von Mises Autoregression with Drift
+        theta_t ~ VonMises(ar_coef*theta_{t-1} + loc, kappa)
+
+    Note the special cases:
+        - If ar_coef==1 and drift_angle!=0, then this is a random walk with drift, and the
+            drift angle is `loc`.
+        - If ar_coef==1 and drift_angle==0, then this is a random walk without drift.
+        - If ar_coef==0, then this gives IID samples.
+
     Attributes:
+        loc: an angle in [-pi, pi].
         kappa: concentration parameter, a non-negative real.
             When kappa=0, the Von Mises distribution is uniform on the circle
-        loc: an angle in [-pi, pi].
-            This parameter is optional, because it not needed to model a Von Mises random walk (see `VonMisesModelType`)
-        drift: an angle in [-pi, pi]
-            This parameter is optional, because it is not needed for models without it
-            (namely IID or RANDOM_WALK ; see `VonMisesModelType`)
+        ar_coef : in [0,1]
+            This parameter is optional. When set to 0, we get IID samples.
 
     References:
         https://stats.stackexchange.com/questions/18692/estimating-kappa-of-von-mises-distribution
         https://www.jmlr.org/papers/volume6/banerjee05a/banerjee05a.pdf
     """
 
+    loc: float
     kappa: float
-    loc: Optional[float] = None
-    drift: Optional[float] = None
+    ar_coef: Optional[float] = 0.0
 
 
 ###
@@ -255,20 +262,18 @@ def estimate_von_mises_params(
         # Compute the MoM estimate for the mean direction
         loc = stats.circmean(angles, high=np.pi, low=-np.pi)
         kappa = estimate_kappa_for_iid_samples(angles)
-        drift = None
         # TODO: Is it weird to use MOM for one estimate and ML for another?
+        return VonMisesParams(loc, kappa)
     elif model_type == VonMisesModelType.RANDOM_WALK:
-        loc = None
+        drift = 0.0
         kappa = estimate_kappa_for_random_walk(angles)
-        drift = None
+        return VonMisesParams(loc=drift, kappa=kappa)
     elif model_type == VonMisesModelType.RANDOM_WALK_WITH_DRIFT:
-        loc = None
         drift = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
         kappa = estimate_kappa_for_random_walk_with_drift(angles, drift)
+        return VonMisesParams(loc=drift, kappa=kappa)
     else:
         raise ValueError("What model type do you want?")
-
-    return VonMisesParams(kappa, loc, drift)
 
 
 ###

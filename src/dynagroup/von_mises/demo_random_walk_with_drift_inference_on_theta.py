@@ -1,12 +1,10 @@
-import functools
-
 import numpy as np
-from dynamax.utils.optimize import run_gradient_descent
+
+
+np.set_printoptions(precision=3, suppress=True)
 
 from dynagroup.von_mises.core import (
-    compute_mean_angle_between_neighbors,
-    negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX,
-    points_from_angles,
+    estimate_drift_angle_for_von_mises_random_walk_with_drift,
     sample_from_von_mises_random_walk_with_drift,
 )
 
@@ -31,7 +29,7 @@ kappa_true = 100.0
 plot_angle_time_series = False
 plot_time_series_on_circle = True
 init_angle = 0.0
-drift_angles = np.array([1 / 24, 1 / 12, 1 / 4, 1 / 2, 1]) * np.pi
+true_drift_angles = np.array([1 / 24, 1 / 12, 1 / 4, 1 / 2, 1]) * np.pi
 
 # optimization
 optimizer_state = None
@@ -42,45 +40,19 @@ num_M_step_iters = 100
 ###
 # Sample from a Von Mises Random Walk with Drift
 ###
-for drift_angle in drift_angles:
-    angles = sample_from_von_mises_random_walk_with_drift(kappa_true, T, init_angle, drift_angle)
-    # mean of angles: np.mean(angles[1:]-angles[:1])
-
-    ### (smart) initialization.
-    # note that we get very bad results for large drift angles if we initialize at 0.
-    if optimizer_init_strategy == "smart":
-        mean_angle_between_neighbors = compute_mean_angle_between_neighbors(angles)
-        optimizer_init_angle = mean_angle_between_neighbors
-    elif optimizer_init_strategy == "zero":
-        optimizer_init_angle = 0.0
-    else:
-        raise ValueError("What is your preferred optimizer initialization strategy?!")
-
-    ###
-    # Do inference on drift (rotation angle) for Von Mises Random Walk with Drift
-    ###
-
-    # TODO: can I get the solution without gradient descent on theta?!
-    points = points_from_angles(angles)
-    cost_function = functools.partial(
-        negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX, points=points
+for true_drift_angle in true_drift_angles:
+    angles = sample_from_von_mises_random_walk_with_drift(
+        kappa_true, T, init_angle, true_drift_angle
     )
-
-    (
-        theta_hat,
-        optimizer_state_new,
-        losses,
-    ) = run_gradient_descent(
-        cost_function,
-        optimizer_init_angle,
-        optimizer_state=optimizer_state,
-        num_mstep_iters=num_M_step_iters,
+    estimated_drift_angle = estimate_drift_angle_for_von_mises_random_walk_with_drift(
+        angles,
+        num_M_step_iters,
+        optimizer_init_strategy,
     )
 
     print(
-        f"Kappa true {kappa_true:.03}. True drift {drift_angle:.03}. Estimated drift: {theta_hat:.03}. Optimizer init: {optimizer_init_angle :.03f}."
+        f"Kappa true {kappa_true:.03}. True drift {true_drift_angle:.03}. Estimated drift: {estimated_drift_angle:.03}."
     )
-    print(f"The mean angle between neighbors is {mean_angle_between_neighbors:.03f}")
 
     # # TMP: from a devel script
     # theta_eric=closed_form_ML_from_eric(points)

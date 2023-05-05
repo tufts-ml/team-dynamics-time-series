@@ -6,6 +6,7 @@ from typing import Optional
 import jax.numpy as jnp
 import numpy as np
 import scipy
+from dynamax.utils.optimize import run_gradient_descent
 from scipy import stats
 from scipy.special import (  # modified bessel of first kind
     iv as modified_bessel_first_kind,
@@ -260,6 +261,62 @@ def negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX(theta, poi
     rotated_previous_points = (R @ points[:-1].T).T
     dot_products = jnp.einsum("td,td->t", next_points, rotated_previous_points)
     return -jnp.sum(dot_products)
+
+
+def estimate_drift_angle_for_von_mises_random_walk_with_drift(
+    angles: NumpyArray1D,
+    num_M_step_iters: int = 100,
+    optimizer_init_strategy: Optional[str] = "smart",
+    verbose: Optional[bool] = False,
+) -> float:
+    """
+    Do inference on drift (rotation angle) for Von Mises Random Walk with Drift.
+    Uses gradient descent
+
+    Arguments:
+        optimizer_init_strategy: str, in ["smart", "zero"].
+            "zero" does not work well when the true angle is large; it's just kept here for the purposes of demonstrating
+            that gradient descent is sensitive to inits (or possibly just need to run it longer.)
+    """
+
+    ###
+    # Initialization (by default, a smart one)
+    ###
+
+    # note that we get very bad results for large drift angles if we initialize at 0.
+    if optimizer_init_strategy == "smart":
+        mean_angle_between_neighbors = compute_mean_angle_between_neighbors(angles)
+        optimizer_init_angle = mean_angle_between_neighbors
+    elif optimizer_init_strategy == "zero":
+        # This performs poorly; it's just here to illustrate that.
+        optimizer_init_angle = 0.0
+    else:
+        raise ValueError("What is your preferred optimizer initialization strategy?!")
+
+    ###
+    # Do inference on drift (rotation angle) for Von Mises Random Walk with Drift
+    ###
+
+    # TODO: can I get the solution without gradient descent on theta?!
+    points = points_from_angles(angles)
+    cost_function = functools.partial(
+        negative_log_likelihood_up_to_a_constant_in_drift_angle_theta_JAX, points=points
+    )
+
+    (
+        estimated_drift_angle,
+        optimizer_state_new,
+        losses,
+    ) = run_gradient_descent(
+        cost_function,
+        optimizer_init_angle,
+        optimizer_state=None,
+        num_mstep_iters=num_M_step_iters,
+    )
+    if verbose:
+        print(f"The first 5 losses were {losses[:5]}. The last 5 losses were {losses[-5:]}.")
+
+    return estimated_drift_angle
 
 
 ###

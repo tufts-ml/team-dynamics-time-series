@@ -1,6 +1,4 @@
-import contextlib
 import functools
-import io
 import math
 import warnings
 from typing import Optional, Tuple
@@ -25,10 +23,6 @@ from dynagroup.von_mises.util import (
     force_angles_to_be_from_neg_pi_to_pi,
     points_from_angles,
 )
-
-
-# In order to Create a file-like object that discards output from external libraries
-# with io.StringIO() as f, contextlib.redirect_stdout(f):
 
 
 """
@@ -313,6 +307,7 @@ def estimate_von_mises_params(
         drift, ar_coef = estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
             angles, num_coord_ascent_iterations=10, sample_weights=sample_weights
         )
+        # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
         kappa = estimate_kappa_for_autoregression(
             angles, drift, ar_coef, sample_weights=sample_weights
         )
@@ -460,9 +455,29 @@ def equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift(
     return weighted_sum
 
 
-def are_there_two_clusters_when_plotting_consecutive_angles(
+def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     angles: NumpyArray1D, sample_weights: NumpyArray1D
-):
+) -> Tuple[float, float]:
+    f"""
+    The smart initialization iniitalizes the parameters for the expected value of the autoregression
+        theta_t = drift + ar_coef * theta_t-1
+    but it handles the "phase-wrapping" problem of theta in [-pi, pi] as follows:
+
+    We try to detect multiple clusters (currently only seek up to 2, and currently use a heuristic to answer the question).
+    If multiple clusters are detected, we fit separate linear regressions to each cluster,
+    extract the parameters, and take a weighted sum of the parameters to get our initialized parameters.
+    """
+    # TODO: I think this method will fail if there are more than two clusters.  This can happen
+    # when we have extreme (i.e. near-boundary) values for ar-coef or drift.
+
+    # TODO: We are using this detection/transformation procedure on clusters to handle the problem of
+    # wrapping.  But there is probably a more natural way to do this.  Is there a circular regression approach
+    # that we could use to help us estimate y=a+bx, for y,x on unit circle? Or should we move to a different
+    # representation.
+
+    ###
+    # Check if two clusters
+    ###
     predictors, responses = angles[:-1], angles[1:]
     T_minus_1 = len(predictors)
     X = np.vstack([predictors, responses]).T
@@ -471,93 +486,52 @@ def are_there_two_clusters_when_plotting_consecutive_angles(
     X = X.astype(np.float32)
     sample_weights = sample_weights.astype(np.float32)
 
-    with io.StringIO() as f, contextlib.redirect_stdout(f):
-        # Suppress the output from this external library
-        gmm1 = Normal().fit(X, sample_weight=sample_weights[1:])
-        ll_one_component = gmm1.log_probability(X).sum()
+    # Fit Gaussian mixtures via pomegranate library.
+    # I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
+    gmm1 = Normal().fit(X, sample_weight=sample_weights[1:])
+    ll_one_component = gmm1.log_probability(X).sum()
 
-        gmm2 = GeneralMixtureModel([Normal(), Normal()], verbose=True).fit(
-            X, sample_weight=sample_weights[1:]
-        )
-        ll_two_components = gmm2.log_probability(X).sum()
+    gmm2 = GeneralMixtureModel([Normal(), Normal()]).fit(X, sample_weight=sample_weights[1:])
+    ll_two_components = gmm2.log_probability(X).sum()
+    responsibilities = np.asarray(gmm2.predict_proba(X))
 
-        # RK: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
-        # gmm1 = GaussianMixture(n_components=1)
-        # gmm1.fit(X)
-        # ll_one_component = np.sum(gmm1.score_samples(X))
-
-        # gmm2 = GaussianMixture(n_components=2)
-        # gmm2.fit(X)
-        # ll_two_components = np.sum(gmm2.score_samples(X))
-
+    # TODO: This is an arbitrary way to decide if there are 2 clusters. Come up with something more principled.
     THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS = 0.25
     mean_log_like_increase_from_two_components = (ll_two_components - ll_one_component) / T_minus_1
 
-    return (
+    there_are_two_clusters = (
         mean_log_like_increase_from_two_components
         > THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS
     )
 
-
-def make_transformed_predictors_and_responses_for_two_clusters(
-    angles: NumpyArray1D,
-) -> Tuple[NumpyArray1D, NumpyArray1D]:
-    """
-    The gist of this function is to do initialization via linear regression:
-        theta_t = drift + ar_coef theta_{t-1}
-    However, scatterplots of theta_t against theta_{t-1} reveal a wrapping problem due to angle domain being [-pi,pi].
-    As soon as the response gets above pi, it wraps back down to -pi, destroying the linear relationship.  (Indeed,
-    plots may reveal 2 lines -- or possibly even more)
-
-    As a fix, we find the minimum response from the first 10% of the predictors, use that to establish the relationship,
-    and add 2pi to any responses that are below that minimum.
-    """
-    predictors, responses = angles[:-1], angles[1:]
-    idxs = np.argsort(predictors)
-    predictors_sorted_by_predictor = predictors[idxs]
-    responses_sorted_by_predictor = responses[idxs]
-
-    T = len(predictors)
-    T_init = int(T / 10)
-    response_cutoff = np.min(responses_sorted_by_predictor[:T_init])
-
-    transform_response = lambda x: x + (2 * np.pi) if x < response_cutoff else x
-    responses_sorted_by_predictor_transformed = np.array(
-        [transform_response(y) for y in responses_sorted_by_predictor]
-    )
-
-    if np.min(responses_sorted_by_predictor_transformed) != response_cutoff:
-        raise ValueError(
-            f"The smart initialization failed.  Check if the scatterplot of previous and subsequent angles "
-            "has more than two lines."
+    if not there_are_two_clusters:
+        reg = LinearRegression().fit(
+            predictors[:, None], responses, sample_weight=sample_weights[1:]
         )
-    return predictors_sorted_by_predictor, responses_sorted_by_predictor_transformed
-
-
-def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
-    angles: NumpyArray1D, sample_weights: NumpyArray1D
-) -> Tuple[float, float]:
-    # TODO: Think about whether the determination of two clusters should use the sample weights.
-    # My current feeling is no.
-
-    # TODO: We are using this detection/transformation procedure on clusters to handle the problem of
-    # wrapping.  But there is probably a more natural way to do this.  Is there a circular regression approach
-    # that we could use to help us estimate y=a+bx, for y,x on unit circle? Or should we move to a different
-    # representation.
-
-    two_clusters = are_there_two_clusters_when_plotting_consecutive_angles(angles, sample_weights)
-
-    if two_clusters:
-        predictors, responses = make_transformed_predictors_and_responses_for_two_clusters(angles)
+        ar_coef = reg.coef_[0]
+        drift = reg.intercept_
     else:
-        predictors, responses = angles[:-1], angles[1:]
+        K = 2
+        ar_coefs = np.zeros(K)
+        drifts = np.zeros(K)
+        n_effectives = np.zeros(K)
+        for k in range(K):
+            reg = LinearRegression().fit(
+                predictors[:, None],
+                responses,
+                sample_weight=sample_weights[1:] * responsibilities[:, k],
+            )
+            ar_coefs[k] = reg.coef_[0]
+            drifts[k] = force_angles_to_be_from_neg_pi_to_pi(
+                reg.intercept_
+            )  # may need to move into [-pi, pi] if outside of it.
+            n_effectives[k] = np.sum(responsibilities[:, k])
 
-    reg = LinearRegression().fit(predictors[:, None], responses, sample_weight=sample_weights[1:])
-    ar_coef = reg.coef_[0]
-    drift = force_angles_to_be_from_neg_pi_to_pi(
-        reg.intercept_
-    )  # may need to move into [-pi, pi] if outside of it.
-    return ar_coef, drift
+        cluster_weights = n_effectives / np.sum(n_effectives)
+        ar_coef = np.sum(ar_coefs * cluster_weights)
+        drift = np.sum(drifts * cluster_weights)
+
+    return ar_coef, force_angles_to_be_from_neg_pi_to_pi(drift)
 
 
 def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
@@ -575,14 +549,15 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
         sample_weights: np.array of shape (T,)
     """
     warnings.warn(
-        f" The strategy used here is numerical optimization.  It appears to struggle when (1) the drift angle is too "
-        f" close to -pi or pi (these are equal) and/or (2) when the ar coefficient is EXACTLY 1.0 or -1.0.  "
-        f" and/or (3) when kappa is too low (i.e. there is too much noise), especially if (1) or (2) are challenging."
+        f" The strategy used here is numerical optimization.  It can sometimes struggle when (1) the drift angle is very "
+        f" close to -pi or pi (these are equal) and/or (2) the ar coefficient is EXACTLY 1.0 or -1.0.  "
+        f" and/or (3) kappa is very low (i.e. there is too much noise), especially if these are combined."
         f""
         f" Problem (2) may be related to fact that we use the hyperbolic tangent to map from [-1,1] to unconstrained space. "
         f" If the AR coefficient = 1.0 exactly, we have a random walk (with or without drift); there are separate "
         f" inference functions for those models that are more reliable.  Just specify the appropriate Model in the "
-        f" model enum. Note that in these cases the initialization can be WAY off."
+        f" model enum. Note that in these cases the initialization can be WAY off. But note that problem (2) is not "
+        f" a problem in isolation. "
         f""
         f" More to the point, look at the smart initialization (via linear regression) for these boundary cases."
         f" We have worked to address the wrapping problem (where -pi==pi), but weird things can happen near the boundary "

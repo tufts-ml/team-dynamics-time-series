@@ -1,4 +1,6 @@
+import contextlib
 import functools
+import io
 import math
 import warnings
 from typing import Optional, Tuple
@@ -9,6 +11,8 @@ import numpy as np
 import scipy
 from dynamax.utils.optimize import run_gradient_descent
 from numpy import arctanh, tanh
+from pomegranate.distributions import Normal
+from pomegranate.gmm import GeneralMixtureModel
 from scipy import stats
 from scipy.special import (  # modified bessel of first kind
     iv as modified_bessel_first_kind,
@@ -21,6 +25,10 @@ from dynagroup.von_mises.util import (
     force_angles_to_be_from_neg_pi_to_pi,
     points_from_angles,
 )
+
+
+# In order to Create a file-like object that discards output from external libraries
+# with io.StringIO() as f, contextlib.redirect_stdout(f):
 
 
 """
@@ -177,33 +185,45 @@ def estimate_kappa_for_iid_samples_USING_THE_MINOR_BANERJEE_SIMPLIFICATION(
     return _estimate_kappa_for_general_von_mises_model(norm_of_cartesian_mean)
 
 
-def estimate_kappa_for_iid_samples(angles: np.array, loc_estimate: float) -> float:
+def estimate_kappa_for_iid_samples(
+    angles: np.array, loc_estimate: float, sample_weights: Optional[np.array] = None
+) -> float:
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
     given iid samples from a Von Mises distribution (on the circle).  The computation of this equation can be obtained
     by the argument in Appendix A.1, Banerjee et al 2005 JMLR,  Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
     """
-    return estimate_kappa_for_autoregression(angles, drift_angle=loc_estimate, ar_coef=0.0)
+    return estimate_kappa_for_autoregression(
+        angles, drift_angle=loc_estimate, ar_coef=0.0, sample_weights=sample_weights
+    )
 
 
-def estimate_kappa_for_random_walk(angles: np.array) -> float:
+def estimate_kappa_for_random_walk(
+    angles: np.array, sample_weights: Optional[np.array] = None
+) -> float:
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
     of a Von Mises random walk.  The computation of this equation can be obtained from MTW's notes,
     and/or by a slight tweak to the argument in Appendix A.1, Banerjee et al 2005 JMLR,
     Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
     """
-    return estimate_kappa_for_autoregression(angles, drift_angle=0.0, ar_coef=1.0)
+    return estimate_kappa_for_autoregression(
+        angles, drift_angle=0.0, ar_coef=1.0, sample_weights=sample_weights
+    )
 
 
-def estimate_kappa_for_random_walk_with_drift(angles: np.array, drift_angle: float) -> float:
+def estimate_kappa_for_random_walk_with_drift(
+    angles: np.array, drift_angle: float, sample_weights: Optional[np.array] = None
+) -> float:
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
     of a Von Mises random walk with drift.  The computation of this equation can be obtained from MTW's notes,
     and/or by a slight tweak to the argument in Appendix A.1, Banerjee et al 2005 JMLR,
     Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
     """
-    return estimate_kappa_for_autoregression(angles, drift_angle, ar_coef=1.0)
+    return estimate_kappa_for_autoregression(
+        angles, drift_angle, ar_coef=1.0, sample_weights=sample_weights
+    )
 
 
 def estimate_kappa_for_autoregression(
@@ -252,7 +272,9 @@ def estimate_kappa_for_autoregression(
 
 
 def estimate_von_mises_params(
-    angles: np.array, model_type: VonMisesModelType = VonMisesModelType.IID
+    angles: np.array,
+    model_type: VonMisesModelType = VonMisesModelType.IID,
+    sample_weights: Optional[np.array] = None,
 ) -> VonMisesParams:
     """
     Arguments:
@@ -262,9 +284,14 @@ def estimate_von_mises_params(
 
     # Compute the ML estimate for the concentration parameter
     if model_type == VonMisesModelType.IID:
+        if sample_weights is not None:
+            raise NotImplementedError(
+                "Need to implement circular mean with sample weighting; implement or try autoregression model."
+            )
+
         # Compute the MoM estimate for the mean direction
         loc = stats.circmean(angles, high=np.pi, low=-np.pi)
-        kappa = estimate_kappa_for_iid_samples(angles, loc)
+        kappa = estimate_kappa_for_iid_samples(angles, loc, sample_weights=sample_weights)
         # TODO: Is it weird to use MOM for one estimate and ML for another?
         return VonMisesParams(loc, kappa=kappa)
     elif model_type == VonMisesModelType.RANDOM_WALK:
@@ -272,14 +299,23 @@ def estimate_von_mises_params(
         kappa = estimate_kappa_for_random_walk(angles)
         return VonMisesParams(drift, kappa=kappa)
     elif model_type == VonMisesModelType.RANDOM_WALK_WITH_DRIFT:
+        if sample_weights is not None:
+            raise NotImplementedError(
+                "Need to implement sample weighting for random walk with drift; implement or try autoregression model."
+            )
+
         drift = estimate_drift_angle_for_von_mises_random_walk_with_drift(angles)
-        kappa = estimate_kappa_for_random_walk_with_drift(angles, drift)
+        kappa = estimate_kappa_for_random_walk_with_drift(
+            angles, drift, sample_weights=sample_weights
+        )
         return VonMisesParams(drift, kappa=kappa)
     elif model_type == VonMisesModelType.AUTOREGRESSION:
         drift, ar_coef = estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
-            angles, num_coord_ascent_iterations=10
+            angles, num_coord_ascent_iterations=10, sample_weights=sample_weights
         )
-        kappa = estimate_kappa_for_autoregression(angles, drift, ar_coef)
+        kappa = estimate_kappa_for_autoregression(
+            angles, drift, ar_coef, sample_weights=sample_weights
+        )
         return VonMisesParams(drift, kappa, ar_coef)
     else:
         raise ValueError("What model type do you want?")
@@ -324,7 +360,7 @@ def estimate_drift_angle_for_von_mises_random_walk_with_drift(
 ) -> float:
     """
     Do inference on drift (rotation angle) for Von Mises Random Walk with Drift.
-    Uses gradient descent
+    Uses gradient descent.
 
     Arguments:
         optimizer_init_strategy: str, in ["smart", "zero"].
@@ -393,45 +429,66 @@ def compute_mean_angle_between_neighbors(angles):
 ###
 
 
-def equation_whose_root_is_the_drift_MLE_given_ar_coef(drift, ar_coef, angles):
+def equation_whose_root_is_the_drift_MLE_given_ar_coef(
+    drift: float, ar_coef: float, angles: NumpyArray1D, sample_weights: NumpyArray1D
+) -> float:
     points = points_from_angles(angles)
-    result = 0.0
+    weighted_sum = 0.0
     T = len(points)
-    for t in range(T):
-        result += -points[t, 0] * np.sin(drift + ar_coef * angles[t - 1]) + points[t, 1] * np.cos(
-            drift + ar_coef * angles[t - 1]
-        )
-    return result
+    for t in range(1, T):
+        sample_contribution = -points[t, 0] * np.sin(drift + ar_coef * angles[t - 1]) + points[
+            t, 1
+        ] * np.cos(drift + ar_coef * angles[t - 1])
+        weighted_sample_contribution = sample_contribution[0] * sample_weights[t]
+        weighted_sum += weighted_sample_contribution
+    return weighted_sum
 
 
-def equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift(arctanh_ar_coef, drift, angles):
+def equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift(
+    arctanh_ar_coef: float, drift: float, angles: NumpyArray1D, sample_weights: NumpyArray1D
+) -> float:
     ar_coef = tanh(arctanh_ar_coef)
     points = points_from_angles(angles)
-    result = 0.0
+    weighted_sum = 0.0
     T = len(points)
-    for t in range(T):
-        result += -points[t, 0] * angles[t - 1] * np.sin(drift + ar_coef * angles[t - 1]) + points[
-            t, 1
-        ] * angles[t - 1] * np.cos(drift + ar_coef * angles[t - 1])
-    return result
+    for t in range(1, T):
+        sample_contribution = -points[t, 0] * angles[t - 1] * np.sin(
+            drift + ar_coef * angles[t - 1]
+        ) + points[t, 1] * angles[t - 1] * np.cos(drift + ar_coef * angles[t - 1])
+        weighted_sample_contribution = sample_contribution[0] * sample_weights[t]
+        weighted_sum += weighted_sample_contribution
+    return weighted_sum
 
 
-from sklearn.mixture import GaussianMixture
-
-
-def are_there_two_clusters_when_plotting_consecutive_angles(angles):
+def are_there_two_clusters_when_plotting_consecutive_angles(
+    angles: NumpyArray1D, sample_weights: NumpyArray1D
+):
     predictors, responses = angles[:-1], angles[1:]
     T_minus_1 = len(predictors)
     X = np.vstack([predictors, responses]).T
 
-    # Fit a Gaussian mixture model to the dataset
-    gmm1 = GaussianMixture(n_components=1)
-    gmm1.fit(X)
-    ll_one_component = np.sum(gmm1.score_samples(X))
+    # pomegranate works with torch, and so needs float32's
+    X = X.astype(np.float32)
+    sample_weights = sample_weights.astype(np.float32)
 
-    gmm2 = GaussianMixture(n_components=2)
-    gmm2.fit(X)
-    ll_two_components = np.sum(gmm2.score_samples(X))
+    with io.StringIO() as f, contextlib.redirect_stdout(f):
+        # Suppress the output from this external library
+        gmm1 = Normal().fit(X, sample_weight=sample_weights[1:])
+        ll_one_component = gmm1.log_probability(X).sum()
+
+        gmm2 = GeneralMixtureModel([Normal(), Normal()], verbose=True).fit(
+            X, sample_weight=sample_weights[1:]
+        )
+        ll_two_components = gmm2.log_probability(X).sum()
+
+        # RK: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
+        # gmm1 = GaussianMixture(n_components=1)
+        # gmm1.fit(X)
+        # ll_one_component = np.sum(gmm1.score_samples(X))
+
+        # gmm2 = GaussianMixture(n_components=2)
+        # gmm2.fit(X)
+        # ll_two_components = np.sum(gmm2.score_samples(X))
 
     THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS = 0.25
     mean_log_like_increase_from_two_components = (ll_two_components - ll_one_component) / T_minus_1
@@ -478,16 +535,24 @@ def make_transformed_predictors_and_responses_for_two_clusters(
 
 
 def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
-    angles: NumpyArray1D,
+    angles: NumpyArray1D, sample_weights: NumpyArray1D
 ) -> Tuple[float, float]:
-    two_clusters = are_there_two_clusters_when_plotting_consecutive_angles(angles)
+    # TODO: Think about whether the determination of two clusters should use the sample weights.
+    # My current feeling is no.
+
+    # TODO: We are using this detection/transformation procedure on clusters to handle the problem of
+    # wrapping.  But there is probably a more natural way to do this.  Is there a circular regression approach
+    # that we could use to help us estimate y=a+bx, for y,x on unit circle? Or should we move to a different
+    # representation.
+
+    two_clusters = are_there_two_clusters_when_plotting_consecutive_angles(angles, sample_weights)
 
     if two_clusters:
         predictors, responses = make_transformed_predictors_and_responses_for_two_clusters(angles)
     else:
         predictors, responses = angles[:-1], angles[1:]
 
-    reg = LinearRegression().fit(predictors[:, None], responses)
+    reg = LinearRegression().fit(predictors[:, None], responses, sample_weight=sample_weights[1:])
     ar_coef = reg.coef_[0]
     drift = force_angles_to_be_from_neg_pi_to_pi(
         reg.intercept_
@@ -498,6 +563,7 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
 def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     angles: NumpyArray1D,
     num_coord_ascent_iterations: int,
+    sample_weights: Optional[NumpyArray1D] = None,
     verbose=False,
 ) -> Tuple[float, float]:
     """
@@ -505,9 +571,8 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     Uses gradient descent
 
     Arguments:
-        optimizer_init_strategy: str, in ["smart", "zero"].
-            "zero" does not work well when the true angle is large; it's just kept here for the purposes of demonstrating
-            that gradient descent is sensitive to inits (or possibly just need to run it longer.)
+        angles: np.array of shape (T,)
+        sample_weights: np.array of shape (T,)
     """
     warnings.warn(
         f" The strategy used here is numerical optimization.  It appears to struggle when (1) the drift angle is too "
@@ -524,11 +589,16 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
         f" (Like a linear regression with four clusters).  Perhaps we can initialize outside theta space?!"
     )
 
+    if sample_weights is None:
+        sample_weights = np.ones_like(angles)
+
     ###
     # Smart Init via Linear Regression
     ###
 
-    ar_coef, drift = smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(angles)
+    ar_coef, drift = smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
+        angles, sample_weights
+    )
 
     print(f"After smart initialization: ar_coef:{ar_coef:.02f}, drift:{drift:.02f}")
 
@@ -540,12 +610,14 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
             equation_whose_root_is_the_drift_MLE_given_ar_coef,
             ar_coef=ar_coef,
             angles=angles,
+            sample_weights=sample_weights,
         )
         drift = scipy.optimize.fsolve(this_drift_equation, drift)[0]
         this_ar_coef_equation = functools.partial(
             equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift,
             drift=drift,
             angles=angles,
+            sample_weights=sample_weights,
         )
         arctanh_ar_coef = scipy.optimize.fsolve(this_ar_coef_equation, arctanh(ar_coef))[0]
         ar_coef = tanh(arctanh_ar_coef)

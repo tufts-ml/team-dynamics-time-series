@@ -207,7 +207,10 @@ def estimate_kappa_for_random_walk_with_drift(angles: np.array, drift_angle: flo
 
 
 def estimate_kappa_for_autoregression(
-    angles: np.array, drift_angle: float, ar_coef: float
+    angles: np.array,
+    drift_angle: float,
+    ar_coef: float,
+    sample_weights: Optional[np.array] = None,
 ) -> float:
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
@@ -216,17 +219,30 @@ def estimate_kappa_for_autoregression(
     Clustering on the Unit Hypersphere using von Mises-Fisher Distributions.
 
     Arguments:
+        angles: array of shape (T,)
+            Observations, which live in [-pi,pi]
         drift_angle: drift in terms of an angle in [-pi, pi]
         ar_coef: autoregressive coefficient on the previous angle, in [-1,1]
+        sample_weights: optional array of shape (T,)
+            By default, all observations are equally weights.
     """
+    if sample_weights is None:
+        sample_weights = np.ones_like(angles)
+
     observed_points = points_from_angles(angles)
-    mean_angles = ar_coef * angles[:-1] + drift_angle
-    mean_points = points_from_angles(mean_angles)
+    expected_angles = ar_coef * angles[:-1] + drift_angle
+    expected_points = points_from_angles(expected_angles)
 
     # TODO: We are ignoring the first measurement and estimating this from T-1 measurements.
     # We could also posit an initial measurement x_0 and then estimate this from T measurements.
+    #
+    # RK: What we are reallyd doing here is a mean inner product between observations and expectations.
+    #   RHS = np.mean(np.einsum("td,td->t", observed_points[1:], expected_points))
+    # but we are allowing for differential sample weightings.
 
-    RHS = np.mean(np.einsum("td,td->t", observed_points[1:], mean_points))
+    inner_product_over_time = np.einsum("td,td->t", observed_points[1:], expected_points)
+    RHS = np.dot(inner_product_over_time, sample_weights[1:]) / np.sum(sample_weights[1:])
+
     return _estimate_kappa_for_general_von_mises_model(RHS)
 
 

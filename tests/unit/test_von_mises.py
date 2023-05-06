@@ -2,15 +2,16 @@ import numpy as np
 from scipy.stats import vonmises
 
 from dynagroup.von_mises.generate import (
+    sample_from_von_mises_AR_with_drift,
     sample_from_von_mises_random_walk,
     sample_from_von_mises_random_walk_with_drift,
 )
-from dynagroup.von_mises.inference import (
-    VonMisesModelType,
-    estimate_von_mises_params,
+from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.util import (
+    angles_from_points,
     points_from_angles,
+    two_angles_are_close,
 )
-from dynagroup.von_mises.util import angles_from_points
 
 
 def test__points_from_angles__then__angles_from_points():
@@ -57,3 +58,31 @@ def test_that__estimate_von_mises_params__gives_approximately_correct_parameters
         print(f"True drift: {true_drift_angle:.02f}, Estimated: {params_learned.drift:.02f}")
         assert np.isclose(params_learned.kappa, kappa_true, rtol=0.20)
         assert np.isclose(params_learned.drift, true_drift_angle, rtol=0.20)
+
+
+def test_that__estimate_von_mises_params__gives_approximately_correct_parameters_for_a_von_mises_autoregression():
+    T = 500
+
+    drift_angles_true = np.array([-0.25, 0.0, 0.25]) * np.pi
+
+    kappa_true = 100.0
+    ar_coefs_true = np.array([-0.8, 0.0, 0.8])
+
+    # ### can use lower kappa but then need lower ar.
+    # kappa_true = 10.0
+    # ar_coefs_true = np.array([-0.2, 0.0, 0.2])
+
+    for ar_coef_true in ar_coefs_true:
+        for drift_angle_true in drift_angles_true:
+            print("Next test on inference for von mises autoregression.")
+            init_angle = drift_angle_true
+            angles = sample_from_von_mises_AR_with_drift(
+                kappa_true, T, ar_coef_true, init_angle, drift_angle_true
+            )
+            params_learned = estimate_von_mises_params(angles, VonMisesModelType.AUTOREGRESSION)
+            print(f"ar coef true:{ar_coef_true:.02f}, learned:{params_learned.ar_coef:.02f}")
+            print(f"True kappa: {kappa_true:.02f}, Estimated: {params_learned.kappa:.02f}")
+            print(f"True drift: {drift_angle_true:.02f}, Estimated: {params_learned.drift:.02f}")
+            assert np.isclose(params_learned.kappa, kappa_true, rtol=0.30)
+            assert two_angles_are_close(params_learned.drift, drift_angle_true, atol=np.pi / 8)
+            assert np.isclose(params_learned.kappa, kappa_true, rtol=0.30)

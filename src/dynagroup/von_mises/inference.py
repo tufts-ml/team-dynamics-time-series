@@ -17,7 +17,10 @@ from sklearn.linear_model import LinearRegression
 
 from dynagroup.types import NumpyArray1D
 from dynagroup.util import make_2d_rotation_JAX
-from dynagroup.von_mises.util import points_from_angles
+from dynagroup.von_mises.util import (
+    force_angles_to_be_from_neg_pi_to_pi,
+    points_from_angles,
+)
 
 
 """
@@ -397,6 +400,85 @@ def equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift(arctanh_ar_coef, 
     return result
 
 
+from sklearn.mixture import GaussianMixture
+
+
+def are_there_two_clusters_when_plotting_consecutive_angles(angles):
+    predictors, responses = angles[:-1], angles[1:]
+    T_minus_1 = len(predictors)
+    X = np.vstack([predictors, responses]).T
+
+    # Fit a Gaussian mixture model to the dataset
+    gmm1 = GaussianMixture(n_components=1)
+    gmm1.fit(X)
+    ll_one_component = np.sum(gmm1.score_samples(X))
+
+    gmm2 = GaussianMixture(n_components=2)
+    gmm2.fit(X)
+    ll_two_components = np.sum(gmm2.score_samples(X))
+
+    THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS = 0.25
+    mean_log_like_increase_from_two_components = (ll_two_components - ll_one_component) / T_minus_1
+
+    return (
+        mean_log_like_increase_from_two_components
+        > THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS
+    )
+
+
+def make_transformed_predictors_and_responses_for_two_clusters(
+    angles: NumpyArray1D,
+) -> Tuple[NumpyArray1D, NumpyArray1D]:
+    """
+    The gist of this function is to do initialization via linear regression:
+        theta_t = drift + ar_coef theta_{t-1}
+    However, scatterplots of theta_t against theta_{t-1} reveal a wrapping problem due to angle domain being [-pi,pi].
+    As soon as the response gets above pi, it wraps back down to -pi, destroying the linear relationship.  (Indeed,
+    plots may reveal 2 lines -- or possibly even more)
+
+    As a fix, we find the minimum response from the first 10% of the predictors, use that to establish the relationship,
+    and add 2pi to any responses that are below that minimum.
+    """
+    predictors, responses = angles[:-1], angles[1:]
+    idxs = np.argsort(predictors)
+    predictors_sorted_by_predictor = predictors[idxs]
+    responses_sorted_by_predictor = responses[idxs]
+
+    T = len(predictors)
+    T_init = int(T / 10)
+    response_cutoff = np.min(responses_sorted_by_predictor[:T_init])
+
+    transform_response = lambda x: x + (2 * np.pi) if x < response_cutoff else x
+    responses_sorted_by_predictor_transformed = np.array(
+        [transform_response(y) for y in responses_sorted_by_predictor]
+    )
+
+    if np.min(responses_sorted_by_predictor_transformed) != response_cutoff:
+        raise ValueError(
+            f"The smart initialization failed.  Check if the scatterplot of previous and subsequent angles "
+            "has more than two lines."
+        )
+    return predictors_sorted_by_predictor, responses_sorted_by_predictor_transformed
+
+
+def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
+    angles: NumpyArray1D,
+) -> Tuple[float, float]:
+    two_clusters = are_there_two_clusters_when_plotting_consecutive_angles(angles)
+
+    if two_clusters:
+        predictors, responses = make_transformed_predictors_and_responses_for_two_clusters(angles)
+    else:
+        predictors, responses = angles[:-1], angles[1:]
+
+    reg = LinearRegression().fit(predictors[:, None], responses)
+    ar_coef = reg.coef_[0]
+    drift = force_angles_to_be_from_neg_pi_to_pi(
+        reg.intercept_
+    )  # may need to move into [-pi, pi] if outside of it.
+    return ar_coef, drift
+
+
 def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     angles: NumpyArray1D,
     num_coord_ascent_iterations: int,
@@ -412,23 +494,27 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
             that gradient descent is sensitive to inits (or possibly just need to run it longer.)
     """
     warnings.warn(
-        f" The strategy used here is numerical optimization.  It appears to struggle when the drift angle is too "
-        f"large (like >|pi/2|) and/or when the ar coefficient is EXACTLY 1.0 or -1.0.  The later problem is likely "
-        f"caused by the fact that we use the hyperbolic tangent to map from [-1,1] to unconstrained space. "
-        f"If the AR coefficient = 1.0 exactly, we have a random walk (with or without drift); there are separate "
-        f"inference functions for those models that are more reliable.  Just specify the appropriate Model in the "
-        f"model enum. Note that in these cases the initialization can be WAY off.  Perhaps the problem is with angle wrapping?"
+        f" The strategy used here is numerical optimization.  It appears to struggle when (1) the drift angle is too "
+        f" close to -pi or pi (these are equal) and/or (2) when the ar coefficient is EXACTLY 1.0 or -1.0.  "
+        f" and/or (3) when kappa is too low (i.e. there is too much noise), especially if (1) or (2) are challenging."
+        f""
+        f" Problem (2) may be related to fact that we use the hyperbolic tangent to map from [-1,1] to unconstrained space. "
+        f" If the AR coefficient = 1.0 exactly, we have a random walk (with or without drift); there are separate "
+        f" inference functions for those models that are more reliable.  Just specify the appropriate Model in the "
+        f" model enum. Note that in these cases the initialization can be WAY off."
+        f""
+        f" More to the point, look at the smart initialization (via linear regression) for these boundary cases."
+        f" We have worked to address the wrapping problem (where -pi==pi), but weird things can happen near the boundary "
+        f" (Like a linear regression with four clusters).  Perhaps we can initialize outside theta space?!"
     )
 
     ###
     # Smart Init via Linear Regression
     ###
 
-    reg = LinearRegression().fit(angles[:-1][:, None], angles[1:])
-    ar_coef = reg.coef_[0]
-    drift = reg.intercept_
+    ar_coef, drift = smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(angles)
 
-    print(f"After initialization: ar_coef:{ar_coef:.02f}, drift:{drift:.02f}")
+    print(f"After smart initialization: ar_coef:{ar_coef:.02f}, drift:{drift:.02f}")
 
     ###
     # Do inference on drift (rotation angle) for Von Mises Random Walk with Drift

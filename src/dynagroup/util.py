@@ -1,3 +1,5 @@
+import warnings
+
 import jax.numpy as jnp
 import numpy as np
 import tensorflow_probability.substrates.jax.bijectors as tfb
@@ -90,6 +92,37 @@ def random_rotation(n, theta=None):
     out[:2, :2] = rot
     q = np.linalg.qr(np.random.randn(n, n))[0]
     return q.dot(out).dot(q.T)
+
+
+###
+# TPMs
+###
+
+
+def make_fixed_sticky_tpm(self_transition_prob: float, num_states: int) -> np.array:
+    if num_states == 1:
+        warnings.warn(
+            "Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix."
+        )
+        return np.array([[1]])
+    external_transition_prob = (1.0 - self_transition_prob) / (num_states - 1)
+    return (
+        np.eye(num_states) * self_transition_prob
+        + (1.0 - np.eye(num_states)) * external_transition_prob
+    )
+
+
+def make_fixed_sticky_tpm_JAX(self_transition_prob: float, num_states: int) -> jnp.array:
+    if num_states == 1:
+        warnings.warn(
+            "Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix."
+        )
+        return jnp.array([[1]])
+    external_transition_prob = (1.0 - self_transition_prob) / (num_states - 1)
+    return (
+        jnp.eye(num_states) * self_transition_prob
+        + (1.0 - jnp.eye(num_states)) * external_transition_prob
+    )
 
 
 ###

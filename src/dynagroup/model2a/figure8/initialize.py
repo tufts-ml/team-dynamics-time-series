@@ -29,6 +29,7 @@ from dynagroup.params import (
     SystemTransitionParameters_JAX,
 )
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray3D
+from dynagroup.util import make_fixed_sticky_tpm_JAX
 from dynagroup.vi.E_step import run_VES_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     ELBO_Decomposed,
@@ -91,24 +92,6 @@ class RawInitializationResults:
     EP: EmissionsParameters_JAX
 
 
-###
-# HELPER FUNCTIONS
-###
-
-
-def make_fixed_sticky_tpm(self_transition_prob: float, num_states: int) -> jnp.array:
-    if num_states == 1:
-        warnings.warn(
-            "Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix."
-        )
-        return jnp.array([[1]])
-    external_transition_prob = (1.0 - self_transition_prob) / (num_states - 1)
-    return (
-        jnp.eye(num_states) * self_transition_prob
-        + (1.0 - jnp.eye(num_states)) * external_transition_prob
-    )
-
-
 def initialization_results_from_raw_initialization_results(
     raw_initialization_results: RawInitializationResults,
 ):
@@ -145,7 +128,7 @@ def make_tpm_only_initialization_of_STP_JAX(
     # TODO: Support fixed or random draws from prior.
     L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
     # make a tpm
-    tpm = make_fixed_sticky_tpm(fixed_self_transition_prob, num_states=L)
+    tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
     Pi = jnp.log(tpm)
     Gammas = jnp.zeros((J, L, K))  # Gammas must be zero for no feedback.
     Upsilon = jnp.zeros((L, M_s))
@@ -170,7 +153,7 @@ def make_data_free_initialization_of_ETP_JAX(
     # TODO: Support fixed or random draws from prior.
     L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
     # make a tpm
-    tpm = make_fixed_sticky_tpm(0.95, num_states=K)
+    tpm = make_fixed_sticky_tpm_JAX(0.95, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
     if method_for_Psis == "rnorm":
         Psis = jr.normal(key, (J, L, K, D_t))
@@ -188,7 +171,7 @@ def make_tpm_only_initialization_of_ETP_JAX(
     # TODO: Support fixed or random draws from prior.
     L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
     # make a tpm
-    tpm = make_fixed_sticky_tpm(fixed_self_transition_prob, num_states=K)
+    tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
     Psis = jnp.zeros((J, L, K, D_t))
     Omegas = jnp.zeros((J, L, K, M_e))

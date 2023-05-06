@@ -39,6 +39,7 @@ def two_angles_are_close(angle1, angle2, **kwargs):
         angle1: in [-pi, pi]
         angle2: in [-pi, pi]
     """
+    angle1, angle2 = force_angles_to_be_from_neg_pi_to_pi(np.array([angle1, angle2]))
     check1 = np.isclose(angle1, angle2, **kwargs)
 
     adjusted_angles = np.array([angle1, angle2])

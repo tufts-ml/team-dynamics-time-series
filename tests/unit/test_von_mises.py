@@ -62,18 +62,14 @@ def test_that__estimate_von_mises_params__gives_approximately_correct_parameters
 
 def test_that__estimate_von_mises_params__gives_approximately_correct_parameters_for_a_von_mises_autoregression():
     T = 500
-    drift_angles_true = np.array([-0.25, 0.0, 0.25]) * np.pi
+    drift_angles_true = np.array([-0.75, 0.0, 0.75]) * np.pi
 
-    kappa_true = 100.0
-    ar_coefs_true = np.array([-0.8, 0.0, 0.8])
-
-    # ### can use lower kappa but then need lower ar.
-    # kappa_true = 10.0
-    # ar_coefs_true = np.array([-0.2, 0.0, 0.2])
+    kappa_true = 10.0
+    ar_coefs_true = np.array([-0.99, 0.0, 0.99])
 
     for ar_coef_true in ar_coefs_true:
         for drift_angle_true in drift_angles_true:
-            print("Next test on inference for von mises autoregression.")
+            print("\n---Next test on inference for von mises autoregression.")
             init_angle = drift_angle_true
             angles = sample_from_von_mises_AR_with_drift(
                 kappa_true, T, ar_coef_true, init_angle, drift_angle_true
@@ -117,15 +113,15 @@ def test_that__estimate_von_mises_params__handles_sample_weights__for_von_mises_
     assert two_angles_are_close(
         params_learned_first_half_via_omission.drift,
         params_learned_first_half_via_sample_weights.drift,
-        atol=np.pi / 32,
+        atol=0.01,
     )
     assert np.isclose(
         params_learned_first_half_via_omission.ar_coef,
         params_learned_first_half_via_sample_weights.ar_coef,
-        rtol=0.05,
+        atol=0.01,
     )
     assert np.isclose(
         params_learned_first_half_via_omission.kappa,
         params_learned_first_half_via_sample_weights.kappa,
-        rtol=0.05,
+        atol=0.01,
     )

@@ -11,9 +11,13 @@ from dynagroup.von_mises.util import points_from_angles, two_angles_are_close
 ###
 
 T = 1000
-kappa_true = 100
+kappa_true = 10
+plot_consecutive_angles = True
 plot_points_on_circle = True
 plot_angle_time_series = True
+
+drift_angles_true = np.array([-0.75, 0.0, 0.75]) * np.pi
+ar_coefs_true = np.array([-0.99, 0.0, 0.99])
 
 ###
 # Inference
@@ -28,8 +32,8 @@ plot_angle_time_series = True
 # 2) drift angle are too close to pi or -pi (which are equal).
 # 3) kappa is too low (i.e. variance too high), especially if ar coef is high.
 
-for drift_true in np.array([-0.8, 0.0, 0.8]) * np.pi:
-    for ar_coef_true in [-0.99, 0.0, 0.99]:  # [-0.9, -0.5, 0.0, 0.5, 0.9]:
+for drift_true in drift_angles_true:
+    for ar_coef_true in ar_coefs_true:
         print("\n --- New test ---")
         print(f"ar coef true:{ar_coef_true:.02f}, drift true:{drift_true:.02f}")
 
@@ -42,6 +46,12 @@ for drift_true in np.array([-0.8, 0.0, 0.8]) * np.pi:
         ###
         # PLOTTING
         ###
+        if plot_consecutive_angles:
+            plt.scatter(angles[:-1], angles[1:])
+            plt.xlabel("Previous angle")
+            plt.ylabel("Next angle")
+            plt.show()
+
         if plot_angle_time_series:
             T_to_plot = 100
             plt.scatter(

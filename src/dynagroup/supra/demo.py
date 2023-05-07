@@ -10,7 +10,8 @@ from dynagroup.von_mises.util import degrees_to_radians
 ###
 # Configs
 ###
-t_start, t_end, t_every = 15000, 19000, 20
+# t_start, t_end, t_every = 19000, 23000, 20
+t_start, t_end, t_every = 130000, 134000, 20
 
 ###
 # Get sample
@@ -70,3 +71,8 @@ changepoints_dict = make_changepoints_dict(data_dict, changepoint_penalty=100)
 
 plot_changepoint_dict(changepoints_dict)
 plt.show()
+
+
+###
+#
+###

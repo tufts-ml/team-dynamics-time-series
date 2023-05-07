@@ -571,6 +571,8 @@ def run_M_step_for_STP_in_closed_form(
         "Running closed-form M-step for STP.  Note that this ignores the prior specification."
     )
     L = np.shape(VES_summary.expected_joints)[1]
+
+    # TODO: call `compute_closed_form_M_step` from hmm_posterior module instead of rewriting this logic here.
     exp_Pi = np.zeros((L, L))
     for l in range(L):
         for l_prime in range(L):

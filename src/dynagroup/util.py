@@ -1,4 +1,5 @@
 import warnings
+from typing import List, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -6,7 +7,7 @@ import tensorflow_probability.substrates.jax.bijectors as tfb
 from jax.scipy.special import logsumexp as logsumexp_JAX
 from scipy.special import logsumexp
 
-from dynagroup.types import NumpyArray2D
+from dynagroup.types import NumpyArray1D, NumpyArray2D
 
 
 ###
@@ -180,3 +181,18 @@ def tpm_from_unconstrained_tpm(
         row_on_simplex = softmax_bijector.forward(row)
         tpm_list.append(row_on_simplex)
     return jnp.asarray(tpm_list)
+
+
+###
+# Conversions
+###
+
+
+def convert_list_of_regime_id_and_num_timesteps_to_regime_sequence(
+    list_of_regime_id_and_num_timesteps: List[Tuple[int, int]]
+) -> NumpyArray1D:
+    regime_sequence = []
+    for k, T_slice in list_of_regime_id_and_num_timesteps:
+        segment = [k] * T_slice
+        regime_sequence.extend(segment)
+    return regime_sequence

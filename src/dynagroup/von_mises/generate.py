@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy.stats import vonmises
 
 from dynagroup.types import NumpyArray1D
 from dynagroup.util import make_2d_rotation_matrix
+from dynagroup.von_mises.inference.ar import VonMisesParams
 from dynagroup.von_mises.util import angles_from_points, points_from_angles
 
 
@@ -95,7 +96,7 @@ def sample_from_von_mises_AR_with_drift(
     drift_angle: Optional[float],
 ) -> NumpyArray1D:
     """
-    Returns T samples from a von Mises autoregression with drift,
+    Returns T samples from a von Mises autoregression (with drift),
         theta_t ~ VonMises(alpha*theta_{t-1} + angular_drift, kappa)
     We create the angular drift by rotating the previous value by the drift angle
 
@@ -116,3 +117,38 @@ def sample_from_von_mises_AR_with_drift(
         mu_t_as_angle = drift_angle + ar_coef * angles[t - 1]
         angles[t] = vonmises.rvs(kappa, loc=mu_t_as_angle)
     return angles
+
+
+def sample_from_switching_von_mises_AR_with_drift(
+    von_mises_params_by_regime: List[VonMisesParams],
+    list_of_regime_id_and_num_timesteps: List[Tuple[int, int]],
+    init_angle: Optional[float] = 0.0,
+) -> NumpyArray1D:
+    """
+    If K is the length of the parameters list, we sample from regimes {1,...,K}  consecutively,
+    and only once each.
+
+    Returns
+    """
+
+    S = len(list_of_regime_id_and_num_timesteps)
+    PBR = von_mises_params_by_regime
+
+    angles_by_segment = [None] * S
+
+    for segment_id, segment_info in enumerate(list_of_regime_id_and_num_timesteps):
+        k, T_slice = segment_info
+
+        # pick up where we left off.
+        if segment_id != 0:
+            init_angle = angles_by_segment[segment_id - 1][-1]
+
+        angles_by_segment[segment_id] = sample_from_von_mises_AR_with_drift(
+            kappa=PBR[k].kappa,
+            T=T_slice,
+            ar_coef=PBR[k].ar_coef,
+            init_angle=init_angle,
+            drift_angle=PBR[k].drift,
+        )
+
+    return np.hstack(angles_by_segment)

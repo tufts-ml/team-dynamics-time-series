@@ -47,11 +47,12 @@ def plot_changepoint_dict(
     # create plots
     fig, axis_array = plt.subplots(n_rows, n_cols, sharex=True, **matplotlib_options)
 
-    if n_series == 1:
-        axis_array = [axis_array]
+    if n_rows == 1:
+        axis_array = axis_array.reshape(1, -1)
+    if n_cols == 1:
+        axis_array = axis_array.reshape(-1, 1)
 
     # check that dict all has the same number of samples; if not, raise error.
-
     for i, (data_name, series_and_cps) in enumerate(changepoints_dict.items()):
         series, changepoints = series_and_cps.series, series_and_cps.changepoints
         n_samples = len(series)

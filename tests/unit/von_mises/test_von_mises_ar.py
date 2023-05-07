@@ -6,7 +6,10 @@ from dynagroup.von_mises.generate import (
     sample_from_von_mises_random_walk,
     sample_from_von_mises_random_walk_with_drift,
 )
-from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.inference.ar import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+)
 from dynagroup.von_mises.util import (
     angles_from_points,
     points_from_angles,

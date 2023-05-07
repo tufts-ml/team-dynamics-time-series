@@ -2,7 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dynagroup.von_mises.generate import sample_from_von_mises_AR_with_drift
-from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.inference.ar import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+)
 from dynagroup.von_mises.util import points_from_angles, two_angles_are_close
 
 

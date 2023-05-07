@@ -2,7 +2,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from dynagroup.von_mises.generate import sample_from_von_mises_random_walk
-from dynagroup.von_mises.inference import VonMisesModelType, estimate_von_mises_params
+from dynagroup.von_mises.inference.ar import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+)
 
 
 """

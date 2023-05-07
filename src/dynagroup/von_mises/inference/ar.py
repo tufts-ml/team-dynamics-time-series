@@ -490,10 +490,9 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     X = X.astype(np.float32)
     sample_weights = sample_weights.astype(np.float32)
 
-    ### Fit Gaussian mixtures via pomegranate library.
-    # Rk: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
-    gmm1 = Normal().fit(X, sample_weight=sample_weights[1:])
-    ll_one_component = gmm1.log_probability(X).sum()
+    ###
+    # Fit Gaussian mixtures via pomegranate library.
+    ###
 
     # TODO: This is so ugly and hacky.  I just need an api which lets me fit a Gaussian mixture model
     # with sample weights, so that I can grab the evidence and responsibilities.
@@ -502,8 +501,14 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     #
     # We add some noise b/c sometimes the inverse covariance matrix is singular, which causes an error to be raised
     # when fitting the 2-component Gaussian mixture.
-    noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
+
     noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.01
+    noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
+
+    # Rk: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
+    gmm1 = Normal().fit(noisy_X, sample_weight=noisy_sample_weights[1:])
+    ll_one_component = gmm1.log_probability(X).sum()
+
     gmm2 = GeneralMixtureModel([Normal(), Normal()], init="first-k").fit(
         noisy_X, sample_weight=noisy_sample_weights[1:]
     )

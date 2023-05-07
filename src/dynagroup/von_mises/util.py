@@ -15,6 +15,11 @@ def angles_from_points(points: NumpyArray2D) -> NumpyArray1D:
     return np.arctan2(points[:, 1], points[:, 0])
 
 
+def degrees_to_radians(degrees: NumpyArray1D):
+    """Converts an angle in degrees to radians in [-pi,pi]"""
+    return np.deg2rad(degrees) - np.pi
+
+
 def force_angles_to_be_from_neg_pi_to_pi(angles):
     # Use mod to adjust angles to be in the range [-2π, 2π]
     adjusted_angles = np.mod(angles, 2 * np.pi) - 2 * np.pi

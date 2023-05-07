@@ -269,6 +269,7 @@ def estimate_von_mises_params(
     angles: np.array,
     model_type: VonMisesModelType = VonMisesModelType.IID,
     sample_weights: Optional[np.array] = None,
+    suppress_warnings: bool = False,
 ) -> VonMisesParams:
     """
     Arguments:
@@ -305,7 +306,10 @@ def estimate_von_mises_params(
         return VonMisesParams(drift, kappa=kappa)
     elif model_type == VonMisesModelType.AUTOREGRESSION:
         drift, ar_coef = estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
-            angles, num_coord_ascent_iterations=10, sample_weights=sample_weights
+            angles,
+            num_coord_ascent_iterations=10,
+            sample_weights=sample_weights,
+            suppress_warnings=suppress_warnings,
         )
         # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
         kappa = estimate_kappa_for_autoregression(
@@ -486,12 +490,23 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     X = X.astype(np.float32)
     sample_weights = sample_weights.astype(np.float32)
 
-    # Fit Gaussian mixtures via pomegranate library.
-    # I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
+    ### Fit Gaussian mixtures via pomegranate library.
+    # Rk: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
     gmm1 = Normal().fit(X, sample_weight=sample_weights[1:])
     ll_one_component = gmm1.log_probability(X).sum()
 
-    gmm2 = GeneralMixtureModel([Normal(), Normal()]).fit(X, sample_weight=sample_weights[1:])
+    # TODO: This is so ugly and hacky.  I just need an api which lets me fit a Gaussian mixture model
+    # with sample weights, so that I can grab the evidence and responsibilities.
+    # Is there an alternative to pomegranate, which errors out easily?
+    # sklearn doesn't let me provide sample weights - although perhaps there's a workaround?
+    #
+    # We add some noise b/c sometimes the inverse covariance matrix is singular, which causes an error to be raised
+    # when fitting the 2-component Gaussian mixture.
+    noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
+    noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.01
+    gmm2 = GeneralMixtureModel([Normal(), Normal()], init="first-k").fit(
+        noisy_X, sample_weight=noisy_sample_weights[1:]
+    )
     ll_two_components = gmm2.log_probability(X).sum()
     responsibilities = np.asarray(gmm2.predict_proba(X))
 
@@ -539,6 +554,7 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     num_coord_ascent_iterations: int,
     sample_weights: Optional[NumpyArray1D] = None,
     verbose=False,
+    suppress_warnings=False,
 ) -> Tuple[float, float]:
     """
     Do inference on drift (rotation angle) for Von Mises Random Walk with Drift.
@@ -548,6 +564,9 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
         angles: np.array of shape (T,)
         sample_weights: np.array of shape (T,)
     """
+    if suppress_warnings:
+        warnings.filterwarnings("ignore")
+
     warnings.warn(
         f" The strategy used here is numerical optimization.  It can sometimes struggle when (1) the drift angle is very "
         f" close to -pi or pi (these are equal) and/or (2) the ar coefficient is EXACTLY 1.0 or -1.0.  "

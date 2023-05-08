@@ -3,6 +3,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
+from dynagroup.initialize import (
+    compute_elbo_from_initialization_results,
+    inspect_entity_level_segmentations_over_EM_iterations,
+    inspect_system_level_segmentations_over_EM_iterations,
+)
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.figure8.diagnostics.entity_transitions import (
     investigate_entity_transition_probs_in_different_contexts,
@@ -25,12 +30,7 @@ from dynagroup.model2a.figure8.generate import (
     sample,
     times_of_system_regime_changepoints,
 )
-from dynagroup.model2a.figure8.initialize import (
-    compute_elbo_from_initialization_results,
-    inspect_entity_level_segmentations_over_EM_iterations,
-    inspect_system_level_segmentations_over_EM_iterations,
-    smart_initialize_model_2a,
-)
+from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (

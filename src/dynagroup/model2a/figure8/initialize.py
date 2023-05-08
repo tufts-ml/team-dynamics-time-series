@@ -1,6 +1,4 @@
 import warnings
-from dataclasses import dataclass
-from itertools import groupby
 from typing import Union
 
 import jax.numpy as jnp
@@ -10,17 +8,21 @@ from sklearn.cluster import KMeans
 
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
-    HMM_Posterior_Summary_JAX,
     compute_hmm_posterior_summaries_JAX,
 )
-from dynagroup.initialize import InitializationResults
+from dynagroup.initialize import (
+    InitializationResults,
+    RawInitializationResults,
+    ResultsFromBottomHalfInit,
+    ResultsFromTopHalfInit,
+    initialization_results_from_raw_initialization_results,
+)
 from dynagroup.model import Model
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
 )
 from dynagroup.params import (
-    AllParameters_JAX,
     ContinuousStateParameters_JAX,
     Dims,
     EmissionsParameters_JAX,
@@ -28,82 +30,14 @@ from dynagroup.params import (
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray3D
+from dynagroup.types import JaxNumpyArray3D, NumpyArray3D
 from dynagroup.util import make_fixed_sticky_tpm_JAX
 from dynagroup.vi.E_step import run_VES_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
-    ELBO_Decomposed,
-    compute_elbo_decomposed,
     run_M_step_for_ETP_via_gradient_descent,
     run_M_step_for_STP_in_closed_form,
     run_M_step_in_closed_form_for_continuous_state_params_JAX,
 )
-from dynagroup.vi.prior import SystemTransitionPrior_JAX
-
-
-###
-# STRUCTS
-###
-
-
-@dataclass
-class ResultsFromBottomHalfInit:
-    """
-    Attributes:
-        record_of_most_likely_states:  Has shape (T,J,num_EM_iterations).
-            Note that this is NOT most likely in the Viterbi sense,
-            it's just the argmax from the expected unary marginals.
-    """
-
-    CSP: ContinuousStateParameters_JAX
-    EZ_summaries: HMM_Posterior_Summaries_JAX
-    record_of_most_likely_states: NumpyArray3D  # TxJx num_EM_iterations
-
-
-@dataclass
-class ResultsFromTopHalfInit:
-    """
-    Attributes:
-        record_of_most_likely_states:  Has shape (T, num_EM_iterations).
-            Note that this is NOT most likely in the Viterbi sense,
-            it's just the argmax from the expected unary marginals.
-    """
-
-    STP: SystemTransitionParameters_JAX
-    ETP: EntityTransitionParameters_MetaSwitch_JAX
-    ES_summary: HMM_Posterior_Summary_JAX
-    record_of_most_likely_states: NumpyArray2D  # Txnum_EM_iterations
-
-
-@dataclass
-class RawInitializationResults:
-    """
-    Compared to `InitializationResults`, this representation is closer to how the initialization was constructed:
-    there's info from a "bottom-level" AR-HMM and from a "top-level" AR-HMM.
-
-    These results are also useful for inspecting the quality of the initialization
-    (e.g. via `top.record_of_most_likely_states` or `bottom.record_of_most_likely_states`)
-    with respect to known truth.
-    """
-
-    bottom: ResultsFromBottomHalfInit
-    top: ResultsFromTopHalfInit
-    IP: InitializationParameters_JAX
-    EP: EmissionsParameters_JAX
-
-
-def initialization_results_from_raw_initialization_results(
-    raw_initialization_results: RawInitializationResults,
-):
-    RI = raw_initialization_results
-    params = AllParameters_JAX(RI.top.STP, RI.top.ETP, RI.bottom.CSP, RI.EP, RI.IP)
-    return InitializationResults(
-        params,
-        RI.top.ES_summary,
-        RI.bottom.EZ_summaries,
-        RI.top.record_of_most_likely_states,
-        RI.bottom.record_of_most_likely_states,
-    )
 
 
 ###
@@ -373,13 +307,13 @@ def fit_ARHMM_to_top_half_of_model(
 ###
 
 
-def smart_initialize_model_2a_in_a_raw_manner(
+def smart_initialize_model_2a(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
     model: Model,
     seed: int = 0,
     verbose: bool = True,
-) -> RawInitializationResults:
+) -> InitializationResults:
     """
     Remarks:
         1) Note that the regime labeling (for entities and system) can differ from the truth, and also even
@@ -450,102 +384,5 @@ def smart_initialize_model_2a_in_a_raw_manner(
         num_M_step_iterations_for_ETP_gradient_descent,
         verbose=verbose,
     )
-    return RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
-
-
-def smart_initialize_model_2a(
-    DIMS: Dims,
-    continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
-    model: Model,
-    seed: int = 0,
-    verbose: bool = True,
-) -> InitializationResults:
-    ### TODO: Make smart initialization better. E.g.
-    # 1) Run init x times, pick the one with the best ELBO.
-    # 2) Find a way to do smarter init for the recurrence parameters
-    # 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
-
-    results_raw = smart_initialize_model_2a_in_a_raw_manner(
-        DIMS,
-        continuous_states,
-        model,
-        seed,
-        verbose,
-    )
+    results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw)
-
-
-###
-# DIAGNOSTICS
-###
-
-
-def inspect_entity_level_segmentations_over_EM_iterations(
-    record_of_most_likely_states: NumpyArray3D,
-    zs_true: NumpyArray2D,
-) -> None:
-    """
-    Arguments:
-        record_of_most_likely_states:  An attribute from the ResultsFromBottomHalfInit class.
-            Has shape (T,J,num_EM_iterations).  Note that this is NOT most likely in the Viterbi sense,
-            it's just the argmax from the expected unary marginals.
-        zs_true: Has shape (T, J).  Each entry is in {1,...,K}.  Can be grabbed from the Sample class.
-    """
-    _, J, num_EM_iterations = np.shape(record_of_most_likely_states)
-
-    print(
-        "\n---Now inspecting the learning (during initialization) of the entity-level segmentations.---"
-    )
-    for j in range(J):
-        print(f"\n\nNow investigating entity {j}....")
-        for i in range(num_EM_iterations):
-            most_likely_states = record_of_most_likely_states[:, j, i]
-            count_dups_estimated = [
-                sum(1 for _ in group) for _, group in groupby(most_likely_states)
-            ]
-            count_dups_true = [sum(1 for _ in group) for _, group in groupby(zs_true[:, j])]
-            print(
-                f"For entity {j}, after EM it {i+1}, number of consecutive duplications for estimated: {count_dups_estimated}. For true: {count_dups_true}"
-            )
-
-
-def inspect_system_level_segmentations_over_EM_iterations(
-    record_of_most_likely_states: NumpyArray2D,
-    s_true: NumpyArray1D,
-) -> None:
-    """
-    Arguments:
-        record_of_most_likely_states:  An attribute from the ResultsFromTopHalfInit class.
-            Has shape (T,num_EM_iterations).  Note that this is NOT most likely in the Viterbi sense,
-            it's just the argmax from the expected unary marginals.
-        s_true: Has shape (T).  Each entry is in {1,...,L}.  Can be grabbed from the Sample class.
-    """
-    _, num_EM_iterations = np.shape(record_of_most_likely_states)
-
-    print(
-        "\n---Now inspecting the learning (during initialization) of the system-level segmentations.---"
-    )
-    for i in range(num_EM_iterations):
-        most_likely_states = record_of_most_likely_states[:, i]
-        count_dups_estimated = [sum(1 for _ in group) for _, group in groupby(most_likely_states)]
-        count_dups_true = [sum(1 for _ in group) for _, group in groupby(s_true)]
-        print(
-            f"After EM it {i}, number of consecutive duplications for estimated: {count_dups_estimated}. For true: {count_dups_true}"
-        )
-
-
-def compute_elbo_from_initialization_results(
-    initialization_results: InitializationResults,
-    system_transition_prior: SystemTransitionPrior_JAX,
-    continuous_states: JaxNumpyArray3D,
-    model: Model,
-) -> ELBO_Decomposed:
-    elbo_decomposed = compute_elbo_decomposed(
-        initialization_results.params,
-        initialization_results.ES_summary,
-        initialization_results.EZ_summaries,
-        system_transition_prior,
-        continuous_states,
-        model,
-    )
-    return elbo_decomposed.elbo

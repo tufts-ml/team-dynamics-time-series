@@ -1,10 +1,18 @@
+import copy
 from typing import Optional
 
 import numpy as np
-from matplotlib import cm, pyplot as plt
+import seaborn as sns
+from matplotlib import pyplot as plt
 from ruptures.utils import pairwise
 
 from dynagroup.types import NumpyArray1D
+
+
+color_names = ["windows blue", "red", "amber", "faded green"]
+colors = sns.xkcd_palette(color_names)
+sns.set_style("white")
+sns.set_context("talk")
 
 
 def _make_markers(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
@@ -21,6 +29,21 @@ def _make_markers(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
     if len(fitted_regime_sequence) not in markers:
         markers = markers + [len(fitted_regime_sequence)]
     return markers
+
+
+# TODO: Handle this earlier up in the pipeline
+def _relabel_regime_sequence_to_remove_unused_regimes(
+    fitted_regime_sequence: NumpyArray1D,
+) -> NumpyArray1D:
+    num_regimes_nominally = max(fitted_regime_sequence) + 1
+    regimes_used = set(fitted_regime_sequence)
+
+    relabeled_regime_sequence = copy.copy(fitted_regime_sequence)
+    for k in range(num_regimes_nominally):
+        if k not in regimes_used:
+            relabeled_regime_sequence[relabeled_regime_sequence >= k] -= 1
+
+    return relabeled_regime_sequence
 
 
 def plot_time_series_with_regime_panels(
@@ -46,10 +69,10 @@ def plot_time_series_with_regime_panels(
     # add/update the options given by the user
     matplotlib_options.update(kwargs)
 
-    # create an array of n colors from the colormap
-    K = len(set(fitted_regime_sequence))
-    cmap = cm.get_cmap("cool")  # choose a colormap
-    colors = cmap(np.linspace(0, 1, K))
+    # remove unused regime sequences
+    fitted_regime_sequence_relabeled = _relabel_regime_sequence_to_remove_unused_regimes(
+        fitted_regime_sequence
+    )
 
     # create plots
     fig, ax = plt.subplots(1, 1, **matplotlib_options)
@@ -62,11 +85,11 @@ def plot_time_series_with_regime_panels(
         ax.set_xticks(ticks, time_labels[ticks])
 
     # Below uses alternating colors... we'll save this for HMM, so as to not falsely suggest correspondences.
-    markers = _make_markers(fitted_regime_sequence)
+    markers = _make_markers(fitted_regime_sequence_relabeled)
     alpha = 0.2  # transparency of the colored background
 
     for start, end in pairwise(markers):
-        k = fitted_regime_sequence[start]
+        k = fitted_regime_sequence_relabeled[start]
         # `axvspan` adds a vertical span (rectangle) across the Axes.
         ax.axvspan(xmin=max(0, start - 0.5), xmax=end - 0.5, facecolor=colors[k], alpha=alpha)
 

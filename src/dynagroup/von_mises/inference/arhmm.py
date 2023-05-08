@@ -65,7 +65,9 @@ def compute_log_emissions(angles: NumpyArray1D, params_by_regime: List[VonMisesP
 
 
 def estimate_von_mises_autoregression_params_separately_over_changepoint_segments(
-    angles: NumpyArray1D, changepoint_penalty: float = 10.0
+    angles: NumpyArray1D,
+    changepoint_penalty: float = 10.0,
+    verbose=True,
 ) -> List[VonMisesParams]:
     algo = rpt.Pelt(model="rbf").fit(angles)
     changepoints = algo.predict(pen=changepoint_penalty)
@@ -76,6 +78,8 @@ def estimate_von_mises_autoregression_params_separately_over_changepoint_segment
     C = len(changepoints)
     emissions_params_by_changepoint_clip = [None] * C
     for c in range(C):
+        if verbose:
+            print(f"Now estimating von mises parameters on changepoint.")
         start, end = markers[c], markers[c + 1]
         angles_clip = angles[start:end]
         params = estimate_von_mises_params(
@@ -191,6 +195,8 @@ def run_EM_for_von_mises_arhmm(
     # Inference
     ###
 
+    ar_coefs_prev, drifts_prev = [None] * K, [None] * K
+
     for i in range(num_EM_iterations):
         print(f"\n----Now running EM iteration {i}")
 
@@ -214,13 +220,18 @@ def run_EM_for_von_mises_arhmm(
             emissions_params_by_regime_learned[k] = estimate_von_mises_params(
                 angles,
                 VonMisesModelType.AUTOREGRESSION,
+                ar_coefs_prev[k],
+                drifts_prev[k],
                 sample_weights=posterior_summary.expected_regimes[:, k],
                 suppress_warnings=True,
             )
+
             if verbose:
                 print(
                     f"For regime {k}, the params after learning were {emissions_params_by_regime_learned[k]}."
                 )
+            ar_coefs_prev[k] = emissions_params_by_regime_learned[k].ar_coef
+            drifts_prev[k] = emissions_params_by_regime_learned[k].drift
 
         ### Transitions M-step
         tpm = compute_closed_form_M_step(posterior_summary)

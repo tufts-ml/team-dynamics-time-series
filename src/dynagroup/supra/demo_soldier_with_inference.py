@@ -18,13 +18,23 @@ from dynagroup.von_mises.util import degrees_to_radians
 
 ### Sample selection
 
+# start of contact: 9:18:50.  Around timestep 203100
+# end of contact 9:28:00.
+#
+# roughly (based on a single clip), 13 timesteps is about 1/10 of a second.
+# 20 timestep downsampling is good to get regimes that correspond to turning
+# directions and back in the clip below
+# t_start, t_end, t_every = 130000, 134000, 20
+# entity_idx = 2
+# num_regimes = 2
+#
 # t_start, t_end, t_every = 19000, 23000, 20
 # t_start, t_end, t_every = 130000, 134000, 20
-t_start, t_end, t_every = 130000, 150000, 20
+# t_start, t_end, t_every = 203100, 207100, 20
+t_start, t_end, t_every = 203100, 211100, 20
 entity_idx = 2
 
 ### Inference
-# num_regimes=2
 num_regimes = 4
 self_transition_prob_init = 0.995
 num_EM_iterations = 3

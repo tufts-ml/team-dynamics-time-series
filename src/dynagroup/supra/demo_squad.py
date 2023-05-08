@@ -49,10 +49,15 @@ heading_angles = degrees_to_radians(heading_angles_as_degrees)
 
 angles = heading_angles[t_start:t_end:t_every]
 security = np.asarray(df["SQUAD_SECURITY"])[t_start:t_end:t_every]
-security_N = np.asarray(df["SQUAD_SECURITYN"])[t_start:t_end:t_every]
-security_W = np.asarray(df["SQUAD_SECURITYW"])[t_start:t_end:t_every]
-security_E = np.asarray(df["SQUAD_SECURITYE"])[t_start:t_end:t_every]
-security_S = np.asarray(df["SQUAD_SECURITYS"])[t_start:t_end:t_every]
+
+# Per Lee Clifford Hancock's email on 5/8/23,
+# PLT1-3 need directional relabelings
+# (N to E, W to S, E to N, and S to W)
+
+security_E = np.asarray(df["SQUAD_SECURITYN"])[t_start:t_end:t_every]
+security_S = np.asarray(df["SQUAD_SECURITYW"])[t_start:t_end:t_every]
+security_N = np.asarray(df["SQUAD_SECURITYE"])[t_start:t_end:t_every]
+security_W = np.asarray(df["SQUAD_SECURITYS"])[t_start:t_end:t_every]
 data_dict = {
     "security_N": security_N,
     "security_W": security_W,

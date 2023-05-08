@@ -1,21 +1,24 @@
 import copy
-from typing import Optional
+from typing import List, Optional
 
+import matplotlib
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 from ruptures.utils import pairwise
 
-from dynagroup.types import NumpyArray1D
+from dynagroup.types import NumpyArray1D, NumpyArray2D
 
 
-color_names = ["windows blue", "red", "amber", "faded green"]
-colors = sns.xkcd_palette(color_names)
+COLOR_NAMES = ["windows blue", "red", "amber", "faded green", "dusty purple", "orange"]
+COLORS = sns.xkcd_palette(COLOR_NAMES)
 sns.set_style("white")
 sns.set_context("talk")
 
+MARKERS = list(matplotlib.markers.MarkerStyle.markers.keys())
 
-def _make_markers(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
+
+def _make_segments(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
     """
     Find changepoints, and if needed, append [0] at the beginning and the final timepoint at the end
 
@@ -23,12 +26,12 @@ def _make_markers(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
         fitted_regime_sequence, an array of length (T,) whose t-th entry is in {1,...,K}
     """
     changepoints = list(np.where(fitted_regime_sequence[1:] != fitted_regime_sequence[:-1])[0] + 1)
-    markers = changepoints
-    if 0 not in markers:
-        markers = [0] + markers
-    if len(fitted_regime_sequence) not in markers:
-        markers = markers + [len(fitted_regime_sequence)]
-    return markers
+    segments = changepoints
+    if 0 not in segments:
+        segments = [0] + segments
+    if len(fitted_regime_sequence) not in segments:
+        segments = segments + [len(fitted_regime_sequence)]
+    return segments
 
 
 # TODO: Handle this earlier up in the pipeline
@@ -47,15 +50,18 @@ def _relabel_regime_sequence_to_remove_unused_regimes(
 
 
 def plot_time_series_with_regime_panels(
-    series: NumpyArray1D,
+    series: NumpyArray2D,
     fitted_regime_sequence: NumpyArray1D,
     time_labels: Optional[NumpyArray1D] = None,
+    dim_labels: Optional[List[str]] = None,
     **kwargs
 ):
     """
     Display time series with regimes provided in background colors.
 
     Arguments:
+        series: array of shape (T,D)
+        dim_labels: List of D strings, one for each dimension
         **kwargs : all additional keyword arguments are passed to the plt.subplots call.
 
     Returns:
@@ -74,24 +80,41 @@ def plot_time_series_with_regime_panels(
         fitted_regime_sequence
     )
 
+    n_samples, n_dims = np.shape(series)
+
+    # construct dimension labels
+    if dim_labels is None:
+        dim_labels = [None] * n_dims
+
     # create plots
     fig, ax = plt.subplots(1, 1, **matplotlib_options)
 
-    n_samples = len(series)
-    ax.plot(range(n_samples), series, color="black")
+    for d in range(n_dims):
+        dim_color = "black" if d % 2 == 0 else "navy"
+        ax.plot(
+            range(n_samples),
+            series[:, d],
+            color=dim_color,
+            marker=MARKERS[d],
+            markersize=10,
+            label=dim_labels[d],
+        )
 
     if time_labels is not None:
         ticks = list(range(0, n_samples, int(n_samples / 8))) + [n_samples - 1]
         ax.set_xticks(ticks, time_labels[ticks])
 
     # Below uses alternating colors... we'll save this for HMM, so as to not falsely suggest correspondences.
-    markers = _make_markers(fitted_regime_sequence_relabeled)
+    segments = _make_segments(fitted_regime_sequence_relabeled)
     alpha = 0.2  # transparency of the colored background
 
-    for start, end in pairwise(markers):
+    for start, end in pairwise(segments):
         k = fitted_regime_sequence_relabeled[start]
         # `axvspan` adds a vertical span (rectangle) across the Axes.
-        ax.axvspan(xmin=max(0, start - 0.5), xmax=end - 0.5, facecolor=colors[k], alpha=alpha)
+        ax.axvspan(xmin=max(0, start - 0.5), xmax=end - 0.5, facecolor=COLORS[k], alpha=alpha)
+
+    if dim_labels[0] is not None:
+        plt.legend(loc="best")
 
     plt.tight_layout()
     return fig, ax

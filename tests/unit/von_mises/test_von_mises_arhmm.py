@@ -36,11 +36,18 @@ def test__run_EM_for_von_mises_arhmm():
     ###
 
     num_regimes = 2
-    self_transition_prob_init = 0.995
     num_EM_iterations = 3
+    init_self_transition_prob = 0.995
+    init_changepoint_penalty = 10.0
+    init_min_segment_size = 10
 
     posterior_summary, emissions_params_by_regime_learned, transitions = run_EM_for_von_mises_arhmm(
-        angles, num_regimes, self_transition_prob_init, num_EM_iterations
+        angles,
+        num_regimes,
+        num_EM_iterations,
+        init_self_transition_prob,
+        init_changepoint_penalty,
+        init_min_segment_size,
     )
 
     ####

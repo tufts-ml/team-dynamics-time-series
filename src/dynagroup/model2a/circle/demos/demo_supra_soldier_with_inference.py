@@ -6,7 +6,7 @@ np.set_printoptions(precision=3, suppress=True)
 
 from matplotlib import pyplot as plt
 
-from dynagroup.model2a.supra.directions import (
+from dynagroup.model2a.circle.directions import (
     LABELS_OF_DIRECTIONS,
     RADIANS_OF_DIRECTIONS,
 )
@@ -39,9 +39,10 @@ entity_idx = 2
 
 ### Inference
 num_regimes = 4
-self_transition_prob_init = 0.995
+init_self_transition_prob = 0.995
+init_changepoint_penalty = 10.0
+init_min_segment_size = 10
 num_EM_iterations = 3
-initialization_changepoint_penalty = 10
 
 
 ###
@@ -88,9 +89,10 @@ clock_times = clock_times_all[t_start:t_end:t_every]
 posterior_summary, emissions_params_by_regime_learned, transitions = run_EM_for_von_mises_arhmm(
     angles,
     num_regimes,
-    self_transition_prob_init,
     num_EM_iterations,
-    initialization_changepoint_penalty,
+    init_self_transition_prob,
+    init_changepoint_penalty,
+    init_min_segment_size,
 )
 
 ###

@@ -214,7 +214,7 @@ EntityTransitionParameters_JAX = Union[
 
 
 @dataclass
-class ContinuousStateParameters:
+class ContinuousStateParameters_Gaussian:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -235,7 +235,7 @@ class ContinuousStateParameters:
 
 
 @jdc.pytree_dataclass
-class ContinuousStateParameters_JAX:
+class ContinuousStateParameters_Gaussian_JAX:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -246,13 +246,56 @@ class ContinuousStateParameters_JAX:
     Notation:
         J: number of entities
         K: number of entity-level regimes
-        L: number of system-level regimes
         D: dimensionality of latent continuous state, x
     """
 
     As: JaxNumpyArray4D
     bs: JaxNumpyArray3D
     Qs: JaxNumpyArray4D
+
+
+@dataclass
+class ContinuousStateParameters_VonMises:
+    """
+    Attributes:
+        ar_coefs : has shape (J, K)
+        drifts : has shape (J, K)
+        kappas : has shape (J, K)
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    ar_coefs: JaxNumpyArray4D
+    drifts: JaxNumpyArray3D
+    kappas: JaxNumpyArray4D
+
+
+@jdc.pytree_dataclass
+class ContinuousStateParameters_VonMises_JAX:
+    """
+    Attributes:
+        ar_coefs : has shape (J, K)
+        drifts : has shape (J, K)
+        kappas : has shape (J, K)
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    ar_coefs: JaxNumpyArray4D
+    drifts: JaxNumpyArray3D
+    kappas: JaxNumpyArray4D
+
+
+ContinuousStateParameters = Union[
+    ContinuousStateParameters_Gaussian, ContinuousStateParameters_VonMises
+]
+ContinuousStateParameters_JAX = Union[
+    ContinuousStateParameters_Gaussian_JAX, ContinuousStateParameters_VonMises_JAX
+]
 
 
 @dataclass
@@ -612,7 +655,7 @@ def covariance_from_cholesky_nzvals_with_two_mapping_axes_JAX(batched):
 
 
 @jdc.pytree_dataclass
-class ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
+class ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -634,20 +677,20 @@ class ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
     cholesky_nzvals: JaxNumpyArray4D
 
 
-def CSP_with_unconstrained_covariances_from_ordinary_CSP(
-    CSP: ContinuousStateParameters_JAX,
-) -> ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
+def CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(
+    CSP: ContinuousStateParameters_Gaussian_JAX,
+) -> ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX:
     cholesky_nzvals = cholesky_nzvals_from_covariances_with_two_mapping_axes_JAX(CSP.Qs)
-    return ContinuousStateParameters_WithUnconstrainedCovariances_JAX(
+    return ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX(
         CSP.As, CSP.bs, cholesky_nzvals
     )
 
 
-def ordinary_CSP_from_CSP_with_unconstrained_covariances(
-    CSP_WUC: ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
-) -> ContinuousStateParameters_JAX:
+def ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
+    CSP_WUC: ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
+) -> ContinuousStateParameters_Gaussian_JAX:
     Qs = covariance_from_cholesky_nzvals_with_two_mapping_axes_JAX(CSP_WUC.cholesky_nzvals)
-    return ContinuousStateParameters_JAX(CSP_WUC.As, CSP_WUC.bs, Qs)
+    return ContinuousStateParameters_Gaussian_JAX(CSP_WUC.As, CSP_WUC.bs, Qs)
 
 
 ###

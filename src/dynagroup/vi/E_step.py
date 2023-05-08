@@ -1,3 +1,5 @@
+from typing import Optional
+
 import jax.numpy as jnp
 import numpy as np
 
@@ -80,6 +82,7 @@ def run_VES_step_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> HMM_Posterior_Summary_JAX:
     """
     Overview:
@@ -111,6 +114,7 @@ def run_VES_step_JAX(
             May come from a list of J HMM_Posterior_Summary instances created by the VEZ step.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
+        system_covariates : An optional array of shape (T, M_s)
 
 
     Notation:
@@ -125,7 +129,9 @@ def run_VES_step_JAX(
     L = len(IP.pi_system)
 
     # `transitions` is (T-1) x L x L
-    log_transitions = model.compute_log_system_transition_probability_matrices_JAX(STP, T - 1)
+    log_transitions = model.compute_log_system_transition_probability_matrices_JAX(
+        STP, T - 1, system_covariates
+    )
 
     # `inital_log_emission` has shape (L,)
     initial_log_emission_for_each_system_regime = jnp.sum(

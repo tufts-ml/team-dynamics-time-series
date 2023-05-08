@@ -1,6 +1,7 @@
 import functools
 import math
 import warnings
+from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import jax.numpy as jnp
@@ -17,8 +18,9 @@ from scipy.special import (  # modified bessel of first kind
 )
 from sklearn.linear_model import LinearRegression
 
-from dynagroup.types import NumpyArray1D
+from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.util import make_2d_rotation_JAX
+from dynagroup.von_mises.patches import try_pomegranate_model_up_to_n_times
 from dynagroup.von_mises.util import (
     force_angles_to_be_from_neg_pi_to_pi,
     points_from_angles,
@@ -469,6 +471,41 @@ def equation_whose_root_is_the_arctanh_ar_coef_MLE_given_drift(
     return weighted_sum
 
 
+@dataclass
+class GMM_Results:
+    num_components: int
+    log_like: float
+    responsibilities: Optional[NumpyArray2D] = None
+
+
+def fit_Gaussian(X, sample_weights):
+    """
+    Arguments:
+        X: array of size (T, D)
+        sample_weights: array of size (T,)
+    """
+    gmm1 = Normal().fit(X, sample_weight=sample_weights)
+    log_like = gmm1.log_probability(X).sum()
+    return GMM_Results(1, log_like)
+
+
+def fit_two_component_Gaussian_mixture(X, sample_weights) -> Optional[GMM_Results]:
+    """
+    Arguments:
+        X: array of size (T, D)
+        sample_weights: array of size (T,)
+    """
+    gmm2 = GeneralMixtureModel([Normal(), Normal()], init="random").fit(
+        X, sample_weight=sample_weights
+    )
+    if gmm2 is not None:
+        log_like = gmm2.log_probability(X).sum()
+        responsibilities = np.asarray(gmm2.predict_proba(X))
+        return GMM_Results(2, log_like, responsibilities)
+    else:
+        return None
+
+
 def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     angles: NumpyArray1D, sample_weights: NumpyArray1D
 ) -> Tuple[float, float]:
@@ -512,22 +549,23 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     # We add some noise b/c sometimes the inverse covariance matrix is singular, which causes an error to be raised
     # when fitting the 2-component Gaussian mixture.
 
-    noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.05
-    noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
+    # noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.05
+    # noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
 
     # Rk: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights
-    gmm1 = Normal().fit(noisy_X, sample_weight=noisy_sample_weights[1:])
-    ll_one_component = gmm1.log_probability(X).sum()
 
-    gmm2 = GeneralMixtureModel([Normal(), Normal()], init="first-k").fit(
-        noisy_X, sample_weight=noisy_sample_weights[1:]
+    gmm1_results = try_pomegranate_model_up_to_n_times(fit_Gaussian, n=10)(X, sample_weights[1:])
+    gmm2_results = try_pomegranate_model_up_to_n_times(fit_two_component_Gaussian_mixture, n=10)(
+        X, sample_weights[1:]
     )
-    ll_two_components = gmm2.log_probability(X).sum()
-    responsibilities = np.asarray(gmm2.predict_proba(X))
+    if gmm2_results is None:
+        gmm2_results = GMM_Results(2, -np.inf, None)
 
     # TODO: This is an arbitrary way to decide if there are 2 clusters. Come up with something more principled.
     THRESHOLD_IN_MEAN_LOG_LIKE_INCREASE_FROM_TWO_COMPONENTS = 0.25
-    mean_log_like_increase_from_two_components = (ll_two_components - ll_one_component) / T_minus_1
+    mean_log_like_increase_from_two_components = (
+        gmm2_results.log_like - gmm1_results.log_like
+    ) / T_minus_1
 
     there_are_two_clusters = (
         mean_log_like_increase_from_two_components
@@ -549,13 +587,13 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
             reg = LinearRegression().fit(
                 predictors[:, None],
                 responses,
-                sample_weight=sample_weights[1:] * responsibilities[:, k],
+                sample_weight=sample_weights[1:] * gmm2_results.responsibilities[:, k],
             )
             ar_coefs[k] = reg.coef_[0]
             drifts[k] = force_angles_to_be_from_neg_pi_to_pi(
                 reg.intercept_
             )  # may need to move into [-pi, pi] if outside of it.
-            n_effectives[k] = np.sum(responsibilities[:, k])
+            n_effectives[k] = np.sum(gmm2_results.responsibilities[:, k])
 
         cluster_weights = n_effectives / np.sum(n_effectives)
         ar_coef = np.sum(ar_coefs * cluster_weights)

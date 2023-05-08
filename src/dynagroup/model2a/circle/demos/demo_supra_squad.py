@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from dynagroup.model2a.supra.changepoints import make_changepoints_dict
-from dynagroup.model2a.supra.plot_changepoints import plot_changepoint_dict
+from dynagroup.model2a.circle.changepoints import make_changepoints_dict
+from dynagroup.model2a.circle.plot_changepoints import plot_changepoint_dict
 from dynagroup.von_mises.util import degrees_to_radians
 
 

@@ -19,9 +19,9 @@ from dynagroup.hmm_posterior import (
 from dynagroup.model import Model
 from dynagroup.params import (
     AllParameters_JAX,
-    CSP_with_unconstrained_covariances_from_ordinary_CSP,
+    CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian,
+    ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
     ContinuousStateParameters_JAX,
-    ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
     ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch,
     EntityTransitionParameters_JAX,
     EntityTransitionParameters_MetaSwitch_JAX,
@@ -30,14 +30,19 @@ from dynagroup.params import (
     STP_with_unconstrained_tpms_from_ordinary_STP,
     SystemTransitionParameters_JAX,
     SystemTransitionParameters_WithUnconstrainedTPMs_JAX,
-    ordinary_CSP_from_CSP_with_unconstrained_covariances,
+    ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances,
     ordinary_ETP_MetaSwitch_from_ETP_MetaSwitch_with_unconstrained_tpms,
     ordinary_STP_from_STP_with_unconstrained_tpms,
 )
 from dynagroup.sticky import (
     evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant,
 )
-from dynagroup.types import JaxNumpyArray3D, JaxNumpyArray5D, NumpyArray3D
+from dynagroup.types import (
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    JaxNumpyArray5D,
+    NumpyArray3D,
+)
 from dynagroup.util import (
     normalize_log_potentials_by_axis_JAX,
     normalize_potentials_by_axis_JAX,
@@ -295,16 +300,20 @@ def compute_expected_log_system_transitions_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
     Arguments:
         continuous_states: has shape (T, J, D)
+        system_covariates: has shape (T, M_d)
     """
     # `variational_probs` has shape (T-1,L,L); entry (t,l,l') gives q(s_{t+1}=l', s_t=1)
     variational_probs = VES_summary.expected_joints
     # ` log_transition_matrices` has shape (T-1,L,L)
     log_transition_matrices = model.compute_log_system_transition_probability_matrices_JAX(
-        STP, T_minus_1=np.shape(variational_probs)[0]
+        STP,
+        T_minus_1=np.shape(variational_probs)[0],
+        system_covariates=system_covariates,
     )
 
     return jnp.sum(variational_probs * log_transition_matrices)
@@ -355,9 +364,12 @@ def compute_objective_for_system_transition_parameters_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     # TODO: Combine with `compute_objective_for_entity_transition_parameters_JAX` ?
-    expected_log_transitions = compute_expected_log_system_transitions_JAX(STP, VES_summary, model)
+    expected_log_transitions = compute_expected_log_system_transitions_JAX(
+        STP, VES_summary, model, system_covariates
+    )
     if system_transition_prior is not None:
         log_prior = evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant(
             normalize_log_potentials_by_axis_JAX(STP.Pi, axis=1),
@@ -376,6 +388,7 @@ def compute_objective_for_system_transition_parameters_with_unconstrained_tpms_J
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     STP = ordinary_STP_from_STP_with_unconstrained_tpms(STP_WUC)
     return compute_objective_for_system_transition_parameters_JAX(
@@ -383,6 +396,7 @@ def compute_objective_for_system_transition_parameters_with_unconstrained_tpms_J
         VES_summary,
         system_transition_prior,
         model,
+        system_covariates,
     )
 
 
@@ -407,12 +421,12 @@ def compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX
 
 
 def compute_objective_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX(
-    CSP_WUC: ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
+    CSP_WUC: ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
 ) -> float:
-    CSP = ordinary_CSP_from_CSP_with_unconstrained_covariances(CSP_WUC)
+    CSP = ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(CSP_WUC)
     return compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX(
         CSP,
         continuous_states,
@@ -583,6 +597,49 @@ def run_M_step_for_STP_in_closed_form(
     return SystemTransitionParameters_JAX(STP.Gammas, STP.Upsilon, Pi_new)
 
 
+def run_M_step_for_STP_via_gradient_descent(
+    STP: SystemTransitionParameters_JAX,
+    VES_summary: HMM_Posterior_Summary_JAX,
+    system_transition_prior: Optional[SystemTransitionPrior_JAX],
+    iteration: int,
+    num_M_step_iters: int,
+    model: Model,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
+    verbose: bool = True,
+) -> SystemTransitionParameters_JAX:
+    ### Do gradient descent on unconstrained parameters.
+    STP_WUC = STP_with_unconstrained_tpms_from_ordinary_STP(STP)
+    cost_function_STP = functools.partial(
+        compute_objective_for_system_transition_parameters_with_unconstrained_tpms_JAX,
+        VES_summary=VES_summary,
+        system_transition_prior=system_transition_prior,
+        model=model,
+        system_covariates=system_covariates,
+    )
+
+    # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
+    # because we want to reset the EWMA now that we have new contextual information (here, VES_summary).
+    optimizer_state_for_system_transitions = None
+    (
+        STP_WUC_new,
+        optimizer_state_for_system_transitions,
+        losses_for_system_transitions,
+    ) = run_gradient_descent(
+        cost_function_STP,
+        STP_WUC,
+        optimizer_state=optimizer_state_for_system_transitions,
+        num_mstep_iters=num_M_step_iters,
+    )
+
+    STP_new = ordinary_STP_from_STP_with_unconstrained_tpms(STP_WUC_new)
+
+    if verbose:
+        print(
+            f"For iteration {iteration+1} of the M-step with system transitions, First 5 Losses are {losses_for_system_transitions[:5]}. Last 5 losses are {losses_for_system_transitions[-5:]}"
+        )
+    return STP_new
+
+
 def run_M_step_for_STP(
     all_params: AllParameters_JAX,
     M_step_toggles_STP: M_Step_Toggle_Value,
@@ -601,35 +658,15 @@ def run_M_step_for_STP(
     elif M_step_toggles_STP == M_Step_Toggle_Value.CLOSED_FORM:
         STP_new = run_M_step_for_STP_in_closed_form(all_params.STP, VES_summary)
     elif M_step_toggles_STP == M_Step_Toggle_Value.GRADIENT_DESCENT:
-        ### Do gradient descent on unconstrained parameters.
-        STP_WUC = STP_with_unconstrained_tpms_from_ordinary_STP(all_params.STP)
-        cost_function_STP = functools.partial(
-            compute_objective_for_system_transition_parameters_with_unconstrained_tpms_JAX,
-            VES_summary=VES_summary,
-            system_transition_prior=system_transition_prior,
-            model=model,
+        STP_new = run_M_step_for_STP_via_gradient_descent(
+            all_params.STP,
+            VES_summary,
+            system_transition_prior,
+            iteration,
+            num_M_step_iters,
+            model,
+            verbose,
         )
-
-        # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
-        # because we want to reset the EWMA now that we have new contextual information (here, VES_summary).
-        optimizer_state_for_system_transitions = None
-        (
-            STP_WUC_new,
-            optimizer_state_for_system_transitions,
-            losses_for_system_transitions,
-        ) = run_gradient_descent(
-            cost_function_STP,
-            STP_WUC,
-            optimizer_state=optimizer_state_for_system_transitions,
-            num_mstep_iters=num_M_step_iters,
-        )
-
-        STP_new = ordinary_STP_from_STP_with_unconstrained_tpms(STP_WUC_new)
-
-        if verbose:
-            print(
-                f"For iteration {iteration+1} of the M-step with system transitions, First 5 Losses are {losses_for_system_transitions[:5]}. Last 5 losses are {losses_for_system_transitions[-5:]}"
-            )
     else:
         raise ValueError(
             "I don't understand the specification for how to do the M-step with system transition parameters."
@@ -680,7 +717,9 @@ def run_M_step_for_CSP(
             f"that is, we should rely upon tensorflow.probability to convert covariance parameters to unconstrained representation and back."
         )
 
-        CSP_WUC = CSP_with_unconstrained_covariances_from_ordinary_CSP(all_params.CSP)
+        CSP_WUC = CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(
+            all_params.CSP
+        )
 
         cost_function_CSP = functools.partial(
             compute_objective_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX,
@@ -701,7 +740,9 @@ def run_M_step_for_CSP(
             num_mstep_iters=num_M_step_iters,
         )
 
-        CSP_new = ordinary_CSP_from_CSP_with_unconstrained_covariances(CSP_WUC_new)
+        CSP_new = ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
+            CSP_WUC_new
+        )
 
         print(
             f"For iteration {iteration+1} of the M-step with continuous state dynamics, First 5 Losses are {losses_for_state_dynamics[:5]}. Last 5 losses are {losses_for_state_dynamics[-5:]}"

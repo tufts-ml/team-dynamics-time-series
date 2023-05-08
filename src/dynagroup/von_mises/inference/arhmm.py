@@ -20,6 +20,7 @@ from dynagroup.von_mises.inference.ar import (
     VonMisesParams,
     estimate_von_mises_params,
 )
+from dynagroup.von_mises.patches import try_changepoint_initialization_n_times
 
 
 ###
@@ -67,8 +68,14 @@ def compute_log_emissions(angles: NumpyArray1D, params_by_regime: List[VonMisesP
 def estimate_von_mises_autoregression_params_separately_over_changepoint_segments(
     angles: NumpyArray1D,
     changepoint_penalty: float = 10.0,
+    min_segment_size: int = 0,
     verbose=True,
 ) -> List[VonMisesParams]:
+    """
+    Arguments:
+        min_segment_size: The minimum size for a changeppoint segment to be used for computing
+            von mises AR parameters.
+    """
     algo = rpt.Pelt(model="rbf").fit(angles)
     changepoints = algo.predict(pen=changepoint_penalty)
 
@@ -76,31 +83,38 @@ def estimate_von_mises_autoregression_params_separately_over_changepoint_segment
 
     # and estimate ARHMM to initialize params
     C = len(changepoints)
-    emissions_params_by_changepoint_clip = [None] * C
+    emissions_params_for_changepoint_clips_which_are_sufficiently_long_and_have_ar_coef_unit_interval = (
+        []
+    )
     for c in range(C):
         if verbose:
-            print(f"Now estimating von mises parameters on changepoint.")
+            print(f"Now estimating von mises parameters on segment found by changepoint detector.")
         start, end = markers[c], markers[c + 1]
-        angles_clip = angles[start:end]
-        params = estimate_von_mises_params(
-            angles_clip,
-            VonMisesModelType.AUTOREGRESSION,
-            suppress_warnings=True,
-        )
-        emissions_params_by_changepoint_clip[c] = params
-
-    return emissions_params_by_changepoint_clip
+        size = end - start
+        if size >= min_segment_size:
+            angles_clip = angles[start:end]
+            params = estimate_von_mises_params(
+                angles_clip,
+                VonMisesModelType.AUTOREGRESSION,
+                suppress_warnings=True,
+            )
+        if np.abs(params.ar_coef) <= 1.0:
+            emissions_params_for_changepoint_clips_which_are_sufficiently_long_and_have_ar_coef_unit_interval.append(
+                params
+            )
+    return emissions_params_for_changepoint_clips_which_are_sufficiently_long_and_have_ar_coef_unit_interval
 
 
 def smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
     angles: NumpyArray1D,
     num_regimes: int,
     changepoint_penalty: float = 10.0,
+    min_segment_size: int = 10,
     verbose: float = True,
 ) -> List[VonMisesParams]:
     params_by_changepoint_segment = (
         estimate_von_mises_autoregression_params_separately_over_changepoint_segments(
-            angles, changepoint_penalty
+            angles, changepoint_penalty, min_segment_size
         )
     )
     num_changepoint_segments = len(params_by_changepoint_segment)
@@ -161,9 +175,10 @@ def smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
 def run_EM_for_von_mises_arhmm(
     angles: NumpyArray1D,
     K: int,
-    self_transition_prob_init: float,
     num_EM_iterations: float,
-    initialization_changepoint_penalty: float = 10,
+    init_self_transition_prob: float,
+    init_changepoint_penalty: float = 10.0,
+    init_min_segment_size: int = 10,
     verbose: bool = True,
 ) -> Tuple[HMM_Posterior_Summary_NUMPY, List[VonMisesParams], NumpyArray2D]:
     """
@@ -178,16 +193,17 @@ def run_EM_for_von_mises_arhmm(
 
     T = len(angles)
 
-    emissions_params_by_regime_learned = (
-        smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
-            angles,
-            K,
-            changepoint_penalty=initialization_changepoint_penalty,
-        )
+    emissions_params_by_regime_learned = try_changepoint_initialization_n_times(
+        smart_initialize_emission_params_by_regime_for_von_mises_arhmm, n=5
+    )(
+        angles,
+        K,
+        changepoint_penalty=init_changepoint_penalty,
+        min_segment_size=init_min_segment_size,
     )
     log_emissions = compute_log_emissions(angles, emissions_params_by_regime_learned)
     init_dist_over_regimes = np.array([1] * K) / K  # or, more likely to be focused at start?
-    tpm = make_fixed_sticky_tpm(self_transition_prob_init, num_states=K)
+    tpm = make_fixed_sticky_tpm(init_self_transition_prob, num_states=K)
     transitions = np.tile(tpm[None, :, :], (T - 1, 1, 1))
     log_transitions = np.log(transitions)
 
@@ -195,10 +211,8 @@ def run_EM_for_von_mises_arhmm(
     # Inference
     ###
 
-    ar_coefs_prev, drifts_prev = [None] * K, [None] * K
-
     for i in range(num_EM_iterations):
-        print(f"\n----Now running EM iteration {i}")
+        print(f"\n----Now running EM iteration {i+1}/{num_EM_iterations}.")
 
         ###
         # E-step
@@ -220,8 +234,8 @@ def run_EM_for_von_mises_arhmm(
             emissions_params_by_regime_learned[k] = estimate_von_mises_params(
                 angles,
                 VonMisesModelType.AUTOREGRESSION,
-                ar_coefs_prev[k],
-                drifts_prev[k],
+                emissions_params_by_regime_learned[k].ar_coef,
+                emissions_params_by_regime_learned[k].drift,
                 sample_weights=posterior_summary.expected_regimes[:, k],
                 suppress_warnings=True,
             )
@@ -230,8 +244,6 @@ def run_EM_for_von_mises_arhmm(
                 print(
                     f"For regime {k}, the params after learning were {emissions_params_by_regime_learned[k]}."
                 )
-            ar_coefs_prev[k] = emissions_params_by_regime_learned[k].ar_coef
-            drifts_prev[k] = emissions_params_by_regime_learned[k].drift
 
         ### Transitions M-step
         tpm = compute_closed_form_M_step(posterior_summary)

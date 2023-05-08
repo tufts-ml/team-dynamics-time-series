@@ -268,6 +268,8 @@ def estimate_kappa_for_autoregression(
 def estimate_von_mises_params(
     angles: np.array,
     model_type: VonMisesModelType = VonMisesModelType.IID,
+    ar_coef_init: Optional[float] = None,
+    drift_angle_init: Optional[float] = None,
     sample_weights: Optional[np.array] = None,
     suppress_warnings: bool = False,
 ) -> VonMisesParams:
@@ -275,6 +277,12 @@ def estimate_von_mises_params(
     Arguments:
         angles: an np.array of shape (N,) where N is the number of examples.
             The n-th entry is in [-pi, pi]
+        ar_coef_init : If this and `drift_angle_init` are none, we use a smart initialization.
+            But when we are calling this as the M-step in an EM algo,
+            we have an init from the previous iteration.
+        drift_init : If this and `ar_coef_init` are none, we use a smart initialization.
+            But when we are calling this as the M-step in an EM algo,
+            we have an init from the previous iteration.
     """
 
     # Compute the ML estimate for the concentration parameter
@@ -308,6 +316,8 @@ def estimate_von_mises_params(
         drift, ar_coef = estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
             angles,
             num_coord_ascent_iterations=10,
+            ar_coef_init=ar_coef_init,
+            drift_angle_init=drift_angle_init,
             sample_weights=sample_weights,
             suppress_warnings=suppress_warnings,
         )
@@ -557,6 +567,8 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
 def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     angles: NumpyArray1D,
     num_coord_ascent_iterations: int,
+    ar_coef_init: Optional[float] = None,
+    drift_angle_init: Optional[float] = None,
     sample_weights: Optional[NumpyArray1D] = None,
     verbose=False,
     suppress_warnings=False,
@@ -594,12 +606,14 @@ def estimate_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     ###
     # Smart Init via Linear Regression
     ###
-
-    ar_coef, drift = smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
-        angles, sample_weights
-    )
-
-    print(f"After smart initialization: ar_coef:{ar_coef:.02f}, drift:{drift:.02f}")
+    # TODO: Do I just need the intercept from linear regression? If so that seems easier
+    if ar_coef_init is None or drift_angle_init is None:
+        ar_coef, drift = smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
+            angles, sample_weights
+        )
+        print(f"After smart initialization: ar_coef:{ar_coef:.02f}, drift:{drift:.02f}")
+    else:
+        ar_coef, drift = ar_coef_init, drift_angle_init
 
     ###
     # Do inference on drift (rotation angle) for Von Mises Random Walk with Drift

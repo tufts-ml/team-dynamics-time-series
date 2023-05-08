@@ -136,12 +136,14 @@ def smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
     # find the index of the maximum element in the distance matrix
     sorted_list_of_indices = _get_indices_for_largest_values_of_distance_matrix(distance_matrix)
     changepoint_segments_to_use = []
-    for segment_pair in sorted_list_of_indices:
-        for i in [0, 1]:
-            if segment_pair[i] not in changepoint_segments_to_use:
-                changepoint_segments_to_use.append(segment_pair[i])
+    changepoint_pairs = np.array(sorted_list_of_indices).T  # num changepoints x 2
 
-            if len(changepoint_segments_to_use) < num_regimes:
+    for changepoint_pair in changepoint_pairs:
+        for i in [0, 1]:
+            if changepoint_pair[i] not in changepoint_segments_to_use:
+                changepoint_segments_to_use.append(changepoint_pair[i])
+
+            if len(changepoint_segments_to_use) > num_regimes:
                 break
 
     params_by_regime = [None] * num_regimes
@@ -157,6 +159,7 @@ def run_EM_for_von_mises_arhmm(
     K: int,
     self_transition_prob_init: float,
     num_EM_iterations: float,
+    initialization_changepoint_penalty: float = 10,
     verbose: bool = True,
 ) -> Tuple[HMM_Posterior_Summary_NUMPY, List[VonMisesParams], NumpyArray2D]:
     """
@@ -175,7 +178,7 @@ def run_EM_for_von_mises_arhmm(
         smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
             angles,
             K,
-            changepoint_penalty=10.0,
+            changepoint_penalty=initialization_changepoint_penalty,
         )
     )
     log_emissions = compute_log_emissions(angles, emissions_params_by_regime_learned)

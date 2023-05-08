@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from matplotlib import cm, pyplot as plt
 from ruptures.utils import pairwise
@@ -22,7 +24,10 @@ def _make_markers(fitted_regime_sequence: NumpyArray1D) -> NumpyArray1D:
 
 
 def plot_time_series_with_regime_panels(
-    series: NumpyArray1D, fitted_regime_sequence: NumpyArray1D, **kwargs
+    series: NumpyArray1D,
+    fitted_regime_sequence: NumpyArray1D,
+    time_labels: Optional[NumpyArray1D] = None,
+    **kwargs
 ):
     """
     Display time series with regimes provided in background colors.
@@ -51,6 +56,10 @@ def plot_time_series_with_regime_panels(
 
     n_samples = len(series)
     ax.plot(range(n_samples), series, color="black")
+
+    if time_labels is not None:
+        ticks = list(range(0, n_samples, int(n_samples / 8))) + [n_samples - 1]
+        ax.set_xticks(ticks, time_labels[ticks])
 
     # Below uses alternating colors... we'll save this for HMM, so as to not falsely suggest correspondences.
     markers = _make_markers(fitted_regime_sequence)

@@ -1,0 +1,4 @@
+
+1.  This one gives the two dips to the north that I was talking about.
+t_start, t_end, t_every = 130000, 134000, 20
+entity_idx = 2

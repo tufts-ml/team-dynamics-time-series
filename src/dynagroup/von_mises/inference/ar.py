@@ -502,7 +502,7 @@ def smart_initialize_drift_angle_and_ar_coef_for_von_mises_ar_with_drift(
     # We add some noise b/c sometimes the inverse covariance matrix is singular, which causes an error to be raised
     # when fitting the 2-component Gaussian mixture.
 
-    noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.01
+    noisy_sample_weights = sample_weights + np.ones(len(sample_weights), dtype=np.float32) * 0.05
     noisy_X = X + np.random.normal(loc=0.0, scale=0.1, size=X.shape)
 
     # Rk: I wanted to just use sklearn, as per below, but sklearn's GaussianMixture().fit() method doesn't support sample weights

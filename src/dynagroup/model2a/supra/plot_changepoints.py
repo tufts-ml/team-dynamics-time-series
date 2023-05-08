@@ -3,8 +3,11 @@ from typing import Dict
 import numpy as np
 from matplotlib import pyplot as plt
 
-from dynagroup.supra.changepoints import SeriesAndChangePoints
-from dynagroup.supra.directions import LABELS_OF_DIRECTIONS, RADIANS_OF_DIRECTIONS
+from dynagroup.model2a.supra.changepoints import SeriesAndChangePoints
+from dynagroup.model2a.supra.directions import (
+    LABELS_OF_DIRECTIONS,
+    RADIANS_OF_DIRECTIONS,
+)
 
 
 COLOR_CYCLE = ["#4286f4", "#f44174"]

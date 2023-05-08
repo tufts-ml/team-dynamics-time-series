@@ -6,8 +6,11 @@ np.set_printoptions(precision=3, suppress=True)
 
 from matplotlib import pyplot as plt
 
+from dynagroup.model2a.supra.directions import (
+    LABELS_OF_DIRECTIONS,
+    RADIANS_OF_DIRECTIONS,
+)
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
-from dynagroup.supra.directions import LABELS_OF_DIRECTIONS, RADIANS_OF_DIRECTIONS
 from dynagroup.von_mises.inference.arhmm import run_EM_for_von_mises_arhmm
 from dynagroup.von_mises.util import degrees_to_radians
 

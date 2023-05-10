@@ -234,7 +234,7 @@ def run_M_step_for_IP_in_closed_form(
     return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
-def compute_variational_posterior_on_entity_transitions_JAX(
+def compute_variational_posterior_on_regime_triplets_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
 ) -> JaxNumpyArray5D:
@@ -269,7 +269,7 @@ def compute_expected_log_entity_transitions_JAX(
     Arguments:
         continuous_states: has shape (T, J, D)
     """
-    variational_probs = compute_variational_posterior_on_entity_transitions_JAX(
+    variational_probs = compute_variational_posterior_on_regime_triplets_JAX(
         VES_summary, VEZ_summaries
     )
     log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(

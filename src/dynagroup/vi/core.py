@@ -16,10 +16,10 @@ from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggles,
     M_step_toggles_from_strings,
     compute_elbo_decomposed,
-    run_M_step_for_CSP,
     run_M_step_for_ETP,
     run_M_step_for_IP,
     run_M_step_for_STP,
+    run_M_step_for_continuous_state_parameters,
 )
 from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
@@ -197,7 +197,7 @@ def run_CAVI_with_JAX(
             verbose,
         )
 
-        all_params = run_M_step_for_CSP(
+        all_params = run_M_step_for_continuous_state_parameters(
             all_params,
             M_step_toggles.CSP,
             VES_summary,

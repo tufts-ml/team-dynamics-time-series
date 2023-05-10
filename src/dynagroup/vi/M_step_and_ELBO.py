@@ -102,7 +102,7 @@ def compute_energy(
     energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states)
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
     energy_post_init_negated_and_divided_by_num_timesteps += (
-        compute_objective_for_system_transition_parameters_JAX(
+        compute_cost_for_system_transition_parameters_JAX(
             STP,
             VES_summary,
             system_transition_prior,
@@ -110,7 +110,7 @@ def compute_energy(
         )
     )
     energy_post_init_negated_and_divided_by_num_timesteps += (
-        compute_objective_for_entity_transition_parameters_JAX(
+        compute_cost_for_entity_transition_parameters_JAX(
             ETP,
             continuous_states,
             VES_summary,
@@ -120,7 +120,7 @@ def compute_energy(
     )
 
     energy_post_init_negated_and_divided_by_num_timesteps += (
-        compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX(
+        compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
             CSP,
             continuous_states,
             VEZ_summaries,
@@ -319,14 +319,21 @@ def compute_expected_log_system_transitions_JAX(
     return jnp.sum(variational_probs * log_transition_matrices)
 
 
-def compute_objective_for_entity_transition_parameters_JAX(
+def compute_cost_for_entity_transition_parameters_JAX(
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     continuous_states: JaxNumpyArray3D,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
 ) -> float:
-    # TODO: Combine with `compute_objective_for_system_transition_parameters_JAX` ?
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
+    # TODO: Combine with `compute_cost_for_system_transition_parameters_JAX` ?
     expected_log_transitions = compute_expected_log_entity_transitions_JAX(
         continuous_states,
         ETP,
@@ -342,15 +349,22 @@ def compute_objective_for_entity_transition_parameters_JAX(
     return -energy / DIMS.T
 
 
-def compute_objective_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
+def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
     ETP_WUC: EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX,
     continuous_states: JaxNumpyArray3D,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
 ) -> float:
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
     ETP = ordinary_ETP_MetaSwitch_from_ETP_MetaSwitch_with_unconstrained_tpms(ETP_WUC)
-    return compute_objective_for_entity_transition_parameters_JAX(
+    return compute_cost_for_entity_transition_parameters_JAX(
         ETP,
         continuous_states,
         VES_summary,
@@ -359,14 +373,21 @@ def compute_objective_for_entity_transition_parameters_with_unconstrained_tpms_J
     )
 
 
-def compute_objective_for_system_transition_parameters_JAX(
+def compute_cost_for_system_transition_parameters_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
     system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> float:
-    # TODO: Combine with `compute_objective_for_entity_transition_parameters_JAX` ?
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
+    # TODO: Combine with `compute_cost_for_entity_transition_parameters_JAX` ?
     expected_log_transitions = compute_expected_log_system_transitions_JAX(
         STP, VES_summary, model, system_covariates
     )
@@ -383,15 +404,22 @@ def compute_objective_for_system_transition_parameters_JAX(
     return -energy_non_constant / T
 
 
-def compute_objective_for_system_transition_parameters_with_unconstrained_tpms_JAX(
+def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
     STP_WUC: SystemTransitionParameters_WithUnconstrainedTPMs_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
     system_covariates: Optional[JaxNumpyArray2D] = None,
 ) -> float:
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
     STP = ordinary_STP_from_STP_with_unconstrained_tpms(STP_WUC)
-    return compute_objective_for_system_transition_parameters_JAX(
+    return compute_cost_for_system_transition_parameters_JAX(
         STP,
         VES_summary,
         system_transition_prior,
@@ -400,12 +428,19 @@ def compute_objective_for_system_transition_parameters_with_unconstrained_tpms_J
     )
 
 
-def compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX(
+def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
     CSP: ContinuousStateParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
 ) -> float:
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
     expected_log_state_dynamics = (
         compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
             CSP,
@@ -420,14 +455,21 @@ def compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX
     return -energy / T
 
 
-def compute_objective_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX(
+def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX(
     CSP_WUC: ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
 ) -> float:
+    """
+    The cost function is the negative of the energy, where the energy is the
+        expected log likelihood + log prior
+
+    Note that we only need the parts of the log likelihood and log prior that are
+    relevant to these particular parameters.
+    """
     CSP = ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(CSP_WUC)
-    return compute_objective_for_continuous_state_parameters_after_initial_timestep_JAX(
+    return compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
         CSP,
         continuous_states,
         VEZ_summaries,
@@ -485,7 +527,7 @@ def run_M_step_for_ETP_via_gradient_descent(
     ETP_WUC = ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch(ETP)
 
     cost_function_ETP = functools.partial(
-        compute_objective_for_entity_transition_parameters_with_unconstrained_tpms_JAX,
+        compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX,
         continuous_states=continuous_states,
         VES_summary=VES_summary,
         VEZ_summaries=VEZ_summaries,
@@ -610,7 +652,7 @@ def run_M_step_for_STP_via_gradient_descent(
     ### Do gradient descent on unconstrained parameters.
     STP_WUC = STP_with_unconstrained_tpms_from_ordinary_STP(STP)
     cost_function_STP = functools.partial(
-        compute_objective_for_system_transition_parameters_with_unconstrained_tpms_JAX,
+        compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX,
         VES_summary=VES_summary,
         system_transition_prior=system_transition_prior,
         model=model,
@@ -691,7 +733,7 @@ def run_M_step_for_STP(
     return all_params
 
 
-def run_M_step_for_CSP(
+def run_M_step_for_continuous_state_parameters(
     all_params: AllParameters_JAX,
     M_step_toggles_CSP: M_Step_Toggle_Value,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -722,7 +764,7 @@ def run_M_step_for_CSP(
         )
 
         cost_function_CSP = functools.partial(
-            compute_objective_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX,
+            compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX,
             continuous_states=continuous_states,
             VEZ_summaries=VEZ_summaries,
             model=model,

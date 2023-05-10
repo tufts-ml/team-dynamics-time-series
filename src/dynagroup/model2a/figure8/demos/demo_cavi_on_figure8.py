@@ -81,7 +81,7 @@ n_iterations = 10
 init_to_true_params = True
 M_step_toggle_for_STP = "closed_form"
 M_step_toggle_for_ETP = "gradient_descent"
-M_step_toggle_for_CSP = "closed_form"
+M_step_toggle_for_continuous_state_parameters = "closed_form"
 M_step_toggle_for_IP = "closed_form"
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
@@ -216,7 +216,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
-        M_step_toggle_for_CSP,
+        M_step_toggle_for_continuous_state_parameters,
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,

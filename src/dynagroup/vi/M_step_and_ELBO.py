@@ -213,7 +213,7 @@ def M_step_toggles_from_strings(
 ###
 
 
-def run_M_step_for_init_params_JAX(
+def run_M_step_for_IP_in_closed_form(
     IP: InitializationParameters_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -477,7 +477,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
     )
 
 
-def run_M_step_in_closed_form_for_continuous_state_params_JAX(
+def run_M_step_for_CSP_in_closed_form(
     VEZ_summaries: HMM_Posterior_Summaries_JAX, continuous_states: JaxNumpyArray3D
 ) -> ContinuousStateParameters_JAX:
     """
@@ -733,7 +733,7 @@ def run_M_step_for_STP(
     return all_params
 
 
-def run_M_step_for_continuous_state_parameters(
+def run_M_step_for_CSP(
     all_params: AllParameters_JAX,
     M_step_toggles_CSP: M_Step_Toggle_Value,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -749,9 +749,7 @@ def run_M_step_for_continuous_state_parameters(
         print("Skipping M-step for CSP, as requested.")
         return all_params
     elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM:
-        CSP_new = run_M_step_in_closed_form_for_continuous_state_params_JAX(
-            VEZ_summaries, continuous_states
-        )
+        CSP_new = run_M_step_for_CSP_in_closed_form(VEZ_summaries, continuous_states)
     elif M_step_toggles_CSP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         warnings.warn(
             f"Learning the CSP parameters by gradient descent.  Performance seems to be worse than with the closed-form approach. "
@@ -828,7 +826,7 @@ def run_M_step_for_IP(
         print("Skipping M-step for IP, as requested.")
         return all_params
     elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM:
-        IP_new = run_M_step_for_init_params_JAX(
+        IP_new = run_M_step_for_IP_in_closed_form(
             all_params.IP,
             VEZ_summaries,
             VES_summary,

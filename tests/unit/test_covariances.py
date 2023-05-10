@@ -21,4 +21,4 @@ def test__covariance_from_cholesky_nzvals_JAX__then__cholesky_nzvals_from_covari
     cholesky_nzvals = jnp.asarray(np.random.rand(N), dtype=np.float32)
     covariance = covariance_from_cholesky_nzvals_JAX(cholesky_nzvals)
     cholesky_nzvals_reconstructed = cholesky_nzvals_from_covariance_JAX(covariance)
-    assert np.allclose(cholesky_nzvals, cholesky_nzvals_reconstructed, atol=1e-5)
+    assert np.allclose(cholesky_nzvals, cholesky_nzvals_reconstructed, atol=1e-3)

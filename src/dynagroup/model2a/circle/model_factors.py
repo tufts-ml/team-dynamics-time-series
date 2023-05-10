@@ -7,7 +7,7 @@ from dynagroup.model import Model
 from dynagroup.params import (
     ContinuousStateParameters_VonMises_JAX,
     EntityTransitionParameters_JAX,
-    InitializationParameters_With_VonMises_Emissions_JAX,
+    InitializationParameters_VonMises_JAX,
     SystemTransitionParameters_JAX,
 )
 from dynagroup.types import (
@@ -168,7 +168,7 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
 
 
 def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
-    IP: InitializationParameters_With_VonMises_Emissions_JAX,
+    IP: InitializationParameters_VonMises_JAX,
     group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
 ):
     """

@@ -21,7 +21,7 @@ from dynagroup.model2a.figure8.initialize import (
 from dynagroup.params import (
     ContinuousStateParameters_VonMises_JAX,
     Dims,
-    InitializationParameters_With_VonMises_Emissions_JAX,
+    InitializationParameters_VonMises_JAX,
     SystemTransitionParameters_JAX,
 )
 from dynagroup.types import JaxNumpyArray2D, NumpyArray2D, NumpyArray3D
@@ -73,14 +73,12 @@ def make_data_free_initialization_of_STP_JAX(
 
 def make_data_free_initialization_of_IP_JAX(
     DIMS,
-) -> InitializationParameters_With_VonMises_Emissions_JAX:
+) -> InitializationParameters_VonMises_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
     pi_entities = np.ones((DIMS.J, DIMS.K)) / DIMS.K
     locs = jnp.zeros((DIMS.J, DIMS.K))
     kappas = jnp.ones((DIMS.J, DIMS.K))
-    return InitializationParameters_With_VonMises_Emissions_JAX(
-        pi_system, pi_entities, locs, kappas
-    )
+    return InitializationParameters_VonMises_JAX(pi_system, pi_entities, locs, kappas)
 
 
 ###
@@ -190,7 +188,7 @@ def fit_ARHMM_to_top_half_of_model(
     EZ_summaries: HMM_Posterior_Summaries_JAX,
     system_covariates: NumpyArray2D,
     model: Model,
-    IP_JAX: InitializationParameters_With_VonMises_Emissions_JAX,
+    IP_JAX: InitializationParameters_VonMises_JAX,
     num_EM_iterations: int,
     num_M_step_iterations_for_ETP_gradient_descent: int,
     num_M_step_iterations_for_STP_gradient_descent: int,

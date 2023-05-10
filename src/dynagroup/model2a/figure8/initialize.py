@@ -22,11 +22,11 @@ from dynagroup.model2a.figure8.model_factors import (
     compute_log_entity_transition_probability_matrices_JAX,
 )
 from dynagroup.params import (
-    ContinuousStateParameters_JAX,
+    ContinuousStateParameters_Gaussian_JAX,
     Dims,
     EmissionsParameters_JAX,
     EntityTransitionParameters_MetaSwitch_JAX,
-    InitializationParameters_JAX,
+    InitializationParameters_Gaussian_JAX,
     SystemTransitionParameters_JAX,
 )
 from dynagroup.types import JaxNumpyArray3D, NumpyArray3D
@@ -36,8 +36,8 @@ from dynagroup.vi.E_step import (
     run_VES_step_JAX,
 )
 from dynagroup.vi.M_step_and_ELBO import (
-    run_M_step_for_CSP_in_closed_form,
     run_M_step_for_ETP_via_gradient_descent,
+    run_M_step_for_Gaussian_CSP_in_closed_form,
     run_M_step_for_STP_in_closed_form,
 )
 
@@ -50,12 +50,12 @@ from dynagroup.vi.M_step_and_ELBO import (
 # TODO: Make Enum: "random", "fixed", "tpm_only", etc.
 
 
-def make_data_free_initialization_of_IP_JAX(DIMS) -> InitializationParameters_JAX:
+def make_data_free_initialization_of_IP_JAX(DIMS) -> InitializationParameters_Gaussian_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
     pi_entities = np.ones((DIMS.J, DIMS.K)) / DIMS.K
     mu_0s = jnp.zeros((DIMS.J, DIMS.K, DIMS.D))
     Sigma_0s = jnp.tile(jnp.eye(DIMS.D), (DIMS.J, DIMS.K, 1, 1))
-    return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, Sigma_0s)
+    return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, Sigma_0s)
 
 
 def make_tpm_only_initialization_of_STP_JAX(
@@ -116,7 +116,7 @@ def make_tpm_only_initialization_of_ETP_JAX(
 
 def make_kmeans_initialization_of_CSP_JAX(
     DIMS: Dims, continuous_states: JaxNumpyArray3D
-) -> ContinuousStateParameters_JAX:
+) -> ContinuousStateParameters_Gaussian_JAX:
     """
     We fit the bias terms (CSP.bs) using the cluster centers from a K-means algorithm.
     The state matrices (CSP.As) are initialized at 0.
@@ -149,7 +149,7 @@ def make_kmeans_initialization_of_CSP_JAX(
             bs[j, :, :] = jnp.array(km.cluster_centers_)
     bs = jnp.asarray(bs)
 
-    return ContinuousStateParameters_JAX(As, bs, Qs)
+    return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
 
 
 def make_data_free_initialization_of_EP_JAX(
@@ -171,9 +171,9 @@ def make_data_free_initialization_of_EP_JAX(
 
 def fit_ARHMM_to_bottom_half_of_model(
     continuous_states: JaxNumpyArray3D,
-    CSP_JAX: ContinuousStateParameters_JAX,
+    CSP_JAX: ContinuousStateParameters_Gaussian_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
-    IP_JAX: InitializationParameters_JAX,
+    IP_JAX: InitializationParameters_Gaussian_JAX,
     model: Model,
     num_EM_iterations: int,
 ) -> ResultsFromBottomHalfInit:
@@ -239,7 +239,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         # M-step (for CSP)
         ###
 
-        CSP_JAX = run_M_step_for_CSP_in_closed_form(EZ_summaries, continuous_states)
+        CSP_JAX = run_M_step_for_Gaussian_CSP_in_closed_form(EZ_summaries, continuous_states)
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
 
 
@@ -252,7 +252,7 @@ def fit_ARHMM_to_top_half_of_model(
     continuous_states: NumpyArray3D,
     STP_JAX: SystemTransitionParameters_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
-    IP_JAX: InitializationParameters_JAX,
+    IP_JAX: InitializationParameters_Gaussian_JAX,
     EZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
     num_EM_iterations: int,

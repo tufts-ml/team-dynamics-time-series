@@ -36,9 +36,9 @@ from dynagroup.vi.E_step import (
     run_VES_step_JAX,
 )
 from dynagroup.vi.M_step_and_ELBO import (
+    run_M_step_for_CSP_in_closed_form,
     run_M_step_for_ETP_via_gradient_descent,
     run_M_step_for_STP_in_closed_form,
-    run_M_step_in_closed_form_for_continuous_state_params_JAX,
 )
 
 
@@ -239,9 +239,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         # M-step (for CSP)
         ###
 
-        CSP_JAX = run_M_step_in_closed_form_for_continuous_state_params_JAX(
-            EZ_summaries, continuous_states
-        )
+        CSP_JAX = run_M_step_for_CSP_in_closed_form(EZ_summaries, continuous_states)
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
 
 

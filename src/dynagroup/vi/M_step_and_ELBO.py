@@ -209,29 +209,13 @@ def M_step_toggles_from_strings(
 
 
 ###
-# The M-step
+# Compute costs
 ###
 
-
-def run_M_step_for_IP_in_closed_form(
-    IP: InitializationParameters_JAX,
-    VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    VES_summary: HMM_Posterior_Summary_JAX,
-    continuous_states: JaxNumpyArray3D,
-) -> InitializationParameters_JAX:
-    EPSILON = 1e-3
-    # These are set to be the values that minimize the cross-entropy, plus some noise
-    pi_system = normalize_potentials_by_axis_JAX(VES_summary.expected_regimes[0] + EPSILON, axis=0)
-    pi_entities = normalize_potentials_by_axis_JAX(
-        VEZ_summaries.expected_regimes[0] + EPSILON, axis=1
-    )
-
-    K = jnp.shape(pi_entities)[1]
-
-    # set mu_0s to be equal to observed x's.
-    mu_0s = jnp.tile(continuous_states[0][:, None, :], (1, K, 1))
-    # keep Sigma_0s to tbe the same as initialized... not clear how to learn these
-    return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
+# These costs are used for two things:
+#   1) For parameter optimization
+#   2) For computing the ELBO (the negative cost gives that model subcomponent's
+#       contribution to the expected log likelihood)
 
 
 def compute_variational_posterior_on_regime_triplets_JAX(
@@ -475,6 +459,11 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
         VEZ_summaries,
         model,
     )
+
+
+###
+# Run M-steps
+###
 
 
 def run_M_step_for_CSP_in_closed_form(
@@ -809,6 +798,27 @@ def run_M_step_for_CSP(
             f"After CSP-M step on iteration {iteration+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
         )
     return all_params
+
+
+def run_M_step_for_IP_in_closed_form(
+    IP: InitializationParameters_JAX,
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    VES_summary: HMM_Posterior_Summary_JAX,
+    continuous_states: JaxNumpyArray3D,
+) -> InitializationParameters_JAX:
+    EPSILON = 1e-3
+    # These are set to be the values that minimize the cross-entropy, plus some noise
+    pi_system = normalize_potentials_by_axis_JAX(VES_summary.expected_regimes[0] + EPSILON, axis=0)
+    pi_entities = normalize_potentials_by_axis_JAX(
+        VEZ_summaries.expected_regimes[0] + EPSILON, axis=1
+    )
+
+    K = jnp.shape(pi_entities)[1]
+
+    # set mu_0s to be equal to observed x's.
+    mu_0s = jnp.tile(continuous_states[0][:, None, :], (1, K, 1))
+    # keep Sigma_0s to tbe the same as initialized... not clear how to learn these
+    return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
 def run_M_step_for_IP(

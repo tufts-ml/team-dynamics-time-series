@@ -225,6 +225,53 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     return expected_log_transition_matrices
 
 
+def compute_log_continuous_state_emissions_JAX(
+    CSP: ContinuousStateParameters_JAX,
+    IP: InitializationParameters_JAX,
+    continuous_states: JaxNumpyArray3D,
+    model: Model,
+):
+    f"""
+    Compute the log (autoregressive, switching) emissions for the continuous states, where we we must combine:
+        initial continuous state emission:  x_0^j | z_0 =k
+        remaining continuous state emission:  x_t^j | x_(t-1)^j, z_t =k
+    for entity-level regimes k=1,...,K and entities j=1,...,J
+
+    Arguments:
+        continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
+            in R^D
+
+    Returns:
+        np.array of shape (T,J,K), where the (t,j,k)-th element gives the log emissions
+        probability of the t-th continuous state (given the (t-1)-st continuous state)
+        for the j-th entity while in the k-th entity-level regime.
+
+    Notation:
+        T: number of timesteps
+        J: number of entities
+        L: number of system-level regimes
+        K: number of entity-level regimes
+        D: dimension of continuous states
+    """
+
+    ### Initial times
+    log_pdfs_init_time = model.compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+        IP,
+        continuous_states,
+    )
+    #### Remaining times
+    log_pdfs_remaining_times = (
+        model.compute_log_continuous_state_emissions_after_initial_timestep_JAX(
+            CSP, continuous_states
+        )
+    )
+
+    ### Combine them
+    log_emissions = jnp.vstack((log_pdfs_init_time[None, :, :], log_pdfs_remaining_times))
+
+    return log_emissions
+
+
 def run_VEZ_step_JAX(
     CSP: ContinuousStateParameters_JAX,
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
@@ -282,7 +329,6 @@ def run_VEZ_step_JAX(
         CSP,
         IP,
         continuous_states,
-        model.compute_log_continuous_state_emissions_at_initial_timestep_JAX,
-        model.compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+        model,
     )
     return compute_hmm_posterior_summaries_JAX(log_transitions, log_state_emissions, IP.pi_entities)

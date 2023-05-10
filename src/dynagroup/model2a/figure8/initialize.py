@@ -19,7 +19,6 @@ from dynagroup.initialize import (
 )
 from dynagroup.model import Model
 from dynagroup.model2a.figure8.model_factors import (
-    compute_log_continuous_state_emissions_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
 )
 from dynagroup.params import (
@@ -32,7 +31,10 @@ from dynagroup.params import (
 )
 from dynagroup.types import JaxNumpyArray3D, NumpyArray3D
 from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step import run_VES_step_JAX
+from dynagroup.vi.E_step import (
+    compute_log_continuous_state_emissions_JAX,
+    run_VES_step_JAX,
+)
 from dynagroup.vi.M_step_and_ELBO import (
     run_M_step_for_ETP_via_gradient_descent,
     run_M_step_for_STP_in_closed_form,
@@ -194,11 +196,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         # Get ingredients for HMM.
         ###
         log_state_emissions = compute_log_continuous_state_emissions_JAX(
-            CSP_JAX,
-            IP_JAX,
-            continuous_states,
-            model.compute_log_continuous_state_emissions_at_initial_timestep_JAX,
-            model.compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+            CSP_JAX, IP_JAX, continuous_states, model
         )
         log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,

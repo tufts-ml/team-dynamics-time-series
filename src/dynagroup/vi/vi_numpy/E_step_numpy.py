@@ -8,9 +8,9 @@ from dynagroup.hmm_posterior import (
     compute_hmm_posterior_summary_NUMPY,
 )
 from dynagroup.model2a.figure8.model_factors import (
-    compute_log_continuous_state_emissions,
-    compute_log_entity_transition_probability_matrices,
-    compute_log_system_transition_probability_matrices,
+    compute_log_continuous_state_emissions_NUMPY,
+    compute_log_entity_transition_probability_matrices_NUMPY,
+    compute_log_system_transition_probability_matrices_NUMPY,
 )
 from dynagroup.params import (
     ContinuousStateParameters,
@@ -57,7 +57,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
         D: dimension of continuous states
     """
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
-    log_transition_matrices = compute_log_entity_transition_probability_matrices(
+    log_transition_matrices = compute_log_entity_transition_probability_matrices_NUMPY(
         ETP,
         continuous_states,
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
@@ -136,7 +136,7 @@ def run_VES_step_NUMPY(
     L = len(init_dist_over_system_regimes)
 
     # `transitions` is (T-1) x L x L
-    log_transitions = compute_log_system_transition_probability_matrices(STP, T)
+    log_transitions = compute_log_system_transition_probability_matrices_NUMPY(STP, T)
 
     # `log_emissions_for_each_entity_after_initial_time` is T x J x L.. We need to collapse the J; emissions are independent over J.
     log_emissions_for_each_entity_after_initial_time = (
@@ -196,7 +196,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     """
 
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
-    log_transition_matrices = compute_log_entity_transition_probability_matrices(
+    log_transition_matrices = compute_log_entity_transition_probability_matrices_NUMPY(
         ETP,
         continuous_states,
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix,
@@ -275,7 +275,7 @@ def run_VEZ_step_NUMPY(
     # TODO: Below this is where I left off.  It's copy pasta'd!
 
     # log_state_emissions has shape (T,J,K)
-    log_state_emissions = compute_log_continuous_state_emissions(CSP, IP, continuous_states)
+    log_state_emissions = compute_log_continuous_state_emissions_NUMPY(CSP, IP, continuous_states)
 
     return compute_hmm_posterior_summaries_NUMPY(
         log_transitions, log_state_emissions, init_dists_over_entity_regimes

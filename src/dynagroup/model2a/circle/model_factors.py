@@ -1,17 +1,21 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import jax.numpy as jnp
-import numpy as np
-from jax.scipy.stats import multivariate_normal as mvn_JAX
+from scipy.stats import vonmises as vonmises
 
 from dynagroup.model import Model
 from dynagroup.params import (
-    ContinuousStateParameters_JAX,
+    ContinuousStateParameters_VonMises_JAX,
     EntityTransitionParameters_JAX,
-    InitializationParameters_JAX,
+    InitializationParameters_With_VonMises_Emissions_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray1D, JaxNumpyArray3D, JaxNumpyArray5D
+from dynagroup.types import (
+    JaxNumpyArray1D,
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    JaxNumpyArray5D,
+)
 from dynagroup.util import normalize_log_potentials_by_axis_JAX
 
 
@@ -103,151 +107,79 @@ def compute_log_entity_transition_probability_matrices_JAX(
     return jnp.tile(ETP_JAX.Ps, (T_minus_1, 1, 1, 1, 1))  # (T-1, J, L, K, K)
 
 
-def compute_log_continuous_state_emissions_JAX(
-    CSP: ContinuousStateParameters_JAX,
-    IP: InitializationParameters_JAX,
-    continuous_states: JaxNumpyArray3D,
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable,
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable,
-):
-    """
-    Compute the log (autoregressive, switching) emissions for the continuous states, where we have
-        x_0^j ~ N( mu_0[j,k], Sigma_0[j,k] )
-        x_t^j ~ N( A[j,k] @ x_{t-1}^j + b[j,k] , Q[j,k] )
-    for entity-level regimes k=1,...,K and entities j=1,...,J
-
-    Arguments:
-        continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
-
-    Returns:
-        np.array of shape (T,J,K), where the (t,j,k)-th element gives the log emissions
-        probability of the t-th continuous state (given the (t-1)-st continuous state)
-        for the j-th entity while in the k-th entity-level regime.
-
-    Notation:
-        T: number of timesteps
-        J: number of entities
-        L: number of system-level regimes
-        K: number of entity-level regimes
-        D: dimension of continuous states
-    """
-
-    ### Initial times
-    # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    log_pdfs_init_time = compute_log_continuous_state_emissions_at_initial_timestep_JAX(
-        IP,
-        continuous_states,
-    )
-
-    # Pre-vectorized version for clarity
-    # for j in range(J):
-    #     for k in range(K):
-    #         # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    #         mu_0, Sigma_0 = IP.mu_0s[j, k], IP.Sigma_0s[j, k]
-    #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
-
-    #### Remaining times
-    log_pdfs_remaining_times = compute_log_continuous_state_emissions_after_initial_timestep_JAX(
-        CSP, continuous_states
-    )
-
-    # Pre-vectorized version for clarity
-    # for t in range(1, T):
-    #     for j in range(J):import numpy as np
-    #         for k in range(K):
-    #             # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    #             mu_t = CSP.As[j, k] @ continuous_states[t - 1, j] + CSP.bs[j, k]
-    #             Sigma_t = CSP.Qs[j, k]
-    #             log_emissions.at[t, j, k].set(mvn_JAX.logpdf(continuous_states[t, j], mu_t, Sigma_t))
-
-    log_emissions = jnp.vstack((log_pdfs_init_time[None, :, :], log_pdfs_remaining_times))
-
-    return log_emissions
-
-
 def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
-    CSP: ContinuousStateParameters_JAX,
-    continuous_states: JaxNumpyArray3D,
+    CSP: ContinuousStateParameters_VonMises_JAX,
+    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
 ) -> JaxNumpyArray3D:
     """
     Compute the log (autoregressive, switching) emissions for the continuous states, where we have
-        x_t^j ~ N( A[j,k] @ x_{t-1}^j + b[j,k] , Q[j,k] )
+        x_t^j ~ VM( ar_coefs[j,k] @ x_{t-1}^j + drift[j,k] , kappa[j,k] )
     for entity-level regimes k=1,...,K and entities j=1,...,J
 
     Note that we do NOT include the initial state
-        x_0^j ~ N( mu_0[j,k], Sigma_0[j,k] )
+        x_0^j ~ ????
     which is computed elsewhere.
 
     Arguments:
-        continuous_states : array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
+        group_angles : array of shape (T,J) or (T,J,1) where the (t,j)-th entry is an angle in [-pi,pi]
 
     Returns:
         array of shape (T-1,J,K), where the (t,j,k)-th element gives the log emissions
-        probability of the (t+1)-st continuous state (given the (t)-th continuous state)
+        probability of the (t+1)-st angle (given the (t)-th angle)
         for the j-th entity while in the k-th entity-level regime.
 
     Notation:
         T: number of timesteps
         J: number of entities
-        L: number of system-level regimes
         K: number of entity-level regimes
-        D: dimension of continuous states
     """
-    T = len(continuous_states)
-    K = np.shape(CSP.As)[1]
+    # force there to be a third array dimensions for D
+    T, J = jnp.shape(group_angles)[:2]
+    K = jnp.shape(CSP.ar_coefs)[1]
+    group_angles = group_angles.reshape((T, J))  # throw away D=1 axis dimension if it exists.
 
-    #### Remaining times
-    # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    # TODO: DO I need to tile the covs and the continuous states?
     means_after_initial_timestep = jnp.einsum(
-        "jkde,tje->tjkd", CSP.As, continuous_states[:-1]
-    )  # (T-1,J,K,D)
-    means_after_initial_timestep += CSP.bs[None, :, :, :]
-    covs_after_initial_timestep = jnp.tile(CSP.Qs, (T - 1, 1, 1, 1, 1))  # (T-1,J,K,D, D)
-    continuous_states_after_initial_timestep_axes_poorly_ordered = jnp.tile(
-        continuous_states[1:], (K, 1, 1, 1)
-    )  # (K,T-1,J,D)
-    continuous_states_after_initial_timestep = jnp.moveaxis(
-        continuous_states_after_initial_timestep_axes_poorly_ordered,
+        "jk,tj->tjk", CSP.ar_coefs, group_angles[:-1]
+    )  # (T-1,J,K)
+    means_after_initial_timestep += CSP.drifts[None, :, :]
+    concentrations_after_initial_timestep = jnp.tile(CSP.kappas, (T - 1, 1, 1))  # (T-1,J,K)
+
+    group_angles_after_initial_timestep_axes_poorly_ordered = jnp.tile(
+        group_angles[1:], (K, 1, 1)
+    )  # (K,T-1,J)
+    group_angles_after_initial_timestep = jnp.moveaxis(
+        group_angles_after_initial_timestep_axes_poorly_ordered,
         [0, 1, 2],
         [2, 0, 1],
-    )  # WANT: (T_1,J,K,D)
-    log_pdfs_after_initial_timestep = mvn_JAX.logpdf(
-        continuous_states_after_initial_timestep,
-        means_after_initial_timestep,
-        covs_after_initial_timestep,
+    )  # WANT: (T_1,J,K)
+
+    # The jax version of the `vonmises.logpdf` function gives
+    #   TypeError: logpdf() takes 2 positional arguments but 3 were given
+    # Using the numpy version doesn't seem to be slow, so I guess we'll go with that?
+    # Hopefully we won't run into autodiff problems, but I'm running my own code
+    # for the M-step so hopefully it will be ok
+    log_pdfs_after_initial_timestep = vonmises.logpdf(
+        group_angles_after_initial_timestep,
+        concentrations_after_initial_timestep,
+        loc=means_after_initial_timestep,
     )
-
-    # Pre-vectorized version for clarity
-    # for t in range(1, T):
-    #     for j in range(J):
-    #         for k in range(K):
-    #             # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    #             mu_t = CSP.As[j, k] @ continuous_states[t - 1, j] + CSP.bs[j, k]
-    #             Sigma_t = CSP.Qs[j, k]
-    #             log_emissions.at[t, j, k].set(mvn_JAX.logpdf(continuous_states[t, j], mu_t, Sigma_t))
-
-    # log_emissions = jnp.vstack(
-    #     (log_pdfs_init_time[None, :, :], log_pdfs_remaining_times)
-    # )
 
     return log_pdfs_after_initial_timestep
 
 
 def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
-    IP: InitializationParameters_JAX,
-    continuous_states: JaxNumpyArray3D,
+    IP: InitializationParameters_With_VonMises_Emissions_JAX,
+    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
 ):
     """
     Compute the log (autoregressive, switching) emissions for the continuous states at the INITIAL timestep
-        x_0^j ~ N( mu_0[j,k], Sigma_0[j,k] )
+        x_0^j ~ VM( loc[j,k], kappa[j,k] )
     for entity-level regimes k=1,...,K and entities j=1,...,J
 
+    For now, we are just emitting equal numbers for all J,K.  See remark.
+
     Arguments:
-        continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
+        group_angles : array of shape (T,J) or (T,J,1) where the (t,j)-th entry is an angle in [-pi,pi]
 
     Returns:
         np.array of shape (J,K), where the (j,k)-th element gives the log emissions
@@ -260,33 +192,32 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
         L: number of system-level regimes
         K: number of entity-level regimes
         D: dimension of continuous states
+
+    Remarks:
+        How should we handle the initial emission, since there is no previous emission from which we can compute the mean?
+            1. Ignore the initial observation.
+                I’ve noticed that just assigning equal likelihoods to the initial observation across all regimes
+                works pretty well; any sticky transition probability matrix will then assign the initial observation
+                to the the same cluster as the 2nd observation, which seems nice.
+            2. Specify a distribution to model the initial observation.  The problem is how to learn this.
+                The mean could be set to the observation itself.  But then what would the variance be?
+                A Bayesian approach helps here, since a the single observation can be used to update a prior,
+                whereas a frequentist approach can’t compute a variance with one observation.
+            2a. Since we’re modeling grouped time series, we could perhaps learn about the initial distribution
+                by taking the mean and variance of the initial observations across entities.
+                But I think it doesn’t always make sense to assume that these initial observations
+                all come from the same distribution.   (Indeed, we assume all the other observations
+                come from different distributions.
+
+        For now, we're taking approach #1.
     """
+    T, J = jnp.shape(group_angles)[:2]
+    return jnp.zeros((T, J))
 
-    ### Initial times <- Not computed
-    # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    means_init_time, covs_init_time = IP.mu_0s, IP.Sigma_0s
-    log_pdfs_init_time = mvn_JAX.logpdf(
-        continuous_states[0, :, None, :], means_init_time, covs_init_time
-    )
-    # Pre-vectorized version of initial times...for clarity
-    # for j in range(J):
-    #     for k in range(K):
-    #         # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    #         mu_0, Sigma_0 = IP.mu_0s[j, k], IP.Sigma_0s[j, k]
-    #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
-
-    return log_pdfs_init_time
-
-
-# TODO: We haven't yet actually defined the below properly.  TODO!
-compute_log_continuous_state_emissions_JAX_NONE = None
-compute_log_continuous_state_emissions_at_initial_timestep_JAX_NONE = None
-compute_log_continuous_state_emissions_after_initial_timestep_JAX_NONE = None
 
 circle_model_JAX = Model(
-    compute_log_continuous_state_emissions_JAX_NONE,
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX_NONE,
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX_NONE,
+    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
     zero_transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,

@@ -267,9 +267,9 @@ class ContinuousStateParameters_VonMises:
         K: number of entity-level regimes
     """
 
-    ar_coefs: JaxNumpyArray4D
-    drifts: JaxNumpyArray3D
-    kappas: JaxNumpyArray4D
+    ar_coefs: JaxNumpyArray2D
+    drifts: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
 
 
 @jdc.pytree_dataclass
@@ -285,9 +285,9 @@ class ContinuousStateParameters_VonMises_JAX:
         K: number of entity-level regimes
     """
 
-    ar_coefs: JaxNumpyArray4D
-    drifts: JaxNumpyArray3D
-    kappas: JaxNumpyArray4D
+    ar_coefs: JaxNumpyArray2D
+    drifts: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
 
 
 ContinuousStateParameters = Union[
@@ -353,7 +353,7 @@ class EmissionsParameters_JAX:
 
 
 @dataclass
-class InitializationParameters:
+class InitializationParameters_With_Gaussian_Emissions:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -379,7 +379,7 @@ class InitializationParameters:
 
 
 @jdc.pytree_dataclass
-class InitializationParameters_JAX:
+class InitializationParameters_With_Gaussian_Emissions_JAX:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -402,6 +402,87 @@ class InitializationParameters_JAX:
     pi_entities: JaxNumpyArray2D
     mu_0s: JaxNumpyArray3D
     Sigma_0s: JaxNumpyArray4D
+
+
+@dataclass
+class InitializationParameters_With_VonMises_Emissions:
+    """
+    Attributes:
+        pi_system : has shape (L,)
+            Lives on the simplex
+        pi_entities : has shape (J, K)
+            Each pi_entities[j] lives on the simplex.
+        mu_0s : has shape (J,K,D)
+            Mean of MVN density on initial continuous state x0
+        Sigma_0s : has shape (J,K,D,D)
+            Covariance of MVN density on initial continuous state x0
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+        L: number of system-level regimes
+        D: dimensionality of latent continuous state, x
+        N : dimensionality of observation, y
+    """
+
+    pi_system: NumpyArray1D
+    pi_entities: NumpyArray2D
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+@jdc.pytree_dataclass
+class InitializationParameters_With_VonMises_Emissions_JAX:
+    """
+    Attributes:
+        pi_system : has shape (L,)
+            Lives on the simplex
+        pi_entities : has shape (J, K)
+            Each pi_entities[j] lives on the simplex.
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+        L: number of system-level regimes
+        D: dimensionality of latent continuous state, x
+        N : dimensionality of observation, y
+    """
+
+    pi_system: JaxNumpyArray1D
+    pi_entities: JaxNumpyArray2D
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+@dataclass
+class ContinuousStateParameters_VonMises:
+    """
+    Attributes:
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+InitializationParameters = Union[
+    InitializationParameters_With_Gaussian_Emissions,
+    InitializationParameters_With_VonMises_Emissions,
+]
+InitializationParameters_JAX = Union[
+    InitializationParameters_With_Gaussian_Emissions_JAX,
+    InitializationParameters_With_VonMises_Emissions_JAX,
+]
 
 
 @dataclass

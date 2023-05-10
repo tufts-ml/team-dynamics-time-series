@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
+from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
 from dynagroup.von_mises.util import degrees_to_radians
 
@@ -109,15 +110,8 @@ system_covariates = (
 
 
 # Setup DIMS
-from dynagroup.params import Dims
-
-
 J = np.shape(squad_angles)[1]
-D = 1
-D_t = 0
-N = 0
-M_s = 4
-M_e = 0
+D, D_t, N, M_s, M_e = 1, 0, 0, 4, 0
 DIMS = Dims(J, num_entity_regimes, num_system_regimes, D, D_t, N, M_s, M_e)
 
 # Initialization
@@ -137,10 +131,29 @@ params_init = results_init.params
 
 s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=int)
 
-breakpoint()
+###
+# Compute Initialization ELBO
+###
 
-# TODO: Define model...
+from dynagroup.initialize import compute_elbo_from_initialization_results
+from dynagroup.vi.core import SystemTransitionPrior_JAX
+
+
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
+system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+
+
+# TODO: The ELBO won't be correct until the model has correct compute log continuous state emissions
 # Still need to handle CSP!!!!
+
+elbo_init = compute_elbo_from_initialization_results(
+    results_init,
+    system_transition_prior,
+    squad_angles,
+    circle_model_JAX,
+)
+print(f"ELBO after init: {elbo_init:.02f}")
+
 
 ###
 # Diagnostics

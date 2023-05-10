@@ -325,7 +325,7 @@ def run_VEZ_step_JAX(
     # TODO: Below this is where I left off.  It's copy pasta'd!
 
     # log_state_emissions has shape (T,J,K)
-    log_state_emissions = model.compute_log_continuous_state_emissions_JAX(
+    log_state_emissions = compute_log_continuous_state_emissions_JAX(
         CSP,
         IP,
         continuous_states,

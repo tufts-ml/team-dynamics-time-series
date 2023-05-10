@@ -353,7 +353,7 @@ class EmissionsParameters_JAX:
 
 
 @dataclass
-class InitializationParameters_With_Gaussian_Emissions:
+class InitializationParameters_Gaussian:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -379,7 +379,7 @@ class InitializationParameters_With_Gaussian_Emissions:
 
 
 @jdc.pytree_dataclass
-class InitializationParameters_With_Gaussian_Emissions_JAX:
+class InitializationParameters_Gaussian_JAX:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -405,7 +405,7 @@ class InitializationParameters_With_Gaussian_Emissions_JAX:
 
 
 @dataclass
-class InitializationParameters_With_VonMises_Emissions:
+class InitializationParameters_VonMises:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -431,7 +431,7 @@ class InitializationParameters_With_VonMises_Emissions:
 
 
 @jdc.pytree_dataclass
-class InitializationParameters_With_VonMises_Emissions_JAX:
+class InitializationParameters_VonMises_JAX:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -476,12 +476,12 @@ class ContinuousStateParameters_VonMises:
 
 
 InitializationParameters = Union[
-    InitializationParameters_With_Gaussian_Emissions,
-    InitializationParameters_With_VonMises_Emissions,
+    InitializationParameters_Gaussian,
+    InitializationParameters_VonMises,
 ]
 InitializationParameters_JAX = Union[
-    InitializationParameters_With_Gaussian_Emissions_JAX,
-    InitializationParameters_With_VonMises_Emissions_JAX,
+    InitializationParameters_Gaussian_JAX,
+    InitializationParameters_VonMises_JAX,
 ]
 
 

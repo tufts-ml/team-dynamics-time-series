@@ -79,17 +79,17 @@ model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrenc
 # For inference
 n_iterations = 10
 init_to_true_params = True
-M_step_toggle_for_STP = "closed_form"
+M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
-M_step_toggle_for_continuous_state_parameters = "closed_form"
-M_step_toggle_for_IP = "closed_form"
+M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
+M_step_toggle_for_IP = "closed_form_ip_gaussian"
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/tmp/"
+save_dir = "/Users/mwojno01/Desktop/tmp2/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

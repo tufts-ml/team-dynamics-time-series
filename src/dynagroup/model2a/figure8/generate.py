@@ -4,10 +4,10 @@ import numpy.random as npr
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.params import (
     AllParameters,
-    ContinuousStateParameters,
+    ContinuousStateParameters_Gaussian,
     EmissionsParameters,
     EntityTransitionParameters_MetaSwitch,
-    InitializationParameters,
+    InitializationParameters_Gaussian,
     SystemTransitionParameters,
 )
 from dynagroup.sampler import sample_team_dynamics
@@ -144,7 +144,7 @@ def make_initialization_parameters_for_figure_8_experiment(
     EPSILON = 1e-4
     Sigma_0s = np.broadcast_to(np.eye(D) * EPSILON, (J, K, D, D))
 
-    return InitializationParameters(pi_system, pi_entities, mu_0s, Sigma_0s)
+    return InitializationParameters_Gaussian(pi_system, pi_entities, mu_0s, Sigma_0s)
 
 
 ###
@@ -238,7 +238,7 @@ for j in range(J):
         Qs[j, k] = generate_random_covariance_matrix(dim=D, var=q_var)
 
 
-CSP = ContinuousStateParameters(As, bs, Qs)
+CSP = ContinuousStateParameters_Gaussian(As, bs, Qs)
 
 # Emissions Parameters
 Cs = npr.randn(J, N, D)

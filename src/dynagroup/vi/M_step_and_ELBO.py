@@ -20,12 +20,14 @@ from dynagroup.model import Model
 from dynagroup.params import (
     AllParameters_JAX,
     CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian,
+    ContinuousStateParameters_Gaussian_JAX,
     ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
     ContinuousStateParameters_JAX,
     ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch,
     EntityTransitionParameters_JAX,
     EntityTransitionParameters_MetaSwitch_JAX,
     EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX,
+    InitializationParameters_Gaussian_JAX,
     InitializationParameters_JAX,
     STP_with_unconstrained_tpms_from_ordinary_STP,
     SystemTransitionParameters_JAX,
@@ -171,9 +173,15 @@ def compute_elbo_decomposed(
 
 
 class M_Step_Toggle_Value(Enum):
+    # TODO: The variations on closed form (GAUSSIAN, VON_MISES, etc.)
+    # Should probably just be offloaded to an Inference class (similar to Model class)
+    # but where we provide specific functions for closed-form inference, if available.
     OFF = 1
     GRADIENT_DESCENT = 2
-    CLOSED_FORM = 3
+    CLOSED_FORM_TPM = 3
+    CLOSED_FORM_IP_GAUSSIAN = 4
+    CLOSED_FORM_GAUSSIAN = 5
+    CLOSED_FORM_VON_MISES = 6
 
 
 @dataclass
@@ -466,9 +474,9 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 ###
 
 
-def run_M_step_for_CSP_in_closed_form(
+def run_M_step_for_Gaussian_CSP_in_closed_form(
     VEZ_summaries: HMM_Posterior_Summaries_JAX, continuous_states: JaxNumpyArray3D
-) -> ContinuousStateParameters_JAX:
+) -> ContinuousStateParameters_Gaussian_JAX:
     """
     The M-step for CSP for this model is just the solution for a vector auto-regression (VAR) model
     with sample weights given by the expected entity-level regimes.
@@ -499,7 +507,7 @@ def run_M_step_for_CSP_in_closed_form(
             bs[j, k] = results.params[-1]
             residuals = results.resid * weights[1:][:, None]
             Qs[j, k] = np.cov(residuals.T)
-    return ContinuousStateParameters_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))
+    return ContinuousStateParameters_Gaussian_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))
 
 
 def run_M_step_for_ETP_via_gradient_descent(
@@ -561,7 +569,7 @@ def run_M_step_for_ETP(
     if M_step_toggles_ETP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for ETP, as requested.")
         return all_params
-    elif M_step_toggles_ETP == M_Step_Toggle_Value.CLOSED_FORM:
+    elif M_step_toggles_ETP == M_Step_Toggle_Value.CLOSED_FORM_TPM:
         raise ValueError(
             "Closed-form solution to the M-step for Entity Transition parameters is not available."
         )
@@ -686,7 +694,7 @@ def run_M_step_for_STP(
     if M_step_toggles_STP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for STP, as requested.")
         return all_params
-    elif M_step_toggles_STP == M_Step_Toggle_Value.CLOSED_FORM:
+    elif M_step_toggles_STP == M_Step_Toggle_Value.CLOSED_FORM_TPM:
         STP_new = run_M_step_for_STP_in_closed_form(all_params.STP, VES_summary)
     elif M_step_toggles_STP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         STP_new = run_M_step_for_STP_via_gradient_descent(
@@ -737,8 +745,8 @@ def run_M_step_for_CSP(
     if M_step_toggles_CSP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for CSP, as requested.")
         return all_params
-    elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM:
-        CSP_new = run_M_step_for_CSP_in_closed_form(VEZ_summaries, continuous_states)
+    elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN:
+        CSP_new = run_M_step_for_Gaussian_CSP_in_closed_form(VEZ_summaries, continuous_states)
     elif M_step_toggles_CSP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         warnings.warn(
             f"Learning the CSP parameters by gradient descent.  Performance seems to be worse than with the closed-form approach. "
@@ -800,12 +808,12 @@ def run_M_step_for_CSP(
     return all_params
 
 
-def run_M_step_for_IP_in_closed_form(
-    IP: InitializationParameters_JAX,
+def run_M_step_for_Gaussian_IP_in_closed_form(
+    IP: InitializationParameters_Gaussian_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     continuous_states: JaxNumpyArray3D,
-) -> InitializationParameters_JAX:
+) -> InitializationParameters_Gaussian_JAX:
     EPSILON = 1e-3
     # These are set to be the values that minimize the cross-entropy, plus some noise
     pi_system = normalize_potentials_by_axis_JAX(VES_summary.expected_regimes[0] + EPSILON, axis=0)
@@ -818,7 +826,7 @@ def run_M_step_for_IP_in_closed_form(
     # set mu_0s to be equal to observed x's.
     mu_0s = jnp.tile(continuous_states[0][:, None, :], (1, K, 1))
     # keep Sigma_0s to tbe the same as initialized... not clear how to learn these
-    return InitializationParameters_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
+    return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
 def run_M_step_for_IP(
@@ -835,8 +843,8 @@ def run_M_step_for_IP(
     if M_step_toggles_IP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for IP, as requested.")
         return all_params
-    elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM:
-        IP_new = run_M_step_for_IP_in_closed_form(
+    elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_IP_GAUSSIAN:
+        IP_new = run_M_step_for_Gaussian_IP_in_closed_form(
             all_params.IP,
             VEZ_summaries,
             VES_summary,

@@ -4,7 +4,7 @@ from scipy.special import logsumexp
 
 from dynagroup.params import (
     AllParameters,
-    ContinuousStateParameters,
+    ContinuousStateParameters_Gaussian,
     EmissionsParameters,
     EntityTransitionParameters_MetaSwitch,
     InitializationParameters,
@@ -173,7 +173,7 @@ for j in range(J):
     for k in range(K):
         Qs[j, k] = generate_random_covariance_matrix(dim=D, var=q_var)
 
-CSP = ContinuousStateParameters(As, bs, Qs)
+CSP = ContinuousStateParameters_Gaussian(As, bs, Qs)
 
 # Emissions Parameters
 Cs = npr.randn(J, N, D)

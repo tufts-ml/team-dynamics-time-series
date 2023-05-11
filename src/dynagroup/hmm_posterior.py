@@ -241,10 +241,21 @@ def compute_hmm_posterior_summary_NUMPY(
         log_emissions,
     )
 
-    # TODO: Add entropy conversion
-    return HMM_Posterior_Summary_NUMPY(
-        expected_regimes, expected_joints, log_normalizer, entropy=None
+    hmm_posterior_summary_without_entropy = HMM_Posterior_Summary_NUMPY(
+        expected_regimes,
+        expected_joints,
+        log_normalizer,
+        entropy=None,
     )
+
+    log_init = np.log(init_dist_over_regimes)
+    entropy = compute_entropy_of_HMM_posterior(
+        log_transitions,
+        log_emissions,
+        log_init,
+        hmm_posterior_summary_without_entropy,
+    )
+    return HMM_Posterior_Summary_NUMPY(expected_regimes, expected_joints, log_normalizer, entropy)
 
 
 def compute_hmm_posterior_summary_JAX(

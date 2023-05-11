@@ -2,7 +2,7 @@ import functools
 import warnings
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -541,8 +541,12 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
         Unlike with the Gaussian model, we need to initialize the M-step (from the previous
         value of the parameters).
     """
-    J = np.shape(group_angles)[-1]
-    K = np.shape(VEZ_summaries.log_emissions)[-1]
+    J = np.shape(group_angles)[2]
+    K = np.shape(VEZ_summaries.expected_regimes)[-1]
+
+    # TODO: Pick a shape for group_angles up front and enforce it!
+    # I keep switching around from function to function
+    group_angles = np.squeeze(group_angles)
 
     ar_coefs = np.zeros((J, K))
     drifts = np.zeros((J, K))
@@ -551,16 +555,17 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
     for j in range(J):
         for k in range(K):
             emissions_params = estimate_von_mises_params(
-                group_angles[:, j],
+                np.asarray(group_angles[:, j]),
                 VonMisesModelType.AUTOREGRESSION,
                 all_params.CSP.ar_coefs[j, k],
                 all_params.CSP.drifts[j, k],
-                sample_weights=VEZ_summaries.expected_regimes[:, k],
+                sample_weights=np.asarray(VEZ_summaries.expected_regimes[:, j, k]),
                 suppress_warnings=True,
             )
             ar_coefs[j, k] = emissions_params.ar_coef
             drifts[j, k] = emissions_params.drift
             kappas[j, k] = emissions_params.kappa
+
     return ContinuousStateParameters_VonMises_JAX(
         jnp.asarray(ar_coefs), jnp.asarray(drifts), jnp.asarray(kappas)
     )
@@ -854,7 +859,7 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
     IP: InitializationParameters_VonMises_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
-    group_angles: JaxNumpyArray2D,
+    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
 ) -> InitializationParameters_VonMises_JAX:
     EPSILON = 1e-3
     # These are set to be the values that minimize the cross-entropy, plus some noise
@@ -866,9 +871,11 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
     K = jnp.shape(pi_entities)[1]
 
     # set mu_0s to be equal to observed x's.
+    # TODO: Pick a consistent shape for group_angles throughout a circle package; (T,J,1) or (T,J)
+    group_angles = jnp.squeeze(group_angles)
     locs = jnp.tile(group_angles[0][:, None], (1, K))
     # keep Sigma_0s to tbe the same as initialized... not clear how to learn these
-    return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, locs, IP.kappas)
+    return InitializationParameters_VonMises_JAX(pi_system, pi_entities, locs, IP.kappas)
 
 
 def run_M_step_for_IP(

@@ -207,7 +207,7 @@ def fit_ARHMM_to_top_half_of_model(
     """
     T, J = np.shape(group_angles)[:2]
 
-    # force there to be a third array dimensions for D
+    # force there to be a third array dimension for the D
     group_angles = group_angles.reshape((T, J, -1))
 
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))

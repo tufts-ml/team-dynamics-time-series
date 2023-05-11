@@ -178,7 +178,7 @@ class HMM_Posterior_Summaries_JAX:
 
 
 ###
-# FUNCTIONS
+# Compute entropy
 ###
 
 
@@ -224,6 +224,11 @@ def compute_entropy_of_HMM_posterior(
     return entropy
 
 
+###
+# Compute posterior summary/summaries
+###
+
+
 def compute_hmm_posterior_summary_NUMPY(
     log_transitions: JaxNumpyArray3D,
     log_emissions: JaxNumpyArray2D,
@@ -236,10 +241,21 @@ def compute_hmm_posterior_summary_NUMPY(
         log_emissions,
     )
 
-    # TODO: Add entropy conversion
-    return HMM_Posterior_Summary_NUMPY(
-        expected_regimes, expected_joints, log_normalizer, entropy=None
+    hmm_posterior_summary_without_entropy = HMM_Posterior_Summary_NUMPY(
+        expected_regimes,
+        expected_joints,
+        log_normalizer,
+        entropy=None,
     )
+
+    log_init = np.log(init_dist_over_regimes)
+    entropy = compute_entropy_of_HMM_posterior(
+        log_transitions,
+        log_emissions,
+        log_init,
+        hmm_posterior_summary_without_entropy,
+    )
+    return HMM_Posterior_Summary_NUMPY(expected_regimes, expected_joints, log_normalizer, entropy)
 
 
 def compute_hmm_posterior_summary_JAX(
@@ -381,6 +397,11 @@ def compute_hmm_posterior_summaries_NUMPY(
     return hmm_posterior_summaries
 
 
+###
+# Convert jax to numpy and back
+###
+
+
 def convert_hmm_posterior_summaries_from_jax_to_numpy(
     hmm_posterior_summaries: HMM_Posterior_Summaries_JAX,
 ) -> HMM_Posterior_Summaries_NUMPY:
@@ -395,3 +416,29 @@ def convert_hmm_posterior_summaries_from_jax_to_numpy(
         np.asarray(hmm_posterior_summaries.log_normalizers),
         entropies,
     )
+
+
+###
+# Produce closed-form M-step
+###
+
+
+def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY):
+    K = np.shape(posterior_summary.expected_regimes)[1]
+
+    # Compute tpm
+    tpm_empirical = np.zeros((K, K))
+    for k in range(K):
+        for k_prime in range(K):
+            tpm_empirical[k, k_prime] = np.sum(
+                posterior_summary.expected_joints[2:, k, k_prime], axis=0
+            ) / np.sum(posterior_summary.expected_regimes[:-1, k], axis=0)
+
+    # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
+    # A better approach is to use a Dirichlet prior and take the posterior.
+    P_UNIFORM = 0.001
+    tpm_uniform = np.ones((K, K)) / K
+
+    tpm = P_UNIFORM * tpm_uniform + (1 - P_UNIFORM) * tpm_empirical
+
+    return tpm

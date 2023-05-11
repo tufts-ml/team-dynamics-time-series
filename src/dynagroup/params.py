@@ -214,7 +214,7 @@ EntityTransitionParameters_JAX = Union[
 
 
 @dataclass
-class ContinuousStateParameters:
+class ContinuousStateParameters_Gaussian:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -235,7 +235,7 @@ class ContinuousStateParameters:
 
 
 @jdc.pytree_dataclass
-class ContinuousStateParameters_JAX:
+class ContinuousStateParameters_Gaussian_JAX:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -246,13 +246,56 @@ class ContinuousStateParameters_JAX:
     Notation:
         J: number of entities
         K: number of entity-level regimes
-        L: number of system-level regimes
         D: dimensionality of latent continuous state, x
     """
 
     As: JaxNumpyArray4D
     bs: JaxNumpyArray3D
     Qs: JaxNumpyArray4D
+
+
+@dataclass
+class ContinuousStateParameters_VonMises:
+    """
+    Attributes:
+        ar_coefs : has shape (J, K)
+        drifts : has shape (J, K)
+        kappas : has shape (J, K)
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    ar_coefs: JaxNumpyArray2D
+    drifts: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+@jdc.pytree_dataclass
+class ContinuousStateParameters_VonMises_JAX:
+    """
+    Attributes:
+        ar_coefs : has shape (J, K)
+        drifts : has shape (J, K)
+        kappas : has shape (J, K)
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    ar_coefs: JaxNumpyArray2D
+    drifts: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+ContinuousStateParameters = Union[
+    ContinuousStateParameters_Gaussian, ContinuousStateParameters_VonMises
+]
+ContinuousStateParameters_JAX = Union[
+    ContinuousStateParameters_Gaussian_JAX, ContinuousStateParameters_VonMises_JAX
+]
 
 
 @dataclass
@@ -310,7 +353,7 @@ class EmissionsParameters_JAX:
 
 
 @dataclass
-class InitializationParameters:
+class InitializationParameters_Gaussian:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -336,7 +379,7 @@ class InitializationParameters:
 
 
 @jdc.pytree_dataclass
-class InitializationParameters_JAX:
+class InitializationParameters_Gaussian_JAX:
     """
     Attributes:
         pi_system : has shape (L,)
@@ -359,6 +402,88 @@ class InitializationParameters_JAX:
     pi_entities: JaxNumpyArray2D
     mu_0s: JaxNumpyArray3D
     Sigma_0s: JaxNumpyArray4D
+
+
+@dataclass
+class InitializationParameters_VonMises:
+    """
+    Attributes:
+        pi_system : has shape (L,)
+            Lives on the simplex
+        pi_entities : has shape (J, K)
+            Each pi_entities[j] lives on the simplex.
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+        L: number of system-level regimes
+        D: dimensionality of latent continuous state, x
+        N : dimensionality of observation, y
+    """
+
+    pi_system: NumpyArray1D
+    pi_entities: NumpyArray2D
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+@jdc.pytree_dataclass
+class InitializationParameters_VonMises_JAX:
+    """
+    Attributes:
+        pi_system : has shape (L,)
+            Lives on the simplex
+        pi_entities : has shape (J, K)
+            Each pi_entities[j] lives on the simplex.
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+        L: number of system-level regimes
+        D: dimensionality of latent continuous state, x
+        N : dimensionality of observation, y
+    """
+
+    pi_system: JaxNumpyArray1D
+    pi_entities: JaxNumpyArray2D
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+@dataclass
+class ContinuousStateParameters_VonMises:
+    """
+    Attributes:
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+    """
+
+    locs: JaxNumpyArray2D
+    kappas: JaxNumpyArray2D
+
+
+InitializationParameters = Union[
+    InitializationParameters_Gaussian,
+    InitializationParameters_VonMises,
+]
+InitializationParameters_JAX = Union[
+    InitializationParameters_Gaussian_JAX,
+    InitializationParameters_VonMises_JAX,
+]
 
 
 @dataclass
@@ -612,7 +737,7 @@ def covariance_from_cholesky_nzvals_with_two_mapping_axes_JAX(batched):
 
 
 @jdc.pytree_dataclass
-class ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
+class ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX:
     """
     Attributes:
         As : has shape (J, K, D, D)
@@ -634,20 +759,20 @@ class ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
     cholesky_nzvals: JaxNumpyArray4D
 
 
-def CSP_with_unconstrained_covariances_from_ordinary_CSP(
-    CSP: ContinuousStateParameters_JAX,
-) -> ContinuousStateParameters_WithUnconstrainedCovariances_JAX:
+def CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(
+    CSP: ContinuousStateParameters_Gaussian_JAX,
+) -> ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX:
     cholesky_nzvals = cholesky_nzvals_from_covariances_with_two_mapping_axes_JAX(CSP.Qs)
-    return ContinuousStateParameters_WithUnconstrainedCovariances_JAX(
+    return ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX(
         CSP.As, CSP.bs, cholesky_nzvals
     )
 
 
-def ordinary_CSP_from_CSP_with_unconstrained_covariances(
-    CSP_WUC: ContinuousStateParameters_WithUnconstrainedCovariances_JAX,
-) -> ContinuousStateParameters_JAX:
+def ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
+    CSP_WUC: ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
+) -> ContinuousStateParameters_Gaussian_JAX:
     Qs = covariance_from_cholesky_nzvals_with_two_mapping_axes_JAX(CSP_WUC.cholesky_nzvals)
-    return ContinuousStateParameters_JAX(CSP_WUC.As, CSP_WUC.bs, Qs)
+    return ContinuousStateParameters_Gaussian_JAX(CSP_WUC.As, CSP_WUC.bs, Qs)
 
 
 ###

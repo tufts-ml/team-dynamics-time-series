@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -43,7 +43,7 @@ We can compare the two in unit tests.
 """
 
 
-def compute_log_system_transition_probability_matrices(
+def compute_log_system_transition_probability_matrices_NUMPY(
     STP: SystemTransitionParameters,
     T: int,
 ):
@@ -87,6 +87,7 @@ def compute_log_system_transition_probability_matrices(
 def compute_log_system_transition_probability_matrices_JAX(
     STP: SystemTransitionParameters_JAX,
     T_minus_1: int,
+    system_covariates: Optional[jnp.array] = None,
 ):
     """
     Compute log system transition probability matrices.
@@ -99,6 +100,7 @@ def compute_log_system_transition_probability_matrices_JAX(
     Arguments:
         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
             system regime probabilities are governed by the initial parameters.
+        system_covariates: An optional array of shape (T, M_s).
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -112,7 +114,7 @@ def compute_log_system_transition_probability_matrices_JAX(
     return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
 
 
-def compute_log_entity_transition_probability_matrices(
+def compute_log_entity_transition_probability_matrices_NUMPY(
     ETP: EntityTransitionParameters,
     continuous_states: NumpyArray3D,
     transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: Callable = None,
@@ -215,7 +217,8 @@ def compute_log_entity_transition_probability_matrices_JAX(
     return normalize_log_potentials_by_axis_JAX(log_potentials, axis=4)
 
 
-def compute_log_continuous_state_emissions(
+# TODO: Move this to unit test!
+def compute_log_continuous_state_emissions_NUMPY(
     CSP: ContinuousStateParameters,
     IP: InitializationParameters,
     continuous_states: NumpyArray3D,
@@ -260,69 +263,6 @@ def compute_log_continuous_state_emissions(
                 mu_t = CSP.As[j, k] @ continuous_states[t - 1, j] + CSP.bs[j, k]
                 Sigma_t = CSP.Qs[j, k]
                 log_emissions[t, j, k] = mvn(mu_t, Sigma_t).logpdf(continuous_states[t, j])
-
-    return log_emissions
-
-
-def compute_log_continuous_state_emissions_JAX(
-    CSP: ContinuousStateParameters_JAX,
-    IP: InitializationParameters_JAX,
-    continuous_states: JaxNumpyArray3D,
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable,
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable,
-):
-    """
-    Compute the log (autoregressive, switching) emissions for the continuous states, where we have
-        x_0^j ~ N( mu_0[j,k], Sigma_0[j,k] )
-        x_t^j ~ N( A[j,k] @ x_{t-1}^j + b[j,k] , Q[j,k] )
-    for entity-level regimes k=1,...,K and entities j=1,...,J
-
-    Arguments:
-        continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
-            in R^D
-
-    Returns:
-        np.array of shape (T,J,K), where the (t,j,k)-th element gives the log emissions
-        probability of the t-th continuous state (given the (t-1)-st continuous state)
-        for the j-th entity while in the k-th entity-level regime.
-
-    Notation:
-        T: number of timesteps
-        J: number of entities
-        L: number of system-level regimes
-        K: number of entity-level regimes
-        D: dimension of continuous states
-    """
-
-    ### Initial times
-    # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    log_pdfs_init_time = compute_log_continuous_state_emissions_at_initial_timestep_JAX(
-        IP,
-        continuous_states,
-    )
-
-    # Pre-vectorized version for clarity
-    # for j in range(J):
-    #     for k in range(K):
-    #         # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
-    #         mu_0, Sigma_0 = IP.mu_0s[j, k], IP.Sigma_0s[j, k]
-    #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
-
-    #### Remaining times
-    log_pdfs_remaining_times = compute_log_continuous_state_emissions_after_initial_timestep_JAX(
-        CSP, continuous_states
-    )
-
-    # Pre-vectorized version for clarity
-    # for t in range(1, T):
-    #     for j in range(J):import numpy as np
-    #         for k in range(K):
-    #             # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
-    #             mu_t = CSP.As[j, k] @ continuous_states[t - 1, j] + CSP.bs[j, k]
-    #             Sigma_t = CSP.Qs[j, k]
-    #             log_emissions.at[t, j, k].set(mvn_JAX.logpdf(continuous_states[t, j], mu_t, Sigma_t))
-
-    log_emissions = jnp.vstack((log_pdfs_init_time[None, :, :], log_pdfs_remaining_times))
 
     return log_emissions
 
@@ -440,7 +380,6 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
 
 
 figure8_model_JAX = Model(
-    compute_log_continuous_state_emissions_JAX,
     compute_log_continuous_state_emissions_at_initial_timestep_JAX,
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,

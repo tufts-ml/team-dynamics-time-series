@@ -13,9 +13,6 @@ class Model:
     Model2a directly observes the x's.
     """
 
-    # TODO: The third entry for computing continuous state emissions is redundant with the top two.
-    # Streamline.
-    compute_log_continuous_state_emissions_JAX: Callable
     compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable
     compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable
     compute_log_system_transition_probability_matrices_JAX: Callable

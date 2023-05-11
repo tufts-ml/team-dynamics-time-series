@@ -12,6 +12,8 @@ jax_dataclasses
 tensorflow_probability
 dynamax
 
+pomegranate # just for Gaussian mixture models with sample weights (used to initialize vonMises AR-HMM)
+
 cython # for Linderman's ssm package 
 
 # `ssm` repo below is for forward backward algo (ssm.messages.hmm_expected_states)

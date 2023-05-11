@@ -7,7 +7,7 @@ from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.params import AllParameters, dims_from_params
 from dynagroup.sampler import Sample
 from dynagroup.types import NumpyArray2D, NumpyArray4D
-from dynagroup.vi.E_step import run_VES_step_NUMPY, run_VEZ_step_NUMPY
+from dynagroup.vi.vi_numpy.E_step_numpy import run_VES_step_NUMPY, run_VEZ_step_NUMPY
 
 
 """

@@ -3,6 +3,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
+from dynagroup.initialize import (
+    compute_elbo_from_initialization_results,
+    inspect_entity_level_segmentations_over_EM_iterations,
+    inspect_system_level_segmentations_over_EM_iterations,
+)
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.figure8.diagnostics.entity_transitions import (
     investigate_entity_transition_probs_in_different_contexts,
@@ -25,12 +30,7 @@ from dynagroup.model2a.figure8.generate import (
     sample,
     times_of_system_regime_changepoints,
 )
-from dynagroup.model2a.figure8.initialize import (
-    compute_elbo_from_initialization_results,
-    inspect_entity_level_segmentations_over_EM_iterations,
-    inspect_system_level_segmentations_over_EM_iterations,
-    smart_initialize_model_2a,
-)
+from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
@@ -39,11 +39,8 @@ from dynagroup.plotting.entity_regime_changepoints import (
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
 from dynagroup.util import normalize_log_potentials_by_axis
-from dynagroup.vi.core import (
-    M_step_toggles_from_strings,
-    SystemTransitionPrior_JAX,
-    run_CAVI_with_JAX,
-)
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
 
 """
@@ -74,22 +71,22 @@ show_plots_after_init = False
 seed_for_initialization = 1
 
 # For model adjustments
-model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For inference
-n_iterations = 10
-init_to_true_params = True
-M_step_toggle_for_STP = "closed_form"
+n_cavi_iterations = 10
+M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
-M_step_toggle_for_CSP = "closed_form"
-M_step_toggle_for_IP = "closed_form"
+M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
+M_step_toggle_for_IP = "closed_form_gaussian"
+system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/no_recurrence/"
+save_dir = "/Users/mwojno01/Desktop/tmp3/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -170,10 +167,7 @@ inspect_system_level_segmentations_over_EM_iterations(
 )
 
 elbo_init = compute_elbo_from_initialization_results(
-    initialization_results,
-    system_transition_prior,
-    sample.xs,
-    model,
+    initialization_results, system_transition_prior, sample.xs, model, system_covariates
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -210,17 +204,18 @@ if show_plots_after_learning:
 
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
-    n_iterations,
+    n_cavi_iterations,
     initialization_results,
     model,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
-        M_step_toggle_for_CSP,
+        M_step_toggle_for_continuous_state_parameters,
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,
     system_transition_prior,
+    system_covariates,
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )

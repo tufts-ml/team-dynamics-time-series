@@ -51,15 +51,15 @@ show_plots_after_init = True
 bottom_half_self_transition_prob = 0.995
 bottom_half_changepoint_penalty = 10.0
 bottom_half_min_segment_size = 10
-bottom_half_num_EM_iterations = 1  # 3
-top_half_num_EM_iterations = 1  # 20
+bottom_half_num_EM_iterations = 3
+top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
 save_dir = "/Users/mwojno01/Desktop/supra_devel/"
 
 ### Inference
-n_cavi_iterations = 10
+n_cavi_iterations = 15
 M_step_toggle_for_STP = "gradient_descent"
 M_step_toggle_for_ETP = (
     "gradient_descent"  # can i do this in closed form, even though there are L of them?
@@ -104,8 +104,7 @@ clock_times_all = np.array([x.split(" ")[1].split(".")[0] for x in df["DATETIME"
 # Subset data
 ###
 
-TMP_ENTITY_SUBSET_FOR_DEVELOPMENT = 2
-squad_angles = heading_angles[t_start:t_end:t_every, :TMP_ENTITY_SUBSET_FOR_DEVELOPMENT]
+squad_angles = heading_angles[t_start:t_end:t_every]
 clock_times = clock_times_all[t_start:t_end:t_every]
 
 # Per Lee Clifford Hancock's email on 5/8/23,

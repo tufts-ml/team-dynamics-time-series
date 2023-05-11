@@ -39,11 +39,8 @@ from dynagroup.plotting.entity_regime_changepoints import (
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
 from dynagroup.util import normalize_log_potentials_by_axis
-from dynagroup.vi.core import (
-    M_step_toggles_from_strings,
-    SystemTransitionPrior_JAX,
-    run_CAVI_with_JAX,
-)
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
 
 """
@@ -90,7 +87,7 @@ initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/tmp2/"
+save_dir = "/Users/mwojno01/Desktop/tmp3/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

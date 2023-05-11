@@ -8,7 +8,6 @@ import jax.numpy as jnp
 import jax_dataclasses as jdc
 import numpy as np
 from dynamax.utils.optimize import run_gradient_descent
-from jax.scipy.stats import multivariate_normal as mvn_JAX
 from statsmodels.regression.linear_model import WLS
 from statsmodels.tools.tools import add_constant
 
@@ -30,6 +29,7 @@ from dynagroup.params import (
     EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX,
     InitializationParameters_Gaussian_JAX,
     InitializationParameters_JAX,
+    InitializationParameters_VonMises_JAX,
     STP_with_unconstrained_tpms_from_ordinary_STP,
     SystemTransitionParameters_JAX,
     SystemTransitionParameters_WithUnconstrainedTPMs_JAX,
@@ -71,10 +71,11 @@ def compute_energy_from_init(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     continuous_states: JaxNumpyArray3D,
+    model: Model,
 ) -> float:
     energy_init_system = jnp.sum(VES_summary.expected_regimes[0] * jnp.log(IP.pi_system))
 
-    J, K = np.shape(IP.mu_0s)[:2]
+    J, K = np.shape(IP.pi_entities)
     energy_init_entities = 0.0
     for j in range(J):
         energy_init_entities += jnp.sum(
@@ -82,11 +83,14 @@ def compute_energy_from_init(
         )
 
     energy_init_continuous_states = 0.0
+    log_pdfs_init_time = model.compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+        IP, continuous_states
+    )
     for j in range(J):
         for k in range(K):
-            energy_init_continuous_states += VEZ_summaries.expected_regimes[
-                0, j, k
-            ] * mvn_JAX.logpdf(continuous_states[0, j], IP.mu_0s[j, k], IP.Sigma_0s[j, k])
+            energy_init_continuous_states += (
+                VEZ_summaries.expected_regimes[0, j, k] * log_pdfs_init_time[j, k]
+            )
 
     return energy_init_system + energy_init_entities + energy_init_continuous_states
 
@@ -103,7 +107,7 @@ def compute_energy(
     model: Model,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
-    energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states)
+    energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states, model)
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
     energy_post_init_negated_and_divided_by_num_timesteps += (
         compute_cost_for_system_transition_parameters_JAX(
@@ -843,6 +847,30 @@ def run_M_step_for_IP_in_closed_form__Gaussian_case(
     return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, IP.Sigma_0s)
 
 
+# TODO: Combine with `run_M_step_for_IP_in_closed_form__Gaussian_case`.
+# It's the same logic, up to having a loc and scale parameter, and dealing
+# with the difference in dimensionality
+def run_M_step_for_IP_in_closed_form__VonMises_case(
+    IP: InitializationParameters_VonMises_JAX,
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    VES_summary: HMM_Posterior_Summary_JAX,
+    group_angles: JaxNumpyArray2D,
+) -> InitializationParameters_VonMises_JAX:
+    EPSILON = 1e-3
+    # These are set to be the values that minimize the cross-entropy, plus some noise
+    pi_system = normalize_potentials_by_axis_JAX(VES_summary.expected_regimes[0] + EPSILON, axis=0)
+    pi_entities = normalize_potentials_by_axis_JAX(
+        VEZ_summaries.expected_regimes[0] + EPSILON, axis=1
+    )
+
+    K = jnp.shape(pi_entities)[1]
+
+    # set mu_0s to be equal to observed x's.
+    locs = jnp.tile(group_angles[0][:, None], (1, K))
+    # keep Sigma_0s to tbe the same as initialized... not clear how to learn these
+    return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, locs, IP.kappas)
+
+
 def run_M_step_for_IP(
     all_params: AllParameters_JAX,
     M_step_toggles_IP: M_Step_Toggle_Value,
@@ -855,6 +883,13 @@ def run_M_step_for_IP(
         return all_params
     elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN:
         IP_new = run_M_step_for_IP_in_closed_form__Gaussian_case(
+            all_params.IP,
+            VEZ_summaries,
+            VES_summary,
+            continuous_states,
+        )
+    elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_VON_MISES:
+        IP_new = run_M_step_for_IP_in_closed_form__VonMises_case(
             all_params.IP,
             VEZ_summaries,
             VES_summary,

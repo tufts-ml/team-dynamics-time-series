@@ -412,10 +412,11 @@ class InitializationParameters_VonMises:
             Lives on the simplex
         pi_entities : has shape (J, K)
             Each pi_entities[j] lives on the simplex.
-        mu_0s : has shape (J,K,D)
-            Mean of MVN density on initial continuous state x0
-        Sigma_0s : has shape (J,K,D,D)
-            Covariance of MVN density on initial continuous state x0
+        locs : has shape (J, K)
+            Location parameter for VonMises density on initial continuous state x0
+        kappas : has shape (J, K)
+            Concentration parameter for VonMises density on initial continuous state x0
+
     Notation:
         J: number of entities
         K: number of entity-level regimes

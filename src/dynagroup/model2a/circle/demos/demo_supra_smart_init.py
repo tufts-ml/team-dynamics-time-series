@@ -1,15 +1,19 @@
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 np.set_printoptions(precision=3, suppress=True)
 
 from matplotlib import pyplot as plt
 
+from dynagroup.initialize import compute_elbo_from_initialization_results
+from dynagroup.io import ensure_dir
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
 from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
+from dynagroup.vi.core import SystemTransitionPrior_JAX
 from dynagroup.von_mises.util import degrees_to_radians
 
 
@@ -38,6 +42,7 @@ t_start, t_end, t_every = 203100, 211100, 20
 ### Model specification
 num_entity_regimes = 4
 num_system_regimes = 5
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 ### Initialization
 bottom_half_self_transition_prob = 0.995
@@ -46,6 +51,10 @@ bottom_half_min_segment_size = 10
 bottom_half_num_EM_iterations = 3
 top_half_num_EM_iterations = 20
 initialization_seed = 0
+
+### Diagnostics
+save_dir = "/Users/mwojno01/Desktop/supra_devel/"
+
 
 ###
 # Get sample
@@ -135,16 +144,7 @@ s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=
 # Compute Initialization ELBO
 ###
 
-from dynagroup.initialize import compute_elbo_from_initialization_results
-from dynagroup.vi.core import SystemTransitionPrior_JAX
-
-
-alpha_system_prior, kappa_system_prior = 1.0, 10.0
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
-
-
-# TODO: The ELBO won't be correct until the model has correct compute log continuous state emissions
-# Still need to handle CSP!!!!
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -161,8 +161,8 @@ print(f"ELBO after init: {elbo_init:.02f}")
 ###
 
 # are the system-level states related to security scores?
-import numpy as np
-from scipy import stats
+
+ensure_dir(save_dir)
 
 
 for compass_direction in range(4):
@@ -184,4 +184,5 @@ fig, ax = plot_time_series_with_regime_panels(
 )
 plt.ylabel("Security scores")
 plt.tight_layout
+# fig.savefig(save_dir + "colorbar_whole.pdf")
 plt.show()

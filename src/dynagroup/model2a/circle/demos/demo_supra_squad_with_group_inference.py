@@ -43,7 +43,7 @@ t_start, t_end, t_every = 203100, 211100, 20
 
 ### Model specification
 num_entity_regimes = 4
-num_system_regimes = 5
+num_system_regimes = 4
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 ### Initialization
@@ -61,9 +61,8 @@ save_dir = "/Users/mwojno01/Desktop/supra_devel/"
 ### Inference
 n_cavi_iterations = 15
 M_step_toggle_for_STP = "gradient_descent"
-M_step_toggle_for_ETP = (
-    "gradient_descent"  # can i do this in closed form, even though there are L of them?
-)
+# can i do M_step_toggle_for_ETP in closed form, even though there are L of them?
+M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_von_mises"
 M_step_toggle_for_IP = "closed_form_von_mises"
 num_M_step_iters = 50
@@ -217,9 +216,10 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 )
 
 ###
-# Post Inference PLots
+# Post Inference Plots
 ###
 ### Are the system-level states related to security scores? : Plots
+s_hat = np.array(np.argmax(VES_summary.expected_regimes, 1), dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
     system_covariates_zero_to_hundred, s_hat, clock_times, dim_labels=["N", "E", "S", "W"]
 )

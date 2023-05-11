@@ -191,7 +191,7 @@ fig, ax = plot_time_series_with_regime_panels(
 )
 plt.ylabel("Security scores")
 plt.tight_layout
-fig.savefig(save_dir + "time_series_with_regime_panels_after_init.pdf")
+fig.savefig(save_dir + "system_segmentations_with_security_scores_after_init.pdf")
 if show_plots_after_init:
     plt.show()
 
@@ -215,3 +215,16 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     system_transition_prior,
     jnp.asarray(system_covariates),
 )
+
+###
+# Post Inference PLots
+###
+### Are the system-level states related to security scores? : Plots
+fig, ax = plot_time_series_with_regime_panels(
+    system_covariates_zero_to_hundred, s_hat, clock_times, dim_labels=["N", "E", "S", "W"]
+)
+plt.ylabel("Security scores")
+plt.tight_layout
+fig.savefig(save_dir + "system_segmentations_with_security_scores_after_learning.pdf")
+if show_plots_after_init:
+    plt.show()

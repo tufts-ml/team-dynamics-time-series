@@ -104,7 +104,8 @@ clock_times_all = np.array([x.split(" ")[1].split(".")[0] for x in df["DATETIME"
 # Subset data
 ###
 
-squad_angles = heading_angles[t_start:t_end:t_every]
+TMP_ENTITY_SUBSET_FOR_DEVELOPMENT = 2
+squad_angles = heading_angles[t_start:t_end:t_every, :TMP_ENTITY_SUBSET_FOR_DEVELOPMENT]
 clock_times = clock_times_all[t_start:t_end:t_every]
 
 # Per Lee Clifford Hancock's email on 5/8/23,

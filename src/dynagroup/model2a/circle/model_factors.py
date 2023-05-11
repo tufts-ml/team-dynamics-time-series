@@ -19,6 +19,35 @@ from dynagroup.types import (
 from dynagroup.util import normalize_log_potentials_by_axis_JAX
 
 
+###
+# Util function
+###
+
+
+# TODO: Solve this problem upfront and be consistent throughout
+def _ensure_group_angles_have_three_array_dims(
+    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D]
+) -> JaxNumpyArray3D:
+    if group_angles.ndim == 2:
+        # reshape 2D array to 3D array with 1 as the third dimension
+        T, J = jnp.shape(group_angles)[:2]
+        group_angles = jnp.reshape(group_angles, (T, J, 1))
+    return group_angles
+
+
+# TODO: Solve this problem upfront and consistent throughout
+def _ensure_group_angles_have_two_array_dims(
+    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D]
+) -> JaxNumpyArray2D:
+    if group_angles.ndim == 3:
+        T, J = jnp.shape(group_angles)[:2]
+        group_angles = jnp.reshape(group_angles, (T, J))
+    return group_angles
+
+
+###
+# Model factors
+###
 def zero_transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
     x_vec: JaxNumpyArray1D,
 ) -> JaxNumpyArray1D:
@@ -215,6 +244,10 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
 
     ### Initial times
     # We have  x_0^j ~ VM( loc[j,k], kappa[j,k] )
+
+    # TODO: Group angles could be (T,J,1) or (T,J). That's causing problems.  Pick a representation
+    # and use it throughout!
+    group_angles = _ensure_group_angles_have_two_array_dims(group_angles)
     log_pdfs_init_time = vonmises.logpdf(group_angles[0][:, None], IP.kappas, loc=IP.locs)
     return log_pdfs_init_time
 

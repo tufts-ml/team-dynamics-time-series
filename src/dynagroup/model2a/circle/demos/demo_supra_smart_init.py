@@ -1,3 +1,4 @@
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -13,7 +14,8 @@ from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_ci
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
 from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
-from dynagroup.vi.core import SystemTransitionPrior_JAX
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 from dynagroup.von_mises.util import degrees_to_radians
 
 
@@ -45,16 +47,28 @@ num_system_regimes = 5
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 ### Initialization
+show_plots_after_init = True
 bottom_half_self_transition_prob = 0.995
 bottom_half_changepoint_penalty = 10.0
 bottom_half_min_segment_size = 10
-bottom_half_num_EM_iterations = 3
-top_half_num_EM_iterations = 20
+bottom_half_num_EM_iterations = 1  # 3
+top_half_num_EM_iterations = 1  # 20
 initialization_seed = 0
 
 ### Diagnostics
 save_dir = "/Users/mwojno01/Desktop/supra_devel/"
 
+### Inference
+n_cavi_iterations = 10
+M_step_toggle_for_STP = "gradient_descent"
+M_step_toggle_for_ETP = (
+    "gradient_descent"  # can i do this in closed form, even though there are L of them?
+)
+M_step_toggle_for_continuous_state_parameters = "closed_form_von_mises"
+M_step_toggle_for_IP = "closed_form_von_mises"
+num_M_step_iters = 50
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
+initialization_seed = 2
 
 ###
 # Get sample
@@ -141,11 +155,13 @@ params_init = results_init.params
 s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=int)
 
 ###
-# Compute Initialization ELBO
+# Post-Initialization Diagnostics
 ###
 
-system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+ensure_dir(save_dir)
 
+### Post-Initialization ELBO
+system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
     system_transition_prior,
@@ -153,17 +169,10 @@ elbo_init = compute_elbo_from_initialization_results(
     circle_model_JAX,
     system_covariates,
 )
-print(f"ELBO after init: {elbo_init:.02f}")
+print(f"\nELBO after init: {elbo_init:.02f}")
 
 
-###
-# Diagnostics
-###
-
-# are the system-level states related to security scores?
-
-ensure_dir(save_dir)
-
+### Are the system-level states related to security scores? : Correlations
 
 for compass_direction in range(4):
     # Compute the point-biserial correlation coefficient
@@ -176,13 +185,33 @@ for compass_direction in range(4):
     )
 
 
-###
-# Plots
-###
+### Are the system-level states related to security scores? : Plots
 fig, ax = plot_time_series_with_regime_panels(
     system_covariates_zero_to_hundred, s_hat, clock_times, dim_labels=["N", "E", "S", "W"]
 )
 plt.ylabel("Security scores")
 plt.tight_layout
-# fig.savefig(save_dir + "colorbar_whole.pdf")
-plt.show()
+fig.savefig(save_dir + "time_series_with_regime_panels_after_init.pdf")
+if show_plots_after_init:
+    plt.show()
+
+###
+# Inference
+###
+
+# TODO: Check if results_init (or something ele?) needs to be jax numpyified
+VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+    jnp.asarray(squad_angles),
+    n_cavi_iterations,
+    results_init,
+    circle_model_JAX,
+    M_step_toggles_from_strings(
+        M_step_toggle_for_STP,
+        M_step_toggle_for_ETP,
+        M_step_toggle_for_continuous_state_parameters,
+        M_step_toggle_for_IP,
+    ),
+    num_M_step_iters,
+    system_transition_prior,
+    jnp.asarray(system_covariates),
+)

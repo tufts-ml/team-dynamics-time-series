@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from itertools import groupby
+from typing import Optional
 
 import numpy as np
 
@@ -16,7 +17,13 @@ from dynagroup.params import (
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray3D
+from dynagroup.types import (
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    NumpyArray1D,
+    NumpyArray2D,
+    NumpyArray3D,
+)
 from dynagroup.vi.M_step_and_ELBO import ELBO_Decomposed, compute_elbo_decomposed
 from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
@@ -159,6 +166,7 @@ def compute_elbo_from_initialization_results(
     system_transition_prior: SystemTransitionPrior_JAX,
     continuous_states: JaxNumpyArray3D,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> ELBO_Decomposed:
     elbo_decomposed = compute_elbo_decomposed(
         initialization_results.params,
@@ -167,5 +175,6 @@ def compute_elbo_from_initialization_results(
         system_transition_prior,
         continuous_states,
         model,
+        system_covariates,
     )
     return elbo_decomposed.elbo

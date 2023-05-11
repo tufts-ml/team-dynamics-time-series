@@ -82,7 +82,8 @@ init_to_true_params = True
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
-M_step_toggle_for_IP = "closed_form_ip_gaussian"
+M_step_toggle_for_IP = "closed_form_gaussian"
+system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 initialization_seed = 2
@@ -170,10 +171,7 @@ inspect_system_level_segmentations_over_EM_iterations(
 )
 
 elbo_init = compute_elbo_from_initialization_results(
-    initialization_results,
-    system_transition_prior,
-    sample.xs,
-    model,
+    initialization_results, system_transition_prior, sample.xs, model, system_covariates
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -221,6 +219,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     ),
     num_M_step_iters,
     system_transition_prior,
+    system_covariates,
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )

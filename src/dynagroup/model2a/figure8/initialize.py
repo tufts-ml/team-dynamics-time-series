@@ -8,6 +8,7 @@ from sklearn.cluster import KMeans
 
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
+    compute_closed_form_M_step_on_posterior_summaries,
     compute_hmm_posterior_summaries_JAX,
 )
 from dynagroup.initialize import (
@@ -227,11 +228,9 @@ def fit_ARHMM_to_bottom_half_of_model(
         ###
 
         # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
-        tpms = np.zeros((J, K, K))
-        for j in range(J):
-            tpms[j] = np.sum(EZ_summaries.expected_joints[2:, j], axis=0) / np.sum(
-                EZ_summaries.expected_regimes[:-1, j], axis=0
-            )
+        # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
+        # work when we have J tpms, and then
+        tpms = compute_closed_form_M_step_on_posterior_summaries(EZ_summaries)
         Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
         ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
 

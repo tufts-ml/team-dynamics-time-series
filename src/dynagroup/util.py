@@ -96,7 +96,7 @@ def random_rotation(n, theta=None):
 
 
 ###
-# TPMs
+# TPMs : Sticky
 ###
 
 
@@ -124,6 +124,32 @@ def make_fixed_sticky_tpm_JAX(self_transition_prob: float, num_states: int) -> j
         jnp.eye(num_states) * self_transition_prob
         + (1.0 - jnp.eye(num_states)) * external_transition_prob
     )
+
+
+###
+# TPMs : Softening
+###
+def soften_tpm(tpm_orig: NumpyArray2D) -> NumpyArray2D:
+    """
+    By "softening" a tpm, we mean to bound its entries away from exact 1's or 0's
+    by mixing it with a very small amount of a uniform tpm.
+
+    The motivation is to prevent numerical issues after taking the logarithm.
+
+    Remark:
+        If we had sticky priors, we wouldn't need to worry about this.  However, the post-hoc
+        softening at least allows us to use closed-form M-steps when ease of computation is desired
+        (e.g., at initialization).
+    """
+
+    K = np.shape(tpm_orig)[0]
+
+    # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
+    # A better approach is to use a Dirichlet prior and take the posterior.
+    P_UNIFORM = 0.001
+    tpm_uniform = np.ones((K, K)) / K
+
+    return P_UNIFORM * tpm_uniform + (1 - P_UNIFORM) * tpm_orig
 
 
 ###

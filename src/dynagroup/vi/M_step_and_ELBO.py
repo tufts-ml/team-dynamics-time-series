@@ -541,7 +541,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
         Unlike with the Gaussian model, we need to initialize the M-step (from the previous
         value of the parameters).
     """
-    J = np.shape(group_angles)[2]
+    J = np.shape(group_angles)[1]
     K = np.shape(VEZ_summaries.expected_regimes)[-1]
 
     # TODO: Pick a shape for group_angles up front and enforce it!

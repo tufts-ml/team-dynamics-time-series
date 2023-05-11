@@ -1,5 +1,5 @@
 import copy
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import matplotlib
 import numpy as np
@@ -50,7 +50,7 @@ def _relabel_regime_sequence_to_remove_unused_regimes(
 
 
 def plot_time_series_with_regime_panels(
-    series: NumpyArray2D,
+    series: Union[NumpyArray1D, NumpyArray2D],
     fitted_regime_sequence: NumpyArray1D,
     time_labels: Optional[NumpyArray1D] = None,
     dim_labels: Optional[List[str]] = None,
@@ -80,7 +80,8 @@ def plot_time_series_with_regime_panels(
         fitted_regime_sequence
     )
 
-    n_samples, n_dims = np.shape(series)
+    n_samples = np.shape(series)[0]
+    n_dims = np.shape(series)[1] if series.ndim == 2 else 1
 
     # construct dimension labels
     if dim_labels is None:
@@ -91,9 +92,10 @@ def plot_time_series_with_regime_panels(
 
     for d in range(n_dims):
         dim_color = "black" if d % 2 == 0 else "navy"
+        series_to_plot = series[:, d] if series.ndim == 2 else series
         ax.plot(
             range(n_samples),
-            series[:, d],
+            series_to_plot,
             color=dim_color,
             marker=MARKERS[d],
             markersize=10,

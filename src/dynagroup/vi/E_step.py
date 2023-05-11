@@ -301,7 +301,7 @@ def run_VEZ_step_JAX(
         D: dimension of continuous states
     """
 
-    T, J, _ = jnp.shape(continuous_states)
+    T, J = jnp.shape(continuous_states)[:2]
 
     # `transitions` has shape (T-1,J,K,K)
     log_transitions = (

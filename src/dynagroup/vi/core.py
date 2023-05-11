@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
@@ -24,7 +24,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(
-    continuous_states: JaxNumpyArray3D,
+    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
@@ -38,7 +38,8 @@ def run_CAVI_with_JAX(
 ) -> Tuple[HMM_Posterior_Summary_JAX, HMM_Posterior_Summaries_JAX, AllParameters_JAX]:
     """
     Arguments:
-        continuous_states: jnp.array with shape (T, J, D)
+        continuous_states: jnp.array with shape (T,J) or (T, J, D)
+            If (T,J), we assume this means (T,J,D) where D=1, and convert it to have 3 array dims.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
         M_step_toggles: Describes what kind of M-step should be done (gradient-descent, closed-form, or None)
@@ -72,6 +73,12 @@ def run_CAVI_with_JAX(
     IR = initialization_results
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
     J = np.shape(continuous_states)[1]
+
+    if continuous_states.ndim == 2:
+        print(
+            "Continuous states has only two array dimensions; now adding a third array dimension with 1 element."
+        )
+        continuous_states = continuous_states[:, :, None]
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And

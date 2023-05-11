@@ -170,7 +170,7 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
 def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
     IP: InitializationParameters_VonMises_JAX,
     group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
-):
+) -> JaxNumpyArray2D:
     """
     Compute the log (autoregressive, switching) emissions for the continuous states at the INITIAL timestep
         x_0^j ~ VM( loc[j,k], kappa[j,k] )
@@ -208,11 +208,15 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
                 But I think it doesn’t always make sense to assume that these initial observations
                 all come from the same distribution.   (Indeed, we assume all the other observations
                 come from different distributions.
+            3.  Set the mean equal to the observed value, and leave the variance at the initialized value.
 
-        For now, we're taking approach #1.
+        For now, we're taking approach #3... but it's effectively the same as approach #1.
     """
-    T, J = jnp.shape(group_angles)[:2]
-    return jnp.zeros((T, J))
+
+    ### Initial times
+    # We have  x_0^j ~ VM( loc[j,k], kappa[j,k] )
+    log_pdfs_init_time = vonmises.logpdf(group_angles[0][:, None], IP.kappas, loc=IP.locs)
+    return log_pdfs_init_time
 
 
 circle_model_JAX = Model(

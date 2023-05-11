@@ -74,8 +74,7 @@ seed_for_initialization = 1
 model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For inference
-n_iterations = 10
-init_to_true_params = True
+n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -205,7 +204,7 @@ if show_plots_after_learning:
 
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
-    n_iterations,
+    n_cavi_iterations,
     initialization_results,
     model,
     M_step_toggles_from_strings(

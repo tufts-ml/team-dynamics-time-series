@@ -115,6 +115,7 @@ def fit_ARHMM_to_bottom_half_of_model(
     expected_regimes = np.zeros((T, J, K))
     expected_joints = np.zeros((T - 1, J, K, K))
     log_normalizers = np.zeros(J)
+    entropies = np.zeros(J)
 
     # Pre-initialize info for the CSP Params
     ar_coefs = np.zeros((J, K))
@@ -151,12 +152,14 @@ def fit_ARHMM_to_bottom_half_of_model(
                 init_changepoint_penalty,
                 init_min_segment_size,
             )
+
             # update attributes for HMM posterior summaries
             expected_regimes[:, j, :] = posterior_summary.expected_regimes
             expected_joints[:, j, :, :] = posterior_summary.expected_joints
             log_normalizers[j] = posterior_summary.log_normalizer
 
             log_normalizer_for_this_entity = posterior_summary.log_normalizer
+            entropies[j] = posterior_summary.entropy
 
         # update attributes for CSP_JAX
         # TODO: Should I store these as VonMisesParams instead of CSP?
@@ -169,7 +172,10 @@ def fit_ARHMM_to_bottom_half_of_model(
 
     # TODO: Can grab the entropies later if needed
     EZ_summaries = HMM_Posterior_Summaries_JAX(
-        expected_regimes, expected_joints, log_normalizers, entropies=None
+        expected_regimes,
+        expected_joints,
+        log_normalizers,
+        entropies,
     )
     CSP_JAX = ContinuousStateParameters_VonMises_JAX(ar_coefs, drifts, kappas)
 

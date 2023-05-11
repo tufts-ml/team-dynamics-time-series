@@ -69,6 +69,8 @@ show_plots_of_samples = False
 # For initialization
 show_plots_after_init = False
 seed_for_initialization = 1
+num_em_iterations_for_bottom_half_init = 5
+num_em_iterations_for_top_half_init = 20
 
 # For model adjustments
 model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
@@ -82,7 +84,6 @@ M_step_toggle_for_IP = "closed_form_gaussian"
 system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
-initialization_seed = 2
 
 # For diagnostics
 show_plots_after_learning = False
@@ -154,6 +155,8 @@ initialization_results = smart_initialize_model_2a(
     DIMS,
     sample.xs,
     figure8_model_JAX,
+    num_em_iterations_for_bottom_half_init,
+    num_em_iterations_for_top_half_init,
     seed_for_initialization,
 )
 params_init = initialization_results.params

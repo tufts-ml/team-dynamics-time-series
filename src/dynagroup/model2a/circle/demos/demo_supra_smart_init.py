@@ -151,6 +151,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     squad_angles,
     circle_model_JAX,
+    system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 

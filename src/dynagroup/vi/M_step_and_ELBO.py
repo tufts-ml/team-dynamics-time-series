@@ -23,6 +23,7 @@ from dynagroup.params import (
     ContinuousStateParameters_Gaussian_JAX,
     ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX,
     ContinuousStateParameters_JAX,
+    ContinuousStateParameters_VonMises_JAX,
     ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch,
     EntityTransitionParameters_JAX,
     EntityTransitionParameters_MetaSwitch_JAX,
@@ -100,6 +101,7 @@ def compute_energy(
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states)
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
@@ -109,6 +111,7 @@ def compute_energy(
             VES_summary,
             system_transition_prior,
             model,
+            system_covariates,
         )
     )
     energy_post_init_negated_and_divided_by_num_timesteps += (
@@ -150,6 +153,7 @@ def compute_elbo_decomposed(
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> ELBO_Decomposed:
     energy = compute_energy(
         all_params.STP,
@@ -161,6 +165,7 @@ def compute_elbo_decomposed(
         system_transition_prior,
         continuous_states,
         model,
+        system_covariates,
     )
     entropy = compute_entropy(VES_summary, VEZ_summaries)
     elbo = energy + entropy
@@ -179,9 +184,8 @@ class M_Step_Toggle_Value(Enum):
     OFF = 1
     GRADIENT_DESCENT = 2
     CLOSED_FORM_TPM = 3
-    CLOSED_FORM_IP_GAUSSIAN = 4
-    CLOSED_FORM_GAUSSIAN = 5
-    CLOSED_FORM_VON_MISES = 6
+    CLOSED_FORM_GAUSSIAN = 4
+    CLOSED_FORM_VON_MISES = 5
 
 
 @dataclass
@@ -292,7 +296,7 @@ def compute_expected_log_system_transitions_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     model: Model,
-    system_covariates: Optional[JaxNumpyArray2D] = None,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
     Arguments:
@@ -370,7 +374,7 @@ def compute_cost_for_system_transition_parameters_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
-    system_covariates: Optional[JaxNumpyArray2D] = None,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -401,7 +405,7 @@ def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
-    system_covariates: Optional[JaxNumpyArray2D] = None,
+    system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -474,7 +478,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 ###
 
 
-def run_M_step_for_Gaussian_CSP_in_closed_form(
+def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     VEZ_summaries: HMM_Posterior_Summaries_JAX, continuous_states: JaxNumpyArray3D
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
@@ -508,6 +512,54 @@ def run_M_step_for_Gaussian_CSP_in_closed_form(
             residuals = results.resid * weights[1:][:, None]
             Qs[j, k] = np.cov(residuals.T)
     return ContinuousStateParameters_Gaussian_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))
+
+
+# TODO: Consider moving `run_M_step_for_VonMises_CSP_in_closed_form`
+#  out of the general M-step module (which should be only for general gradient descent)
+
+from dynagroup.von_mises.inference.ar import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+)
+
+
+def run_M_step_for_CSP_in_closed_form__VonMises_case(
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    group_angles: JaxNumpyArray2D,
+    all_params: AllParameters_JAX,
+) -> ContinuousStateParameters_VonMises_JAX:
+    """
+    Arguments:
+        group_angles:
+            Array of shape (T,J)
+
+    Remarks:
+        Unlike with the Gaussian model, we need to initialize the M-step (from the previous
+        value of the parameters).
+    """
+    J = np.shape(group_angles)[-1]
+    K = np.shape(VEZ_summaries.log_emissions)[-1]
+
+    ar_coefs = np.zeros((J, K))
+    drifts = np.zeros((J, K))
+    kappas = np.zeros((J, K))
+
+    for j in range(J):
+        for k in range(K):
+            emissions_params = estimate_von_mises_params(
+                group_angles[:, j],
+                VonMisesModelType.AUTOREGRESSION,
+                all_params.CSP.ar_coefs[j, k],
+                all_params.CSP.drifts[j, k],
+                sample_weights=VEZ_summaries.expected_regimes[:, k],
+                suppress_warnings=True,
+            )
+            ar_coefs[j, k] = emissions_params.ar_coef
+            drifts[j, k] = emissions_params.drift
+            kappas[j, k] = emissions_params.kappa
+    return ContinuousStateParameters_VonMises_JAX(
+        jnp.asarray(ar_coefs), jnp.asarray(drifts), jnp.asarray(kappas)
+    )
 
 
 def run_M_step_for_ETP_via_gradient_descent(
@@ -559,7 +611,6 @@ def run_M_step_for_ETP(
     M_step_toggles_ETP: M_Step_Toggle_Value,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
@@ -592,18 +643,6 @@ def run_M_step_for_ETP(
         all_params.STP, ETP_new, all_params.CSP, all_params.EP, all_params.IP
     )
 
-    elbo_decomposed = compute_elbo_decomposed(
-        all_params,
-        VES_summary,
-        VEZ_summaries,
-        system_transition_prior,
-        continuous_states,
-        model,
-    )
-    if verbose:
-        print(
-            f"After ETP-M step on iteration {iteration+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
-        )
     return all_params
 
 
@@ -643,7 +682,7 @@ def run_M_step_for_STP_via_gradient_descent(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    system_covariates: Optional[JaxNumpyArray2D] = None,
+    system_covariates: Optional[JaxNumpyArray2D],
     verbose: bool = True,
 ) -> SystemTransitionParameters_JAX:
     ### Do gradient descent on unconstrained parameters.
@@ -683,12 +722,11 @@ def run_M_step_for_STP(
     all_params: AllParameters_JAX,
     M_step_toggles_STP: M_Step_Toggle_Value,
     VES_summary: HMM_Posterior_Summary_JAX,
-    VEZ_summaries: HMM_Posterior_Summaries_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
-    continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
     model: Model,
+    system_covariates: Optional[JaxNumpyArray2D],
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_STP == M_Step_Toggle_Value.OFF:
@@ -704,6 +742,7 @@ def run_M_step_for_STP(
             iteration,
             num_M_step_iters,
             model,
+            system_covariates,
             verbose,
         )
     else:
@@ -714,39 +753,27 @@ def run_M_step_for_STP(
     all_params = AllParameters_JAX(
         STP_new, all_params.ETP, all_params.CSP, all_params.EP, all_params.IP
     )
-
-    elbo_decomposed = compute_elbo_decomposed(
-        all_params,
-        VES_summary,
-        VEZ_summaries,
-        system_transition_prior,
-        continuous_states,
-        model,
-    )
-    if verbose:
-        print(
-            f"After STP-M step on iteration {iteration+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
-        )
     return all_params
 
 
 def run_M_step_for_CSP(
     all_params: AllParameters_JAX,
     M_step_toggles_CSP: M_Step_Toggle_Value,
-    VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: NumpyArray3D,
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_CSP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for CSP, as requested.")
         return all_params
     elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN:
-        CSP_new = run_M_step_for_Gaussian_CSP_in_closed_form(VEZ_summaries, continuous_states)
+        CSP_new = run_M_step_for_CSP_in_closed_form__Gaussian_case(VEZ_summaries, continuous_states)
+    elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_VON_MISES:
+        CSP_new = run_M_step_for_CSP_in_closed_form__VonMises_case(
+            VEZ_summaries, continuous_states, all_params
+        )
     elif M_step_toggles_CSP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         warnings.warn(
             f"Learning the CSP parameters by gradient descent.  Performance seems to be worse than with the closed-form approach. "
@@ -792,23 +819,10 @@ def run_M_step_for_CSP(
     all_params = AllParameters_JAX(
         all_params.STP, all_params.ETP, CSP_new, all_params.EP, all_params.IP
     )
-
-    elbo_decomposed = compute_elbo_decomposed(
-        all_params,
-        VES_summary,
-        VEZ_summaries,
-        system_transition_prior,
-        continuous_states,
-        model,
-    )
-    if verbose:
-        print(
-            f"After CSP-M step on iteration {iteration+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
-        )
     return all_params
 
 
-def run_M_step_for_Gaussian_IP_in_closed_form(
+def run_M_step_for_IP_in_closed_form__Gaussian_case(
     IP: InitializationParameters_Gaussian_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -834,17 +848,13 @@ def run_M_step_for_IP(
     M_step_toggles_IP: M_Step_Toggle_Value,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: NumpyArray3D,
-    iteration: int,
-    model: Model,
-    verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_IP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for IP, as requested.")
         return all_params
-    elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_IP_GAUSSIAN:
-        IP_new = run_M_step_for_Gaussian_IP_in_closed_form(
+    elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN:
+        IP_new = run_M_step_for_IP_in_closed_form__Gaussian_case(
             all_params.IP,
             VEZ_summaries,
             VES_summary,
@@ -863,16 +873,4 @@ def run_M_step_for_IP(
         all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new
     )
 
-    elbo_decomposed = compute_elbo_decomposed(
-        all_params,
-        VES_summary,
-        VEZ_summaries,
-        system_transition_prior,
-        continuous_states,
-        model,
-    )
-    if verbose:
-        print(
-            f"After IP-M step on iteration {iteration+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
-        )
     return all_params

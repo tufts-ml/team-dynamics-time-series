@@ -10,11 +10,10 @@ from dynagroup.initialize import InitializationResults
 from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggles,
-    M_step_toggles_from_strings,
     compute_elbo_decomposed,
     run_M_step_for_CSP,
     run_M_step_for_ETP,
@@ -32,6 +31,7 @@ def run_CAVI_with_JAX(
     M_step_toggles: Optional[M_Step_Toggles] = None,
     num_M_step_iters: int = 50,
     system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
     true_system_regimes: Optional[NumpyArray1D] = None,
     true_entity_regimes: Optional[NumpyArray2D] = None,
     verbose: bool = True,
@@ -66,17 +66,6 @@ def run_CAVI_with_JAX(
     """
 
     ###
-    # CONVERT NONES
-    ###
-    if M_step_toggles is None:
-        M_step_toggles = M_step_toggles_from_strings(
-            STP_toggle="closed_form",
-            ETP_toggle="gradient_descent",
-            CSP_toggle="closed_form",
-            IP_toggle="closed_form",
-        )
-
-    ###
     # SET-UP
     ###
 
@@ -96,6 +85,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            system_covariates,
         )
         print(
             f"After (possibly smart) initialization, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
@@ -115,6 +105,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             VEZ_summaries,
             model,
+            system_covariates,
         )
 
         if verbose:
@@ -163,6 +154,7 @@ def run_CAVI_with_JAX(
                 system_transition_prior,
                 continuous_states,
                 model,
+                system_covariates,
             )
             print(
                 f"After E-step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
@@ -171,55 +163,118 @@ def run_CAVI_with_JAX(
         # TODO: I probably don't really need separate functions of the form run_M_step_for_<xxxx>.  Make this a single wrapper that in
         # turn calls the appropriate functions for closed-form or gradient descent inference.
 
+        ###
+        # M-step (ETP)
+        ###
+
         all_params = run_M_step_for_ETP(
             all_params,
             M_step_toggles.ETP,
             VES_summary,
             VEZ_summaries,
-            system_transition_prior,
             continuous_states,
             i,
             num_M_step_iters,
             model,
             verbose,
         )
+
+        elbo_decomposed = compute_elbo_decomposed(
+            all_params,
+            VES_summary,
+            VEZ_summaries,
+            system_transition_prior,
+            continuous_states,
+            model,
+            system_covariates,
+        )
+        if verbose:
+            print(
+                f"After ETP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            )
+
+        ###
+        # M-step (STP)
+        ###
 
         all_params = run_M_step_for_STP(
             all_params,
             M_step_toggles.STP,
             VES_summary,
-            VEZ_summaries,
             system_transition_prior,
-            continuous_states,
             i,
             num_M_step_iters,
             model,
+            system_covariates,
             verbose,
         )
 
-        all_params = run_M_step_for_CSP(
+        elbo_decomposed = compute_elbo_decomposed(
             all_params,
-            M_step_toggles.CSP,
             VES_summary,
             VEZ_summaries,
             system_transition_prior,
             continuous_states,
+            model,
+            system_covariates,
+        )
+        if verbose:
+            print(
+                f"After STP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            )
+
+        ###
+        # M-step (CSP)
+        ###
+
+        all_params = run_M_step_for_CSP(
+            all_params,
+            M_step_toggles.CSP,
+            VEZ_summaries,
+            continuous_states,
             i,
             num_M_step_iters,
             model,
-            verbose,
         )
+
+        elbo_decomposed = compute_elbo_decomposed(
+            all_params,
+            VES_summary,
+            VEZ_summaries,
+            system_transition_prior,
+            continuous_states,
+            model,
+            system_covariates,
+        )
+        if verbose:
+            print(
+                f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            )
+
+        ###
+        # M-step (IP)
+        ###
 
         all_params = run_M_step_for_IP(
             all_params,
             M_step_toggles.IP,
             VES_summary,
             VEZ_summaries,
+            continuous_states,
+        )
+
+        elbo_decomposed = compute_elbo_decomposed(
+            all_params,
+            VES_summary,
+            VEZ_summaries,
             system_transition_prior,
             continuous_states,
-            i,
             model,
-            verbose,
+            system_covariates,
         )
+        if verbose:
+            print(
+                f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            )
 
     return VES_summary, VEZ_summaries, all_params

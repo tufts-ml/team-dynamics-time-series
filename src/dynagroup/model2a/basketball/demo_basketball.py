@@ -6,17 +6,18 @@ import numpy as np
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
+from dynagroup.io import ensure_dir
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.diagnostics.trajectories import (
-    get_deterministic_trajectories,
-    plot_deterministic_trajectories,
-)
 from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_continuous_state_emissions_at_initial_timestep_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
     compute_log_system_transition_probability_matrices_JAX,
+)
+from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
+    get_deterministic_trajectories,
+    plot_deterministic_trajectories,
 )
 from dynagroup.params import Dims
 from dynagroup.types import JaxNumpyArray1D
@@ -28,8 +29,13 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 # Configs
 ###
 
+# Directories
+data_load_dir = "/Users/mwojno01/Desktop/"
+save_dir = "/Users/mwojno01/Desktop/basketball_devel/"
+
 # Data properties
 # t_every
+
 
 # Initialization
 seed_for_initialization = 1
@@ -51,11 +57,10 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 ###
-# Load Data
+# I/O
 ###
-
-load_dir = "/Users/mwojno01/Desktop"
-xs_unnormalized = np.load(load_dir + "basketball_play.npy")
+ensure_dir(save_dir)
+xs_unnormalized = np.load(data_load_dir + "basketball_play.npy")
 
 ###
 # Preprocess Data
@@ -144,7 +149,7 @@ params_init = results_init.params
 deterministic_trajectories = get_deterministic_trajectories(
     params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=xs[0]
 )
-plot_deterministic_trajectories(deterministic_trajectories, "Init")
+plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
 ### plot regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)

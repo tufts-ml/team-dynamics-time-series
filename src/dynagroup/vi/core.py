@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -32,6 +33,7 @@ def run_CAVI_with_JAX(
     num_M_step_iters: int = 50,
     system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
     system_covariates: Optional[JaxNumpyArray2D] = None,
+    use_continuous_states: Optional[NumpyArray2D] = None,
     true_system_regimes: Optional[NumpyArray1D] = None,
     true_entity_regimes: Optional[NumpyArray2D] = None,
     verbose: bool = True,
@@ -50,6 +52,11 @@ def run_CAVI_with_JAX(
                 ETP: Gradient decent, or none
                 CSP: Closed-form, gradient decent, or none  (but gradient descent doesn't work very well)
                 IP: Closed-form or none
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step.
         true_system_regimes: Array with shape (T,)
             Each entry is in {1,...,L}
         true_entity_regimes: has shape (T, J)
@@ -72,7 +79,7 @@ def run_CAVI_with_JAX(
 
     IR = initialization_results
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
-    J = np.shape(continuous_states)[1]
+    T, J = np.shape(continuous_states)[:2]
 
     if continuous_states.ndim == 2:
         print(
@@ -80,6 +87,22 @@ def run_CAVI_with_JAX(
         )
         continuous_states = continuous_states[:, :, None]
 
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+    else:
+        warnings.warn(
+            f"Selecting only some continuous states for usage correctly alters inference -- the M-step and VES "
+            f"steps are changes so as to remove the influence of unused states.  However, the "
+            f"ELBO is still computed on the full dataset. This is because of the current implementation: under "
+            f"the hood, we compute the full VEZ step, and only ablate post-hoc."
+        )
+
+    if False in use_continuous_states[0]:
+        raise NotImplementedError(
+            f"We currently assume the initial continuous state is used for all entities. "
+            f"The implementation can be changed to handle this case, though: Update the "
+            f"code for doing the M-step for the initialization parameters."
+        )
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And
     # use the data-free inits for everything else?
@@ -113,6 +136,7 @@ def run_CAVI_with_JAX(
             VEZ_summaries,
             model,
             system_covariates,
+            use_continuous_states,
         )
 
         if verbose:
@@ -183,6 +207,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
+            use_continuous_states,
             verbose,
         )
 
@@ -204,6 +229,7 @@ def run_CAVI_with_JAX(
         # M-step (STP)
         ###
 
+        # Note the VES step has already taken care of the `use_continuous_states` mask.
         all_params = run_M_step_for_STP(
             all_params,
             M_step_toggles.STP,
@@ -242,6 +268,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
+            use_continuous_states,
         )
 
         elbo_decomposed = compute_elbo_decomposed(

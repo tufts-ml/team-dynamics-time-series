@@ -338,39 +338,13 @@ def compute_hmm_posterior_summaries_JAX(
     # first create LISTS, where the j-th element of each list
     # gives an attribute from the hmm posterior summaries (including entropy)
     J = jnp.shape(log_transitions)[1]
-    (
-        expected_regimes_list,
-        expected_joints_list,
-        log_normalizers_list,
-        entropies_list,
-    ) = ([None] * J, [None] * J, [None] * J, [None] * J)
+
+    list_of_hmm_summaries_by_entity = [None] * J
     for j in range(J):
-        hmm_summary_for_entity = compute_hmm_posterior_summary_JAX(
+        list_of_hmm_summaries_by_entity[j] = compute_hmm_posterior_summary_JAX(
             log_transitions[:, j], log_emissions[:, j], init_dists_over_regimes[j]
         )
-        expected_regimes_list[j] = hmm_summary_for_entity.expected_regimes
-        expected_joints_list[j] = hmm_summary_for_entity.expected_joints
-        log_normalizers_list[j] = hmm_summary_for_entity.log_normalizer
-        entropies_list[j] = hmm_summary_for_entity.entropy
-
-    # then convert these to the right shape for the HMM_Posterior_Summaries_JAX class
-    (
-        expected_regimes_entity_first,
-        expected_joints_entity_first,
-        log_normalizers,
-        entropies,
-    ) = (
-        jnp.asarray(expected_regimes_list),
-        jnp.asarray(expected_joints_list),
-        jnp.asarray(log_normalizers_list),
-        jnp.asarray(entropies_list),
-    )
-    expected_regimes = jnp.swapaxes(expected_regimes_entity_first, 0, 1)  # (T,J,K)
-    expected_joints = jnp.swapaxes(expected_joints_entity_first, 0, 1)  # (T-1,J,K,K)
-
-    return HMM_Posterior_Summaries_JAX(
-        expected_regimes, expected_joints, log_normalizers, entropies
-    )
+    return make_hmm_posterior_summaries_from_list(list_of_hmm_summaries_by_entity)
 
 
 def compute_hmm_posterior_summaries_NUMPY(
@@ -399,7 +373,7 @@ def compute_hmm_posterior_summaries_NUMPY(
 
 
 ###
-# Convert jax to numpy and back
+# Conversions
 ###
 
 
@@ -419,6 +393,69 @@ def convert_hmm_posterior_summaries_from_jax_to_numpy(
     )
 
 
+def make_hmm_posterior_summaries_from_list(
+    list_of_hmm_posterior_summaries: List[HMM_Posterior_Summary],
+) -> HMM_Posterior_Summaries_JAX:
+    J = len(list_of_hmm_posterior_summaries)
+
+    (
+        expected_regimes_list,
+        expected_joints_list,
+        log_normalizers_list,
+        entropies_list,
+    ) = ([None] * J, [None] * J, [None] * J, [None] * J)
+    for j in range(J):
+        expected_regimes_list[j] = list_of_hmm_posterior_summaries[j].expected_regimes
+        expected_joints_list[j] = list_of_hmm_posterior_summaries[j].expected_joints
+        log_normalizers_list[j] = list_of_hmm_posterior_summaries[j].log_normalizer
+        entropies_list[j] = list_of_hmm_posterior_summaries[j].entropy
+
+    # then convert these to the right shape for the HMM_Posterior_Summaries_JAX class
+    (
+        expected_regimes_entity_first,
+        expected_joints_entity_first,
+        log_normalizers,
+        entropies,
+    ) = (
+        jnp.asarray(expected_regimes_list),
+        jnp.asarray(expected_joints_list),
+        jnp.asarray(log_normalizers_list),
+        jnp.asarray(entropies_list),
+    )
+    expected_regimes = jnp.swapaxes(expected_regimes_entity_first, 0, 1)  # (T,J,K)
+    expected_joints = jnp.swapaxes(expected_joints_entity_first, 0, 1)  # (T-1,J,K,K)
+
+    return HMM_Posterior_Summaries_JAX(
+        expected_regimes, expected_joints, log_normalizers, entropies
+    )
+
+
+def make_list_from_hmm_posterior_summaries(
+    hmm_posterior_summaries: HMM_Posterior_Summaries_JAX,
+) -> List[HMM_Posterior_Summary_JAX]:
+    J = np.shape(hmm_posterior_summaries.expected_regimes)[1]
+
+    list_of_hmm_posterior_summaries = [None] * J
+    for j in range(J):
+        entropy_for_entity = (
+            hmm_posterior_summaries.entropies[j]
+            if hmm_posterior_summaries.entropies is not None
+            else None
+        )
+        log_normalizer_for_entity = (
+            hmm_posterior_summaries.log_normalizers[j]
+            if hmm_posterior_summaries.log_normalizers is not None
+            else None
+        )
+        list_of_hmm_posterior_summaries[j] = HMM_Posterior_Summary_JAX(
+            hmm_posterior_summaries.expected_regimes[:, j],
+            hmm_posterior_summaries.expected_joints[:, j],
+            log_normalizer_for_entity,
+            entropy_for_entity,
+        )
+    return list_of_hmm_posterior_summaries
+
+
 ###
 # Produce closed-form M-step
 ###
@@ -427,20 +464,35 @@ def convert_hmm_posterior_summaries_from_jax_to_numpy(
 # TODO: Is there some way to combine `compute_closed_form_M_step`
 # with `compute_closed_form_M_step_on_posterior_summaries` by just vectorizing across
 # any leading dimensions when they exist?
-def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -> NumpyArray2D:
+def compute_closed_form_M_step(
+    posterior_summary: HMM_Posterior_Summary_NUMPY,
+    use_continuous_states: Optional[NumpyArray2D] = None,
+) -> NumpyArray2D:
     """
     Returns:
         Array of shape (K,K) which is a tpm.
+
+    Remarks:
+        If we have four observations (x1,x2,x3,x4), and the `use_continuous_states` mask is [True,True,False,False],
+        then we only use the pair (x1,x2) when estimating the tpm.  Basically, BOTH points have to have a true usage
+        in order for their contribution to the tpm to count.
     """
-    K = np.shape(posterior_summary.expected_regimes)[1]
+
+    T, K = np.shape(posterior_summary.expected_regimes)[:2]
+
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T), True)
 
     # Compute tpm
     tpm_empirical = np.zeros((K, K))
     for k in range(K):
         for k_prime in range(K):
             tpm_empirical[k, k_prime] = np.sum(
-                posterior_summary.expected_joints[2:, k, k_prime], axis=0
-            ) / np.sum(posterior_summary.expected_regimes[:-1, k], axis=0)
+                posterior_summary.expected_joints[:, k, k_prime] * use_continuous_states[1:],
+                axis=0,
+            ) / np.sum(
+                posterior_summary.expected_regimes[:-1, k] * use_continuous_states[1:], axis=0
+            )
 
     # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
     # A better approach is to use a Dirichlet prior and take the posterior.
@@ -454,21 +506,31 @@ def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -
 
 def compute_closed_form_M_step_on_posterior_summaries(
     posterior_summaries: HMM_Posterior_Summaries_NUMPY,
+    use_continuous_states: Optional[NumpyArray2D] = None,
 ) -> NumpyArray3D:
     """
+    Arguments:
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step.
+
     Returns:
         Array of shape (J,K,K), whose j-th entry is a tpm
     """
 
     T, J, K = np.shape(posterior_summaries.expected_regimes)
 
-    # Compute tpm
-    empirical_tpms_softened = np.zeros((J, K, K))
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
+    posterior_summaries_list = make_list_from_hmm_posterior_summaries(posterior_summaries)
+
+    tpms = [None] * J
     for j in range(J):
-        empirical_tpm = np.sum(posterior_summaries.expected_joints[2:, j], axis=0) / np.sum(
-            posterior_summaries.expected_regimes[:-1, j], axis=0
+        tpms[j] = compute_closed_form_M_step(
+            posterior_summaries_list[j], use_continuous_states[:, j]
         )
-        # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
-        # A better approach is to use a Dirichlet prior and take the posterior.
-        empirical_tpms_softened[j] = soften_tpm(empirical_tpm)
-    return empirical_tpms_softened
+
+    return np.array(tpms)

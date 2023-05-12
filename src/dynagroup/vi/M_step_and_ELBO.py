@@ -51,7 +51,6 @@ from dynagroup.util import (
     normalize_log_potentials_by_axis_JAX,
     normalize_potentials_by_axis_JAX,
 )
-from dynagroup.vi.dims import variational_dims_from_summaries_JAX
 from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
@@ -265,20 +264,33 @@ def compute_expected_log_entity_transitions_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
     Arguments:
         continuous_states: has shape (T, J, D)
     """
+
+    T, J = np.shape(continuous_states)[:2]
+
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
     variational_probs = compute_variational_posterior_on_regime_triplets_JAX(
         VES_summary, VEZ_summaries
     )
+    # `log_transition_matrices` has shape (T-1,J,L,K,K)
     log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states[:-1],
         model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
-    return jnp.sum(variational_probs * log_transition_matrices)
+
+    log_transition_matrices_weighted = (
+        log_transition_matrices * use_continuous_states[1:, :, None, None, None]
+    )
+
+    return jnp.sum(variational_probs * log_transition_matrices_weighted)
 
 
 def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
@@ -286,6 +298,7 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: JaxNumpyArray2D,
 ) -> float:
     variational_probs = VEZ_summaries.expected_regimes[1:]
     log_continuous_state_dynamics = (
@@ -294,7 +307,11 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
             continuous_states,
         )
     )
-    return jnp.sum(variational_probs * log_continuous_state_dynamics)
+    # log_continuous_state_dynamics is (T-1,J,K)
+    log_continuous_state_dynamics_weighted = (
+        log_continuous_state_dynamics * use_continuous_states[1:, :, None]
+    )
+    return jnp.sum(variational_probs * log_continuous_state_dynamics_weighted)
 
 
 def compute_expected_log_system_transitions_JAX(
@@ -326,6 +343,7 @@ def compute_cost_for_entity_transition_parameters_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -333,7 +351,17 @@ def compute_cost_for_entity_transition_parameters_JAX(
 
     Note that we only need the parts of the log likelihood and log prior that are
     relevant to these particular parameters.
+
+    Arguments:
+        use_continuous_states: Defaults to None (which means all states are used) because
+            when we compute the ELBO, we always assume a full dataset.  This is simply because
+            I haven't had the time yet to dig into ssm.messages to handle partial observations
+            when doing forward backward.
     """
+    T, J = np.shape(continuous_states)[:2]
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
     # TODO: Combine with `compute_cost_for_system_transition_parameters_JAX` ?
     expected_log_transitions = compute_expected_log_entity_transitions_JAX(
         continuous_states,
@@ -341,13 +369,12 @@ def compute_cost_for_entity_transition_parameters_JAX(
         VES_summary,
         VEZ_summaries,
         model,
+        use_continuous_states,
     )
     log_prior = 0.0  # TODO: Add prior?
     energy = expected_log_transitions + log_prior
 
-    # Normalize and negate for minimization
-    DIMS = variational_dims_from_summaries_JAX(VES_summary, VEZ_summaries)
-    return -energy / DIMS.T
+    return -energy / jnp.sum(use_continuous_states)
 
 
 def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
@@ -356,6 +383,7 @@ def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -371,6 +399,7 @@ def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
         VES_summary,
         VEZ_summaries,
         model,
+        use_continuous_states=use_continuous_states,
     )
 
 
@@ -434,6 +463,7 @@ def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -441,19 +471,30 @@ def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
 
     Note that we only need the parts of the log likelihood and log prior that are
     relevant to these particular parameters.
+
+    Arguments:
+        use_continuous_states: Defaults to None (which means all states are used) because
+            when we compute the ELBO, we always assume a full dataset.  This is simply because
+            I haven't had the time yet to dig into ssm.messages to handle partial observations
+            when doing forward backward.
     """
+
+    T, J = np.shape(continuous_states)[:2]
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
     expected_log_state_dynamics = (
         compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
             CSP,
             continuous_states,
             VEZ_summaries,
             model,
+            use_continuous_states,
         )
     )
     log_prior = 0.0
     energy = expected_log_state_dynamics + log_prior
-    T = len(continuous_states)
-    return -energy / T
+    return -energy / jnp.sum(use_continuous_states)
 
 
 def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX(
@@ -461,6 +502,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    use_continuous_states: JaxNumpyArray2D,
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -475,6 +517,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
         continuous_states,
         VEZ_summaries,
         model,
+        use_continuous_states,
     )
 
 
@@ -484,7 +527,9 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 
 
 def run_M_step_for_CSP_in_closed_form__Gaussian_case(
-    VEZ_summaries: HMM_Posterior_Summaries_JAX, continuous_states: JaxNumpyArray3D
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    continuous_states: JaxNumpyArray3D,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
     The M-step for CSP for this model is just the solution for a vector auto-regression (VAR) model
@@ -494,10 +539,21 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     so to get the parameters for the (j,k)-th entity and entity-regime,
     we weight each sample by the q(z_t^j=k).
+
+    Arguments:
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step.
     """
 
-    _, J, K = np.shape(VEZ_summaries.expected_regimes)
+    T, J, K = np.shape(VEZ_summaries.expected_regimes)
     D = np.shape(continuous_states)[2]
+
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
     As = np.zeros((J, K, D, D))
     bs = np.zeros((J, K, D))
     Qs = np.zeros((J, K, D, D))
@@ -505,7 +561,9 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     for j in range(J):
         xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):
-            weights = np.asarray(VEZ_summaries.expected_regimes[:, j, k])  # TxJxK
+            weights = np.asarray(
+                VEZ_summaries.expected_regimes[:, j, k] * use_continuous_states[:, j]
+            )  # TxJxK
             responses = xs[1:]
             predictors = add_constant(xs[:-1], prepend=False)
             wls_model = WLS(responses, predictors, hasconst=True, weights=weights[1:])
@@ -532,6 +590,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     group_angles: JaxNumpyArray2D,
     all_params: AllParameters_JAX,
+    use_continuous_states: JaxNumpyArray2D,
 ) -> ContinuousStateParameters_VonMises_JAX:
     """
     Arguments:
@@ -542,6 +601,12 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
         Unlike with the Gaussian model, we need to initialize the M-step (from the previous
         value of the parameters).
     """
+    if (use_continuous_states is not None) and (False in use_continuous_states):
+        raise NotImplementedError(
+            f"This function has not yet been expanded to handle the case where a subset of continuous "
+            f"states are not used."
+        )
+
     J = np.shape(group_angles)[1]
     K = np.shape(VEZ_summaries.expected_regimes)[-1]
 
@@ -580,8 +645,13 @@ def run_M_step_for_ETP_via_gradient_descent(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> EntityTransitionParameters_JAX:
+    T, J = np.shape(continuous_states)[:2]
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
+
     ### Do gradient descent on unconstrained parameters.
     ETP_WUC = ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch(ETP)
 
@@ -591,6 +661,7 @@ def run_M_step_for_ETP_via_gradient_descent(
         VES_summary=VES_summary,
         VEZ_summaries=VEZ_summaries,
         model=model,
+        use_continuous_states=use_continuous_states,
     )
 
     # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
@@ -625,6 +696,7 @@ def run_M_step_for_ETP(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_ETP == M_Step_Toggle_Value.OFF:
@@ -644,6 +716,7 @@ def run_M_step_for_ETP(
             iteration,
             num_M_step_iters,
             model,
+            use_continuous_states,
             verbose,
         )
     else:
@@ -672,7 +745,6 @@ def run_M_step_for_STP_in_closed_form(
     warnings.warn(
         "Running closed-form M-step for STP.  Note that this ignores the prior specification."
     )
-
     exp_Pi = compute_closed_form_M_step(VES_summary)
     Pi_new = jnp.asarray(np.log(exp_Pi))
     return SystemTransitionParameters_JAX(STP.Gammas, STP.Upsilon, Pi_new)
@@ -767,15 +839,18 @@ def run_M_step_for_CSP(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
+    use_continuous_states: Optional[JaxNumpyArray2D],
 ) -> AllParameters_JAX:
     if M_step_toggles_CSP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for CSP, as requested.")
         return all_params
     elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN:
-        CSP_new = run_M_step_for_CSP_in_closed_form__Gaussian_case(VEZ_summaries, continuous_states)
+        CSP_new = run_M_step_for_CSP_in_closed_form__Gaussian_case(
+            VEZ_summaries, continuous_states, use_continuous_states
+        )
     elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_VON_MISES:
         CSP_new = run_M_step_for_CSP_in_closed_form__VonMises_case(
-            VEZ_summaries, continuous_states, all_params
+            VEZ_summaries, continuous_states, all_params, use_continuous_states
         )
     elif M_step_toggles_CSP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         warnings.warn(
@@ -793,6 +868,7 @@ def run_M_step_for_CSP(
             continuous_states=continuous_states,
             VEZ_summaries=VEZ_summaries,
             model=model,
+            use_continuous_states=use_continuous_states,
         )
 
         optimizer_state_for_state_dynamics = None

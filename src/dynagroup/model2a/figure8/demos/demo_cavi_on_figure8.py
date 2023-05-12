@@ -30,6 +30,7 @@ from dynagroup.model2a.figure8.generate import (
     times_of_system_regime_changepoints,
 )
 from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
+from dynagroup.model2a.figure8.mask import make_mask_of_which_continuous_states_to_use
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
@@ -69,14 +70,16 @@ For inference, we use JAX.
 # For sample generation
 show_plots_of_samples = False
 
+# Masking and model adjustments
+mask_final_regime_transition_for_entity_2 = True
+model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+
 # For initialization
 show_plots_after_init = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 
-# For model adjustments
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For inference
 n_cavi_iterations = 10
@@ -90,12 +93,13 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/tmp_review/"
+save_dir = "/Users/mwojno01/Desktop/fig8_partial_forecasts_post_one_step_off_masking_bugfix/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
-T_slice_for_forecasting = 200
-T_slice_for_old_forecasting = 200
+T_slice_for_forecasting = 70
+T_slice_for_old_forecasting = 70
+
 
 ###
 # PLOT SAMPLE
@@ -123,6 +127,14 @@ if show_plots_of_samples:
     plot_unfolded_time_series(sample.xs, period_to_use=4)
 
 ###
+# MASKING
+###
+if mask_final_regime_transition_for_entity_2:
+    use_continuous_states = make_mask_of_which_continuous_states_to_use(sample.xs)
+else:
+    use_continuous_states = None
+
+###
 # SPECIFY MODEL
 ###
 model = figure8_model_JAX
@@ -134,7 +146,7 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 
 
 ###
-# ADJUSTMENTS TO HANDLE SPECIAL CASES
+# MODEL ADJUSTMENTS
 ###
 if model_adjustment == "one_system_regime":
     DIMS.L = 1
@@ -161,6 +173,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
+    use_continuous_states,
 )
 params_init = results_init.params
 
@@ -227,6 +240,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     num_M_step_iters,
     system_transition_prior,
     system_covariates,
+    jnp.asarray(use_continuous_states),
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )

@@ -18,7 +18,7 @@ def plot_fit_and_forecast_on_slice(
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    T_slice: int,
+    T_slice_max: int,
     model: Model,
     forecast_seeds: List[int],
     save_dir: str,
@@ -29,7 +29,8 @@ def plot_fit_and_forecast_on_slice(
     """
     Arguments:
         continuous_states: jnp.array with shape (T, J, D)
-        T_slice: The number of timesteps in the slice that we work with for fitting and forecasting
+        T_slice_max: The attempted number of timesteps in the slice that we work with for fitting and forecasting.
+            The actual T_slice could be less if there are not enough timesteps remaining in the sample.
         entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
             indices provided.
         find_t0_for_entity_sample: Function converting entity sample (in (T,D)) to initial time for forecasting
@@ -62,6 +63,8 @@ def plot_fit_and_forecast_on_slice(
         ###
         t_0 = find_t0_for_entity_sample(sample_entity)
         x_0 = sample_entity[t_0]
+        t_end = np.min((t_0 + T_slice_max, T))
+        T_slice = t_end - t_0
 
         ###
         # Plotting the truth
@@ -90,9 +93,9 @@ def plot_fit_and_forecast_on_slice(
         plt.close("all")
         fig = plt.figure(figsize=(4, 6))
         plt.scatter(
-            continuous_states[t_0 : t_0 + T_slice, j, 0],
-            continuous_states[t_0 : t_0 + T_slice, j, 1],
-            c=[i for i in range(t_0, t_0 + T_slice)],
+            continuous_states[t_0:t_end, j, 0],
+            continuous_states[t_0:t_end, j, 1],
+            c=[i for i in range(t_0, t_end)],
             cmap="cool",
             alpha=1.0,
         )
@@ -107,7 +110,7 @@ def plot_fit_and_forecast_on_slice(
 
         x_means = np.zeros((T_slice, D))
         x_means[0] = x_0
-        times_of_interest = [t for t in range(t_0 + 1, t_0 + T_slice)]
+        times_of_interest = [t for t in range(t_0 + 1, t_end)]
         for i, time_of_interest in enumerate(times_of_interest):
             for k in range(K):
                 x_means_KD = A_j @ x_means[i] + b_j
@@ -132,7 +135,7 @@ def plot_fit_and_forecast_on_slice(
         DIMS = dims_from_params(params)
         fixed_init_continuous_states = np.tile(x_0, (DIMS.J, 1))
         fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0], axis=1)
-        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0 : t_0 + T_slice]
+        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0:t_end]
 
         for forecast_seed in forecast_seeds:
             print(f"Plotting the forecast with the model using forecast_seed {forecast_seed}.")
@@ -151,7 +154,7 @@ def plot_fit_and_forecast_on_slice(
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],
                 sample_ahead.xs[:, j, 1],
-                c=[i for i in range(t_0, t_0 + T_slice)],
+                c=[i for i in range(t_0, t_end)],
                 cmap="cool",
                 alpha=1.0,
             )

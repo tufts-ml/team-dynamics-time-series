@@ -41,7 +41,7 @@ class HMM_Posterior_Summary_NUMPY:
         expected_joints: np.array with shape (T-1, K, K)
             Gives E[x_{t+1}, x_t | y_{1:T}]; that is, the (t,k,k')-th element gives
             the probability distribution over all pairwise options
-            (x_{t+1}=k', x_{t}=k | y_{1:T}) for t=1,...t-1
+            (x_{t+1}=k', x_{t}=k | y_{1:T}).
         log_normalizer : float
             The log probability density over the emissions chain (y_{1:T}),
             which can be obtained by marginalziing the last filtered joint p(x_T, y_{1:T})
@@ -76,7 +76,7 @@ class HMM_Posterior_Summary_JAX:
         expected_joints: np.array with shape (T-1, K, K)
             Gives E[x_{t+1}, x_t | y_{1:T}]; that is, the (t,k,k')-th element gives
             the probability distribution over all pairwise options
-            (x_{t+1}=k', x_{t}=k | y_{1:T}) for t=1,...t-1
+            (x_{t+1}=k', x_{t}=k | y_{1:T}).
         log_normalizer : float
             The log probability density over the emissions chain (y_{1:T}),
             which can be obtained by marginalziing the last filtered joint p(x_T, y_{1:T})
@@ -328,7 +328,7 @@ def compute_hmm_posterior_summaries_JAX(
     Arguments:
         log_transitions: An array of shape (T-1,J,K,K),
             whose (t,j,k,k')-th entry gives the MODEL's log probability
-            of p(x_t^j = k' | x_{t-1}^j=k) for t=2,...,T
+            of p(x_t^j = k' | x_{t-1}^j=k)
         log_emissions : An array of shape (T,J,K),
             whose (t,j,k)-th entry gives the MODEL's log emissions density
             of p(y_t^j | x_t^j=k)
@@ -454,14 +454,14 @@ def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -
 
 def compute_closed_form_M_step_on_posterior_summaries(
     posterior_summaries: HMM_Posterior_Summaries_NUMPY,
-    observation_weights: Optional[NumpyArray2D] = None,
+    use_continuous_states: Optional[NumpyArray2D] = None,
 ) -> NumpyArray3D:
     """
     Arguments:
-        observation_weights: If None, we assume all states were observed.
-            Otherwise, this is a (T,J) binary vector such that
-            the (t,j)-th element  is 1 if continuous_states[t,j] was observed
-            and 0 otherwise.  For any (t,j) that wasn't observed, we don't use
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step.
 
     Returns:
@@ -470,18 +470,18 @@ def compute_closed_form_M_step_on_posterior_summaries(
 
     T, J, K = np.shape(posterior_summaries.expected_regimes)
 
-    if observation_weights is None:
-        observation_weights = np.ones((T, J))
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
 
     # Compute tpm
     empirical_tpms_softened = np.zeros((J, K, K))
     for j in range(J):
         expected_joints_for_observed_data = (
-            posterior_summaries.expected_joints[:, j] * observation_weights[:, j][:-1, None, None]
+            posterior_summaries.expected_joints[:, j] * use_continuous_states[:, j][:-1, None, None]
         )
         expected_regimes_for_observed_data = np.sum(expected_joints_for_observed_data, axis=-2)
         # alternatively, we could do posterior_summaries.expected_regimes[1:,j] =  expected_regimes_for_observed_data ,
-        # but this way we only need to take care of the observation_weights once.
+        # but this way we only need to take care of the use_continuous_states once.
 
         from_to_sums = np.sum(expected_joints_for_observed_data, axis=0)
         from_sums = np.sum(expected_regimes_for_observed_data, axis=0)

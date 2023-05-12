@@ -42,7 +42,7 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
-    T_slice: int,
+    T_slice_max: int,
     model: Model,
     forecast_seeds: List[int],
     save_dir: str,
@@ -54,7 +54,7 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
         find_last_index_in_interval_where_array_value_is_close_to_desired_point,
         desired_point=np.array([1, 1]),
         starting_index=0,
-        ending_index=100,
+        ending_index=len(continuous_states),
     )
 
     return plot_fit_and_forecast_on_slice(
@@ -62,7 +62,7 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
         params,
         VES_summary,
         VEZ_summaries,
-        T_slice,
+        T_slice_max,
         model,
         forecast_seeds,
         save_dir,

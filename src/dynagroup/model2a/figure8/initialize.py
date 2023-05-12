@@ -116,37 +116,44 @@ def make_tpm_only_initialization_of_ETP_JAX(
 
 
 def make_kmeans_initialization_of_CSP_JAX(
-    DIMS: Dims, continuous_states: JaxNumpyArray3D
+    DIMS: Dims,
+    continuous_states: JaxNumpyArray3D,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
     We fit the bias terms (CSP.bs) using the cluster centers from a K-means algorithm.
     The state matrices (CSP.As) are initialized at 0.
     The state noise covariances (CSP.Qs) are initialized to identity martrices.
-    """
 
-    (
-        J,
-        K,
-        D,
-    ) = (
-        DIMS.J,
-        DIMS.K,
-        DIMS.D,
-    )
+    Arguments:
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step.
+
+    """
+    continuous_states = jnp.asarray(continuous_states)
+    T, J, D = np.shape(continuous_states)
+    K = DIMS.K
+
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
 
     As = jnp.zeros((J, K, D, D))
     Qs = jnp.tile(jnp.eye(D)[None, None, :, :], (J, K, 1, 1))
     bs = np.zeros((J, K, D))
 
     # We initialize bs using cluster centers of k-means
-    continuous_states = jnp.asarray(continuous_states)
     for j in range(J):
         with warnings.catch_warnings():
             # sklearn gives the warning below, but I don't know how to execute on the advice, currently.
             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
             #   Set the value of `n_init` explicitly to suppress the warning
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            km = KMeans(K).fit(continuous_states[:, j, :])
+            km = KMeans(K).fit(
+                continuous_states[:, j, :], sample_weight=use_continuous_states[:, j]
+            )
             bs[j, :, :] = jnp.array(km.cluster_centers_)
     bs = jnp.asarray(bs)
 
@@ -177,19 +184,19 @@ def fit_ARHMM_to_bottom_half_of_model(
     IP_JAX: InitializationParameters_Gaussian_JAX,
     model: Model,
     num_EM_iterations: int,
-    observation_weights: Optional[JaxNumpyArray2D] = None,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> ResultsFromBottomHalfInit:
     """
     We assume the transitions are governed by an ordinary tpm.
     We ignore the system-level toggles.
 
     Arguments:
-        observation_weights: If None, we assume all states were observed.
-            Otherwise, this is a (T,J) binary vector such that
-            the (t,j)-th element  is 1 if continuous_states[t,j] was observed
-            and 0 otherwise.  For any (t,j) that wasn't observed, we don't use
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
-            We leave the VEZ steps as is, though.
+            We leave the VEZ steps as is, though.  Note that This means that the ELBO
     """
     ### TODO: We assume that (0,j) was always observed! If not, raise a ValueError.
 
@@ -241,7 +248,9 @@ def fit_ARHMM_to_bottom_half_of_model(
         # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
         # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
         # work when we have J tpms, and then
-        tpms = compute_closed_form_M_step_on_posterior_summaries(EZ_summaries, observation_weights)
+        tpms = compute_closed_form_M_step_on_posterior_summaries(
+            EZ_summaries, use_continuous_states
+        )
         Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
         ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
 
@@ -250,6 +259,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         ###
 
         CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(EZ_summaries, continuous_states)
+
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
 
 
@@ -267,8 +277,19 @@ def fit_ARHMM_to_top_half_of_model(
     model: Model,
     num_EM_iterations: int,
     num_M_step_iterations_for_ETP_gradient_descent: int,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> ResultsFromTopHalfInit:
+    """
+    Arguments:
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
+            We leave the VEZ steps as is, though.
+
+    """
     T = len(continuous_states)
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
@@ -280,6 +301,7 @@ def fit_ARHMM_to_top_half_of_model(
         )
 
         ###  E-step
+        # TODO: Handle system covariates properly in this function.
         ES_summary = run_VES_step_JAX(
             STP_JAX,
             ETP_JAX,
@@ -287,6 +309,8 @@ def fit_ARHMM_to_top_half_of_model(
             continuous_states,
             EZ_summaries,
             model,
+            system_covariates=None,
+            use_continuous_states=use_continuous_states,
         )
 
         record_of_most_likely_states[:, i] = np.argmax(ES_summary.expected_regimes, axis=1)
@@ -300,10 +324,12 @@ def fit_ARHMM_to_top_half_of_model(
             i,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
+            use_continuous_states,
             verbose,
         )
 
         ### M-step (STP)
+        # Note the VES step has already taken care of the `use_continuous_states` mask.
         STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary)
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
@@ -320,9 +346,18 @@ def smart_initialize_model_2a(
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
     seed: int = 0,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> InitializationResults:
     """
+    Arguments:
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
+            We leave the VEZ steps as is, though.
+
     Remarks:
         1) Note that the regime labeling (for entities and system) can differ from the truth, and also even
             from entity to entity!  For example, for the Figure 8 experiment, we could have
@@ -346,7 +381,7 @@ def smart_initialize_model_2a(
     ####
 
     # TODO: Support fixed or random draws from prior for As, Qs.
-    CSP_JAX = make_kmeans_initialization_of_CSP_JAX(DIMS, continuous_states)
+    CSP_JAX = make_kmeans_initialization_of_CSP_JAX(DIMS, continuous_states, use_continuous_states)
     # TODO: Support fixed or random draws from prior.
     ETP_JAX = make_tpm_only_initialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
     # TODO: Support fixed or random draws from prior.
@@ -363,7 +398,8 @@ def smart_initialize_model_2a(
         ETP_JAX,
         IP_JAX,
         model,
-        num_EM_iterations=num_em_iterations_for_bottom_half,
+        num_em_iterations_for_bottom_half,
+        use_continuous_states,
     )
 
     ###
@@ -389,6 +425,7 @@ def smart_initialize_model_2a(
         model,
         num_em_iterations_for_top_half,
         num_M_step_iterations_for_ETP_gradient_descent,
+        use_continuous_states,
         verbose=verbose,
     )
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)

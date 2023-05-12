@@ -60,6 +60,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
         continuous_states_JAX[:-1],
         model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
     )
+
     expected_log_transition_matrices = jnp.einsum(
         "tjlkd, tjkd -> tjl",
         log_transition_matrices,
@@ -83,6 +84,7 @@ def run_VES_step_JAX(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
     system_covariates: Optional[JaxNumpyArray2D] = None,
+    use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> HMM_Posterior_Summary_JAX:
     """
     Overview:
@@ -115,7 +117,12 @@ def run_VES_step_JAX(
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
         system_covariates : An optional array of shape (T, M_s)
-
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
+            We leave the VEZ steps as is, though.
 
     Notation:
         T: number of timesteps
@@ -125,8 +132,11 @@ def run_VES_step_JAX(
         D: dimension of continuous states
     """
 
-    T = np.shape(continuous_states)[0]
+    T, J = np.shape(continuous_states)[:2]
     L = len(IP.pi_system)
+
+    if use_continuous_states is None:
+        use_continuous_states = np.full((T, J), True)
 
     # `transitions` is (T-1) x L x L
     log_transitions = model.compute_log_system_transition_probability_matrices_JAX(
@@ -150,9 +160,13 @@ def run_VES_step_JAX(
         )
     )
 
+    log_emissions_for_each_entity_after_initial_time_with_use_continuous_states = (
+        log_emissions_for_each_entity_after_initial_time * use_continuous_states[1:][:, :, None]
+    )
+
     # `log_emissions_after_initial_time` is (T-1) x L.
     log_emissions_after_initial_time = jnp.sum(
-        log_emissions_for_each_entity_after_initial_time, axis=1
+        log_emissions_for_each_entity_after_initial_time_with_use_continuous_states, axis=1
     )
 
     # 'log_emissions' is TxL

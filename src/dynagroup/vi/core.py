@@ -53,10 +53,14 @@ def run_CAVI_with_JAX(
                 CSP: Closed-form, gradient decent, or none  (but gradient descent doesn't work very well)
                 IP: Closed-form or none
         use_continuous_states: If None, we assume all states should be utilized in inference.
-            Otherwise, this is a (T,J) boolean vector such that
-            the (t,j)-th element is True if continuous_states[t,j] should be utilized
-            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
-            that info to do the M-step.
+            Otherwise, this is a (T,J) boolean vector such that the (t,j)-th element is True if
+            continuous_states[t,j] should be utilized in inference and False otherwise.
+            In particular, the M-step for the entity-level parameters and the VES step have no insight into this info.
+            Note that because this functionality was added just prior on 5/12/23, just prior to the NeurIPS deadline,
+            the VEZ step still has access to this info. But the mask prevents the VEZ step from feeding masked
+            data into the M step and the VES step. The only glitch is that the ELBO ignores the mask,
+            and is still always computed for the full data set. But the ELBO is not used to determine inference steps
+            -- it's just computed post-hoc for informational purposes.
         true_system_regimes: Array with shape (T,)
             Each entry is in {1,...,L}
         true_entity_regimes: has shape (T, J)

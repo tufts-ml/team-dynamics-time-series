@@ -484,7 +484,9 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 
 
 def run_M_step_for_CSP_in_closed_form__Gaussian_case(
-    VEZ_summaries: HMM_Posterior_Summaries_JAX, continuous_states: JaxNumpyArray3D
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    continuous_states: JaxNumpyArray3D,
+    observation_weights: Optional[JaxNumpyArray2D] = None,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
     The M-step for CSP for this model is just the solution for a vector auto-regression (VAR) model
@@ -494,10 +496,21 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     so to get the parameters for the (j,k)-th entity and entity-regime,
     we weight each sample by the q(z_t^j=k).
+
+    Arguments:
+        observation_weights: If None, we assume all states were observed.
+            Otherwise, this is a (T,J) binary vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] was observed
+            and 0 otherwise.  For any (t,j) that wasn't observed, we don't use
+            that info to do the M-step.
     """
 
-    _, J, K = np.shape(VEZ_summaries.expected_regimes)
+    T, J, K = np.shape(VEZ_summaries.expected_regimes)
     D = np.shape(continuous_states)[2]
+
+    if observation_weights is None:
+        observation_weights = np.ones((T, J))
+
     As = np.zeros((J, K, D, D))
     bs = np.zeros((J, K, D))
     Qs = np.zeros((J, K, D, D))
@@ -505,7 +518,9 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     for j in range(J):
         xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):
-            weights = np.asarray(VEZ_summaries.expected_regimes[:, j, k])  # TxJxK
+            weights = np.asarray(
+                VEZ_summaries.expected_regimes[:, j, k] * observation_weights[:, j]
+            )  # TxJxK
             responses = xs[1:]
             predictors = add_constant(xs[:-1], prepend=False)
             wls_model = WLS(responses, predictors, hasconst=True, weights=weights[1:])

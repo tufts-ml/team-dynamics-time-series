@@ -161,7 +161,7 @@ def run_VES_step_JAX(
     )
 
     log_emissions_for_each_entity_after_initial_time_with_use_continuous_states = (
-        log_emissions_for_each_entity_after_initial_time * use_continuous_states[:-1][:, :, None]
+        log_emissions_for_each_entity_after_initial_time * use_continuous_states[1:][:, :, None]
     )
 
     # `log_emissions_after_initial_time` is (T-1) x L.

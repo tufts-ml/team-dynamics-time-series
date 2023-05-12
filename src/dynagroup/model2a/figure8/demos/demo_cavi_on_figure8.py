@@ -2,6 +2,9 @@ import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
 
+from dynagroup.diagnostics.occupancies import (
+    print_multi_level_regime_occupancies_after_init,
+)
 from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
 from dynagroup.initialize import (
     compute_elbo_from_initialization_results,
@@ -21,10 +24,6 @@ from dynagroup.model2a.figure8.diagnostics.next_step import (
 from dynagroup.model2a.figure8.diagnostics.old_forecasting import (
     plot_results_of_old_forecasting_test,
 )
-from dynagroup.model2a.figure8.diagnostics.trajectories import (
-    get_deterministic_trajectories,
-    plot_deterministic_trajectories,
-)
 from dynagroup.model2a.figure8.generate import (
     ALL_PARAMS,
     sample,
@@ -32,6 +31,10 @@ from dynagroup.model2a.figure8.generate import (
 )
 from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
+from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
+    get_deterministic_trajectories,
+    plot_deterministic_trajectories,
+)
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -151,7 +154,7 @@ print("Running smart initialization.")
 # 2) Find a way to do smarter init for the recurrence parameters
 # 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
 
-initialization_results = smart_initialize_model_2a(
+results_init = smart_initialize_model_2a(
     DIMS,
     sample.xs,
     figure8_model_JAX,
@@ -159,18 +162,23 @@ initialization_results = smart_initialize_model_2a(
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
 )
-params_init = initialization_results.params
+params_init = results_init.params
 
 ### inspect quality of initialization
 inspect_entity_level_segmentations_over_EM_iterations(
-    initialization_results.record_of_most_likely_entity_states, sample.zs
+    results_init.record_of_most_likely_entity_states, sample.zs
 )
 inspect_system_level_segmentations_over_EM_iterations(
-    initialization_results.record_of_most_likely_system_states, sample.s
+    results_init.record_of_most_likely_system_states, sample.s
 )
 
+### print regime occupancies
+print_multi_level_regime_occupancies_after_init(results_init)
+
+
+### print elbo
 elbo_init = compute_elbo_from_initialization_results(
-    initialization_results, system_transition_prior, sample.xs, model, system_covariates
+    results_init, system_transition_prior, sample.xs, model, system_covariates
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -208,7 +216,7 @@ if show_plots_after_learning:
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
     n_cavi_iterations,
-    initialization_results,
+    results_init,
     model,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,

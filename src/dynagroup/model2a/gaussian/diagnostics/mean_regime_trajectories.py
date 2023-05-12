@@ -57,6 +57,7 @@ def plot_deterministic_trajectories(
     title_prefix: str = "",
     title_postfix: str = "",
     state_entity_regimes_in_subplots: bool = True,
+    save_dir: Optional[str] = None,
 ) -> None:
     """
     Arguments:
@@ -121,4 +122,8 @@ def plot_deterministic_trajectories(
     # add suptitle
     plt.suptitle(f"{title_prefix} trajectory colored by timestep {title_postfix}", fontsize=16)
     plt.tight_layout()
+
+    if save_dir is not None:
+        plt.savefig(save_dir + f"{title_prefix}_mean_regime_trajectories_{title_postfix}.pdf")
+
     plt.show()

@@ -287,7 +287,7 @@ def compute_expected_log_entity_transitions_JAX(
     )
 
     log_transition_matrices_weighted = (
-        log_transition_matrices * use_continuous_states[:-1, :, None, None, None]
+        log_transition_matrices * use_continuous_states[1:, :, None, None, None]
     )
 
     return jnp.sum(variational_probs * log_transition_matrices_weighted)
@@ -309,7 +309,7 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
     )
     # log_continuous_state_dynamics is (T-1,J,K)
     log_continuous_state_dynamics_weighted = (
-        log_continuous_state_dynamics * use_continuous_states[:-1, :, None]
+        log_continuous_state_dynamics * use_continuous_states[1:, :, None]
     )
     return jnp.sum(variational_probs * log_continuous_state_dynamics_weighted)
 

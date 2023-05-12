@@ -3,7 +3,14 @@ import copy
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.diagnostics.occupancies import (
+    print_multi_level_regime_occupancies_after_init,
+)
 from dynagroup.model import Model
+from dynagroup.model2a.figure8.diagnostics.trajectories import (
+    get_deterministic_trajectories,
+    plot_deterministic_trajectories,
+)
 from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
@@ -30,7 +37,7 @@ num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 
 # Model specification
-K = 5
+K = 3
 L = 5
 
 # For inference
@@ -82,7 +89,8 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
     x_vec: JaxNumpyArray1D,
 ) -> JaxNumpyArray1D:
-    return x_vec
+    KAPPA = 0.05
+    return KAPPA * x_vec
 
 
 # TODO: Can I set up the entity and system to be generic across fig8 and circles so that we
@@ -132,19 +140,14 @@ params_init = results_init.params
 # Initialization Diagnostics
 ###
 
-
-# plot learned dynamical modes
-from dynagroup.model2a.figure8.diagnostics.trajectories import (
-    get_deterministic_trajectories,
-    plot_deterministic_trajectories,
-)
-
-
+### plot learned dynamical modes
 deterministic_trajectories = get_deterministic_trajectories(
     params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=xs[0]
 )
-plot_deterministic_trajectories(deterministic_trajectories, "True")
+plot_deterministic_trajectories(deterministic_trajectories, "Init")
 
+### plot regime occupancies
+print_multi_level_regime_occupancies_after_init(results_init)
 
 ####
 # Inference

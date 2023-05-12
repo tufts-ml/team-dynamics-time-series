@@ -1,5 +1,5 @@
 import warnings
-from typing import Union
+from typing import Optional, Union
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -30,7 +30,7 @@ from dynagroup.params import (
     InitializationParameters_Gaussian_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray3D, NumpyArray3D
+from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray3D
 from dynagroup.util import make_fixed_sticky_tpm_JAX
 from dynagroup.vi.E_step import (
     compute_log_continuous_state_emissions_JAX,
@@ -177,11 +177,22 @@ def fit_ARHMM_to_bottom_half_of_model(
     IP_JAX: InitializationParameters_Gaussian_JAX,
     model: Model,
     num_EM_iterations: int,
+    observation_weights: Optional[JaxNumpyArray2D] = None,
 ) -> ResultsFromBottomHalfInit:
     """
     We assume the transitions are governed by an ordinary tpm.
     We ignore the system-level toggles.
+
+    Arguments:
+        observation_weights: If None, we assume all states were observed.
+            Otherwise, this is a (T,J) binary vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] was observed
+            and 0 otherwise.  For any (t,j) that wasn't observed, we don't use
+            that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
+            We leave the VEZ steps as is, though.
     """
+    ### TODO: We assume that (0,j) was always observed! If not, raise a ValueError.
+
     T = len(continuous_states)
     J, L, K, _ = np.shape(ETP_JAX.Ps)
 
@@ -230,7 +241,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
         # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
         # work when we have J tpms, and then
-        tpms = compute_closed_form_M_step_on_posterior_summaries(EZ_summaries)
+        tpms = compute_closed_form_M_step_on_posterior_summaries(EZ_summaries, observation_weights)
         Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
         ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
 

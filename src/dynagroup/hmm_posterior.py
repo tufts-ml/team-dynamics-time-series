@@ -16,7 +16,7 @@ from dynagroup.types import (
     NumpyArray3D,
     NumpyArray4D,
 )
-from dynagroup.util import soften_tpm
+from dynagroup.util import normalize_potentials_by_axis, soften_tpm
 
 
 ###
@@ -41,7 +41,7 @@ class HMM_Posterior_Summary_NUMPY:
         expected_joints: np.array with shape (T-1, K, K)
             Gives E[x_{t+1}, x_t | y_{1:T}]; that is, the (t,k,k')-th element gives
             the probability distribution over all pairwise options
-            (x_{t+1}=k', x_{t}=k | y_{1:T}).
+            (x_{t+1}=k', x_{t}=k | y_{1:T}) for t=1,...t-1
         log_normalizer : float
             The log probability density over the emissions chain (y_{1:T}),
             which can be obtained by marginalziing the last filtered joint p(x_T, y_{1:T})
@@ -76,7 +76,7 @@ class HMM_Posterior_Summary_JAX:
         expected_joints: np.array with shape (T-1, K, K)
             Gives E[x_{t+1}, x_t | y_{1:T}]; that is, the (t,k,k')-th element gives
             the probability distribution over all pairwise options
-            (x_{t+1}=k', x_{t}=k | y_{1:T}).
+            (x_{t+1}=k', x_{t}=k | y_{1:T}) for t=1,...t-1
         log_normalizer : float
             The log probability density over the emissions chain (y_{1:T}),
             which can be obtained by marginalziing the last filtered joint p(x_T, y_{1:T})
@@ -328,7 +328,7 @@ def compute_hmm_posterior_summaries_JAX(
     Arguments:
         log_transitions: An array of shape (T-1,J,K,K),
             whose (t,j,k,k')-th entry gives the MODEL's log probability
-            of p(x_t^j = k' | x_{t-1}^j=k)
+            of p(x_t^j = k' | x_{t-1}^j=k) for t=2,...,T
         log_emissions : An array of shape (T,J,K),
             whose (t,j,k)-th entry gives the MODEL's log emissions density
             of p(y_t^j | x_t^j=k)
@@ -439,7 +439,7 @@ def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -
     for k in range(K):
         for k_prime in range(K):
             tpm_empirical[k, k_prime] = np.sum(
-                posterior_summary.expected_joints[2:, k, k_prime], axis=0
+                posterior_summary.expected_joints[:, k, k_prime], axis=0
             ) / np.sum(posterior_summary.expected_regimes[:-1, k], axis=0)
 
     # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
@@ -454,21 +454,44 @@ def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -
 
 def compute_closed_form_M_step_on_posterior_summaries(
     posterior_summaries: HMM_Posterior_Summaries_NUMPY,
+    observation_weights: Optional[NumpyArray2D] = None,
 ) -> NumpyArray3D:
     """
+    Arguments:
+        observation_weights: If None, we assume all states were observed.
+            Otherwise, this is a (T,J) binary vector such that
+            the (t,j)-th element  is 1 if continuous_states[t,j] was observed
+            and 0 otherwise.  For any (t,j) that wasn't observed, we don't use
+            that info to do the M-step.
+
     Returns:
         Array of shape (J,K,K), whose j-th entry is a tpm
     """
 
     T, J, K = np.shape(posterior_summaries.expected_regimes)
 
+    if observation_weights is None:
+        observation_weights = np.ones((T, J))
+
     # Compute tpm
     empirical_tpms_softened = np.zeros((J, K, K))
     for j in range(J):
-        empirical_tpm = np.sum(posterior_summaries.expected_joints[2:, j], axis=0) / np.sum(
-            posterior_summaries.expected_regimes[:-1, j], axis=0
+        expected_joints_for_observed_data = (
+            posterior_summaries.expected_joints[:, j] * observation_weights[:, j][:-1, None, None]
         )
+        expected_regimes_for_observed_data = np.sum(expected_joints_for_observed_data, axis=-2)
+        # alternatively, we could do posterior_summaries.expected_regimes[1:,j] =  expected_regimes_for_observed_data ,
+        # but this way we only need to take care of the observation_weights once.
+
+        from_to_sums = np.sum(expected_joints_for_observed_data, axis=0)
+        from_sums = np.sum(expected_regimes_for_observed_data, axis=0)
+
+        empirical_tpm = from_to_sums / from_sums[:, np.newaxis]
+
+        # TODO: Check this and confirm that it's doing the M-step correctly.  I'm not getting exact sums to 1
+        # (instead it's like .996), but this could be because of float32
+
         # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
         # A better approach is to use a Dirichlet prior and take the posterior.
-        empirical_tpms_softened[j] = soften_tpm(empirical_tpm)
+        empirical_tpms_softened[j] = normalize_potentials_by_axis(soften_tpm(empirical_tpm), axis=1)
     return empirical_tpms_softened

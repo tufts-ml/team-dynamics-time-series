@@ -14,6 +14,7 @@ from statsmodels.tools.tools import add_constant
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
+    compute_closed_form_M_step,
 )
 from dynagroup.model import Model
 from dynagroup.params import (
@@ -671,15 +672,8 @@ def run_M_step_for_STP_in_closed_form(
     warnings.warn(
         "Running closed-form M-step for STP.  Note that this ignores the prior specification."
     )
-    L = np.shape(VES_summary.expected_joints)[1]
 
-    # TODO: call `compute_closed_form_M_step` from hmm_posterior module instead of rewriting this logic here.
-    exp_Pi = np.zeros((L, L))
-    for l in range(L):
-        for l_prime in range(L):
-            exp_Pi[l, l_prime] = np.sum(
-                VES_summary.expected_joints[2:, l, l_prime], axis=0
-            ) / np.sum(VES_summary.expected_regimes[:-1, l], axis=0)
+    exp_Pi = compute_closed_form_M_step(VES_summary)
     Pi_new = jnp.asarray(np.log(exp_Pi))
     return SystemTransitionParameters_JAX(STP.Gammas, STP.Upsilon, Pi_new)
 

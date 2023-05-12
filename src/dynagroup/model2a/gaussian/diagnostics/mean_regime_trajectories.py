@@ -3,7 +3,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dynagroup.types import NumpyArray1D, NumpyArray3D, NumpyArray4D
+from dynagroup.types import NumpyArray2D, NumpyArray3D, NumpyArray4D
 
 
 """
@@ -23,12 +23,13 @@ def get_deterministic_trajectories(
     As: NumpyArray4D,
     bs: NumpyArray3D,
     num_time_samples: int,
-    x_init: Optional[NumpyArray1D] = None,
+    x_init: Optional[NumpyArray2D] = None,
 ) -> NumpyArray4D:
     """
     Arguments:
         As: has shape J x K x D x D
         bs: has shape J x K x D
+        x_init: has shape J x D
 
     Returns:
         xs: has shape (J,K, num_time_samples, D)
@@ -38,14 +39,14 @@ def get_deterministic_trajectories(
     Ts = [i for i in range(1, num_time_samples)]
 
     if x_init is None:
-        x_init = np.zeros(D)
+        x_init = np.zeros((J, D))
 
     for j in range(J):
         for k in range(K):
             A = As[j, k]
             b = bs[j, k]
 
-            xs[j, k, 0] = x_init
+            xs[j, k, 0] = x_init[j]
             for t in Ts:
                 xs[j, k, t] = A @ xs[j, k, t - 1] + b
     return xs
@@ -56,6 +57,7 @@ def plot_deterministic_trajectories(
     title_prefix: str = "",
     title_postfix: str = "",
     state_entity_regimes_in_subplots: bool = True,
+    save_dir: Optional[str] = None,
 ) -> None:
     """
     Arguments:
@@ -119,4 +121,9 @@ def plot_deterministic_trajectories(
 
     # add suptitle
     plt.suptitle(f"{title_prefix} trajectory colored by timestep {title_postfix}", fontsize=16)
+    plt.tight_layout()
+
+    if save_dir is not None:
+        plt.savefig(save_dir + f"{title_prefix}_mean_regime_trajectories_{title_postfix}.pdf")
+
     plt.show()

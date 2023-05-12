@@ -16,6 +16,7 @@ from dynagroup.types import (
     NumpyArray3D,
     NumpyArray4D,
 )
+from dynagroup.util import soften_tpm
 
 
 ###
@@ -423,7 +424,14 @@ def convert_hmm_posterior_summaries_from_jax_to_numpy(
 ###
 
 
-def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY):
+# TODO: Is there some way to combine `compute_closed_form_M_step`
+# with `compute_closed_form_M_step_on_posterior_summaries` by just vectorizing across
+# any leading dimensions when they exist?
+def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY) -> NumpyArray2D:
+    """
+    Returns:
+        Array of shape (K,K) which is a tpm.
+    """
     K = np.shape(posterior_summary.expected_regimes)[1]
 
     # Compute tpm
@@ -436,9 +444,31 @@ def compute_closed_form_M_step(posterior_summary: HMM_Posterior_Summary_NUMPY):
 
     # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
     # A better approach is to use a Dirichlet prior and take the posterior.
-    P_UNIFORM = 0.001
-    tpm_uniform = np.ones((K, K)) / K
+    return soften_tpm(tpm_empirical)
 
-    tpm = P_UNIFORM * tpm_uniform + (1 - P_UNIFORM) * tpm_empirical
 
-    return tpm
+# TODO: Is there some way to combine `compute_closed_form_M_step`
+# with `compute_closed_form_M_step_on_posterior_summaries` by just vectorizing across
+# any leading dimensions when they exist?
+
+
+def compute_closed_form_M_step_on_posterior_summaries(
+    posterior_summaries: HMM_Posterior_Summaries_NUMPY,
+) -> NumpyArray3D:
+    """
+    Returns:
+        Array of shape (J,K,K), whose j-th entry is a tpm
+    """
+
+    T, J, K = np.shape(posterior_summaries.expected_regimes)
+
+    # Compute tpm
+    empirical_tpms_softened = np.zeros((J, K, K))
+    for j in range(J):
+        empirical_tpm = np.sum(posterior_summaries.expected_joints[2:, j], axis=0) / np.sum(
+            posterior_summaries.expected_regimes[:-1, j], axis=0
+        )
+        # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
+        # A better approach is to use a Dirichlet prior and take the posterior.
+        empirical_tpms_softened[j] = soften_tpm(empirical_tpm)
+    return empirical_tpms_softened

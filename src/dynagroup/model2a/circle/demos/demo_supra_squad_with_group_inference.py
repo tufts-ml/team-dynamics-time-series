@@ -56,7 +56,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_back_to_short/"
 
 ### Inference
 n_cavi_iterations = 15

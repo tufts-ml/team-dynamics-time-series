@@ -231,6 +231,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model,
+    sample.event_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

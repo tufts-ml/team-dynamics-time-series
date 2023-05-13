@@ -34,7 +34,7 @@ data_load_dir = "/Users/mwojno01/Desktop/"
 save_dir = "/Users/mwojno01/Desktop/basketball_devel/"
 
 # Data properties
-# t_every
+event_end_times = None
 
 
 # Initialization
@@ -163,6 +163,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
+    event_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

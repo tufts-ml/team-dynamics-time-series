@@ -47,6 +47,7 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
     forecast_seeds: List[int],
     save_dir: str,
     entity_idxs: Optional[List[int]] = None,
+    filename_prefix: Optional[str] = None,
 ) -> None:
     # I want to work with when we transition from up to down (timesteps 100-200)
 
@@ -69,4 +70,5 @@ def plot_fit_and_forecast_on_slice_for_figure_8(
         entity_idxs,
         find_t0_for_entity_sample,
         y_lim=(-2.5, 2.5),
+        filename_prefix=filename_prefix,
     )

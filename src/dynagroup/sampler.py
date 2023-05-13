@@ -93,6 +93,7 @@ def sample_team_dynamics(
     fixed_system_regimes: Optional[NumpyArray1D] = None,
     fixed_init_entity_regimes: Optional[NumpyArray1D] = None,
     fixed_init_continuous_states: Optional[NumpyArray2D] = None,
+    system_covariates: Optional[np.array] = None,
 ) -> Sample:
     """
     Assumes we have a state space model on the bottom of the switches.
@@ -165,7 +166,9 @@ def sample_team_dynamics(
 
         if fixed_system_regimes is None:
             log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
-                AP.STP, T_minus_1=1
+                AP.STP,
+                T_minus_1=1,
+                system_covariates=system_covariates[t],
             )
 
             # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]

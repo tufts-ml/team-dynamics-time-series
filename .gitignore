@@ -18,6 +18,7 @@ PDFs/
 plots/
 slides/
 devel/
+results/
 
 #latex outputs
 reports/*.aux

@@ -261,7 +261,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
-            verbose,
+            verbose=verbose,
         )
 
         ### M-step (STP)

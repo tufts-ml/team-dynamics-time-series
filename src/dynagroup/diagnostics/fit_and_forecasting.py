@@ -1,7 +1,7 @@
 from typing import Callable, List, Optional, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import pyplot as plt
 
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -25,6 +25,7 @@ def plot_fit_and_forecast_on_slice(
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
     y_lim: Optional[Tuple] = None,
+    filename_prefix: Optional[str] = None,
 ) -> None:
     """
     Arguments:
@@ -54,9 +55,9 @@ def plot_fit_and_forecast_on_slice(
         DIMS = dims_from_params(params)
         D, K = DIMS.D, DIMS.K
         if DIMS.L > 1:
-            tag = f"HSDM_entity_{j}"
+            tag = f"{filename_prefix}_HSDM_entity_{j}"
         elif DIMS.L == 1:
-            tag = f"flat_SDM_entity_{j}"
+            tag = f"{filename_prefix}_flat_SDM_entity_{j}"
 
         ###
         # Find starting point for entity
@@ -69,7 +70,6 @@ def plot_fit_and_forecast_on_slice(
         ###
         # Plotting the truth
         ###
-
         print("Plotting the truth (whole)")
         plt.close("all")
         fig1 = plt.figure(figsize=(4, 6))
@@ -117,7 +117,6 @@ def plot_fit_and_forecast_on_slice(
                 prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
                 x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
 
-        plt.clf()
         fig = plt.figure(figsize=(4, 6))
         plt.scatter(
             x_means[:, 0],
@@ -149,7 +148,6 @@ def plot_fit_and_forecast_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
-            plt.clf()
             fig1 = plt.figure(figsize=(4, 6))
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],

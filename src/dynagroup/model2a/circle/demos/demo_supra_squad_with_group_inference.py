@@ -56,10 +56,10 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_back_to_short/"
 
 ### Inference
-n_cavi_iterations = 15
+n_cavi_iterations = 10
 M_step_toggle_for_STP = "gradient_descent"
 # can i do M_step_toggle_for_ETP in closed form, even though there are L of them?
 M_step_toggle_for_ETP = "gradient_descent"

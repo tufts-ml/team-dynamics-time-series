@@ -72,7 +72,7 @@ show_plots_of_samples = False
 
 # Masking and model adjustments
 mask_final_regime_transition_for_entity_2 = True
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For initialization
 show_plots_after_init = False
@@ -93,7 +93,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/fig8_partial_forecasts_post_one_step_off_masking_bugfix/"
+save_dir = "/Users/mwojno01/Repos/neurips-2023/images/figure8/forecast_ours/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -212,13 +212,13 @@ if show_plots_after_learning:
         params_true,
         T_slice_for_old_forecasting,
         model,
-        title_prefix="forecasted (via true params)",
+        plot_filename_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
         params_init,
         T_slice_for_old_forecasting,
         model,
-        title_prefix="forecasted (via init params)",
+        plot_filename_prefix="forecasted (via init params)",
     )
 
 ###
@@ -288,6 +288,7 @@ plot_fit_and_forecast_on_slice_for_figure_8(
     seeds_for_forecasting,
     save_dir,
     entity_idxs_for_forecasting,
+    filename_prefix=f"adjustment_{model_adjustment}_",
 )
 
 ### Plot Old Forecasting test
@@ -296,13 +297,13 @@ if show_plots_after_learning:
         params_true,
         T_slice_for_old_forecasting,
         model,
-        title_prefix="forecasted (via true params)",
+        plot_filename_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
         params_learned,
         T_slice_for_old_forecasting,
         model,
-        title_prefix="forecasted (via learned params)",
+        plot_filename_prefix="forecasted (via learned params)",
     )
 
 

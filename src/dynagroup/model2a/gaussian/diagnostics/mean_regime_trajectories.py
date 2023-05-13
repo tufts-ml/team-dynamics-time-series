@@ -54,7 +54,7 @@ def get_deterministic_trajectories(
 
 def plot_deterministic_trajectories(
     xs: NumpyArray4D,
-    title_prefix: str = "",
+    filename_prefix: str = "",
     title_postfix: str = "",
     state_entity_regimes_in_subplots: bool = True,
     save_dir: Optional[str] = None,
@@ -120,10 +120,10 @@ def plot_deterministic_trajectories(
     cbar.set_label("Timesteps", rotation=90)
 
     # add suptitle
-    plt.suptitle(f"{title_prefix} trajectory colored by timestep {title_postfix}", fontsize=16)
+    plt.suptitle(f"{filename_prefix} trajectory colored by timestep {title_postfix}", fontsize=16)
     plt.tight_layout()
 
     if save_dir is not None:
-        plt.savefig(save_dir + f"{title_prefix}_mean_regime_trajectories_{title_postfix}.pdf")
+        plt.savefig(save_dir + f"{filename_prefix}_mean_regime_trajectories_{title_postfix}.pdf")
 
     plt.show()

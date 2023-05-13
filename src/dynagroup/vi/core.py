@@ -11,7 +11,13 @@ from dynagroup.initialize import InitializationResults
 from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX
-from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.types import (
+    JaxNumpyArray1D,
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    NumpyArray1D,
+    NumpyArray2D,
+)
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggles,
@@ -29,6 +35,7 @@ def run_CAVI_with_JAX(
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
+    event_end_times: Optional[JaxNumpyArray1D] = None,
     M_step_toggles: Optional[M_Step_Toggles] = None,
     num_M_step_iters: int = 50,
     system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
@@ -44,6 +51,15 @@ def run_CAVI_with_JAX(
             If (T,J), we assume this means (T,J,D) where D=1, and convert it to have 3 array dims.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
+        end_times: optional, has shape (E+1,)
+            An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
+            where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
+            time gap between timesteps, and a discontinuity in the continuous states x.
+
+            If there are E events, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
+            So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+                    [end_times[e-1]+1 : end_times[e]].
         M_step_toggles: Describes what kind of M-step should be done (gradient-descent, closed-form, or None)
             for each subclass of parameters (STP, ETP, CSP, IP).
 
@@ -75,6 +91,7 @@ def run_CAVI_with_JAX(
         L: number of system-level regimes
         K: number of entity-level regimes
         D: dimension of continuous states
+        E: number of events
     """
 
     ###

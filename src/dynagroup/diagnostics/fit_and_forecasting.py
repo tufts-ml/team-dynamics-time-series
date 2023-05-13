@@ -117,7 +117,6 @@ def plot_fit_and_forecast_on_slice(
                 prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
                 x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
 
-        plt.clf()
         fig = plt.figure(figsize=(4, 6))
         plt.scatter(
             x_means[:, 0],
@@ -149,7 +148,6 @@ def plot_fit_and_forecast_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
-            plt.clf()
             fig1 = plt.figure(figsize=(4, 6))
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],

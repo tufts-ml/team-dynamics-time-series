@@ -93,7 +93,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_test"
+save_dir = "/Users/mwojno01/Desktop/TMP_does_fig8_still_work_even_after_developing/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -156,6 +156,12 @@ elif model_adjustment == "remove_recurrence":
     )
 
 ###
+# I/O
+###
+
+ensure_dir(save_dir)
+
+###
 # INITIALIZATION
 ###
 
@@ -169,6 +175,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     sample.xs,
+    sample.event_end_times,
     figure8_model_JAX,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
@@ -191,7 +198,12 @@ print_multi_level_regime_occupancies_after_init(results_init)
 
 ### print elbo
 elbo_init = compute_elbo_from_initialization_results(
-    results_init, system_transition_prior, sample.xs, model, system_covariates
+    results_init,
+    system_transition_prior,
+    sample.xs,
+    model,
+    sample.event_end_times,
+    system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -207,18 +219,30 @@ if show_plots_after_init:
     )
     plot_deterministic_trajectories(xs, "Initialized")
 
-if show_plots_after_learning:
     plot_results_of_old_forecasting_test(
         params_true,
         T_slice_for_old_forecasting,
         model,
-        plot_filename_prefix="forecasted (via true params)",
+        title_prefix="forecasted (via true params)",
     )
     plot_results_of_old_forecasting_test(
         params_init,
         T_slice_for_old_forecasting,
         model,
-        plot_filename_prefix="forecasted (via init params)",
+        title_prefix="forecasted (via init params)",
+    )
+
+    plot_fit_and_forecast_on_slice_for_figure_8(
+        sample.xs,
+        params_init,
+        results_init.ES_summary,
+        results_init.EZ_summaries,
+        T_slice_for_forecasting,
+        model,
+        seeds_for_forecasting,
+        save_dir,
+        entity_idxs_for_forecasting,
+        filename_prefix=f"AFTER_INITIALIZATION_adjustment_{model_adjustment}_",
     )
 
 ###
@@ -249,9 +273,6 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ####
 # PLOTS AND DIAGNOSTICS
 ###
-
-### Make save dir
-ensure_dir(save_dir)
 
 
 ### Plot Deterministic Trajectories (by regime)

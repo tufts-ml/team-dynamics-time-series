@@ -167,9 +167,9 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
     return log_pdfs_after_initial_timestep
 
 
-def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+def compute_log_initial_continuous_state_emissions_JAX(
     IP: InitializationParameters_VonMises_JAX,
-    group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
+    initial_group_angles: Union[JaxNumpyArray1D, JaxNumpyArray2D],
 ) -> JaxNumpyArray2D:
     """
     Compute the log (autoregressive, switching) emissions for the continuous states at the INITIAL timestep
@@ -179,7 +179,7 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
     For now, we are just emitting equal numbers for all J,K.  See remark.
 
     Arguments:
-        group_angles : array of shape (T,J) or (T,J,1) where the (t,j)-th entry is an angle in [-pi,pi]
+        group_angles : array of shape (J,) or (J,1) where the (j)-th entry is an angle in [-pi,pi]
 
     Returns:
         np.array of shape (J,K), where the (j,k)-th element gives the log emissions
@@ -218,13 +218,13 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
 
     # TODO: Group angles could be (T,J,1) or (T,J). That's causing problems.  Pick a representation
     # and use it throughout!
-    group_angles = jnp.squeeze(group_angles)
-    log_pdfs_init_time = vonmises.logpdf(group_angles[0][:, None], IP.kappas, loc=IP.locs)
+    initial_group_angles = jnp.squeeze(initial_group_angles)
+    log_pdfs_init_time = vonmises.logpdf(initial_group_angles[:, None], IP.kappas, loc=IP.locs)
     return log_pdfs_init_time
 
 
 circle_model_JAX = Model(
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,

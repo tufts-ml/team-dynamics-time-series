@@ -13,7 +13,7 @@ class Model:
     Model2a directly observes the x's.
     """
 
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX: Callable
+    compute_log_initial_continuous_state_emissions_JAX: Callable
     compute_log_continuous_state_emissions_after_initial_timestep_JAX: Callable
     compute_log_system_transition_probability_matrices_JAX: Callable
     compute_log_entity_transition_probability_matrices_JAX: Callable

@@ -3,6 +3,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
+from dynagroup.events import event_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -60,9 +61,6 @@ def run_CAVI_with_JAX(
                 end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
             So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
                     [end_times[e-1]+1 : end_times[e]].
-
-            If None, we populate it as [-1, T], where T is the length of the data, and then pass it forward,
-                so that downstream functions don't need to worry about conversions.
 
         M_step_toggles: Describes what kind of M-step should be done (gradient-descent, closed-form, or None)
             for each subclass of parameters (STP, ETP, CSP, IP).
@@ -130,7 +128,15 @@ def run_CAVI_with_JAX(
         )
 
     if event_end_times is None:
-        event_end_times = [-1, len(continuous_states)]
+        T = len(continuous_states)
+        event_end_times = np.array([-1, T])
+
+    if not event_end_times_are_proper(event_end_times, len(continuous_states)):
+        raise ValueError(
+            f"Event end times do not have the proper format. Consult the `events` module "
+            f"and try again.  `event_end_times` MUST begin with -1 and end with T, the length "
+            f"of the grand time series."
+        )
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And
@@ -144,6 +150,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            event_end_times,
             system_covariates,
         )
         print(
@@ -164,6 +171,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             VEZ_summaries,
             model,
+            event_end_times,
             system_covariates,
             use_continuous_states,
         )
@@ -188,6 +196,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             VES_summary.expected_regimes,
             model,
+            event_end_times,
         )
 
         if verbose:
@@ -214,6 +223,7 @@ def run_CAVI_with_JAX(
                 system_transition_prior,
                 continuous_states,
                 model,
+                event_end_times,
                 system_covariates,
             )
             print(
@@ -236,6 +246,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
+            event_end_times,
             use_continuous_states,
             verbose,
         )
@@ -247,6 +258,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            event_end_times,
             system_covariates,
         )
         if verbose:
@@ -267,6 +279,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
+            event_end_times,
             system_covariates,
             verbose,
         )
@@ -278,6 +291,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            event_end_times,
             system_covariates,
         )
         if verbose:
@@ -297,6 +311,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
+            event_end_times,
             use_continuous_states,
         )
 
@@ -307,6 +322,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            event_end_times,
             system_covariates,
         )
         if verbose:
@@ -318,13 +334,21 @@ def run_CAVI_with_JAX(
         # M-step (IP)
         ###
 
-        all_params = run_M_step_for_IP(
-            all_params,
+        IP_new = run_M_step_for_IP(
+            all_params.IP,
             M_step_toggles.IP,
             VES_summary,
             VEZ_summaries,
             continuous_states,
+            event_end_times,
         )
+        all_params = AllParameters_JAX(
+            all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new
+        )
+        # TODO: Make all `run_M_step[...]` have consistent call signatures.
+        # I think the current more compact one is better; otherwise we have to construct
+        # a full all parameters instance (with lots of extraneous info) when all we want to do is an operation
+        # on the initial params.
 
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
@@ -333,6 +357,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
+            event_end_times,
             system_covariates,
         )
         if verbose:

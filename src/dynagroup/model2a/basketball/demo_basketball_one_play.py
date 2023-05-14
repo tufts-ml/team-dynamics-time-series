@@ -10,8 +10,8 @@ from dynagroup.io import ensure_dir
 from dynagroup.model import Model
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_system_transition_probability_matrices_JAX,
 )
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
@@ -101,7 +101,7 @@ def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_mat
 # TODO: Can I set up the entity and system to be generic across fig8 and circles so that we
 # call a single function each time?
 model_basketball = Model(
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
@@ -137,7 +137,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, system_covariates
+#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 

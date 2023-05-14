@@ -1,5 +1,5 @@
 """
-An `event` takes an ordinary sampled group time series of shape (T,J,D) and interprets it as (T_grand,J,D),
+An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
 where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
 time gap between timesteps, and a discontinuity in the continuous states x.
 

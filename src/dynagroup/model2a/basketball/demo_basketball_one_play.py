@@ -8,7 +8,6 @@ from dynagroup.diagnostics.occupancies import (
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_continuous_state_emissions_at_initial_timestep_JAX,
@@ -19,6 +18,7 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
+from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import Dims
 from dynagroup.types import JaxNumpyArray1D
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings

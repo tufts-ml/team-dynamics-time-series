@@ -29,13 +29,13 @@ from dynagroup.model2a.figure8.generate import (
     sample,
     times_of_system_regime_changepoints,
 )
-from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.mask import make_mask_of_which_continuous_states_to_use
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
+from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -72,7 +72,7 @@ show_plots_of_samples = False
 
 # Masking and model adjustments
 mask_final_regime_transition_for_entity_2 = True
-model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For initialization
 show_plots_after_init = False
@@ -93,7 +93,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Repos/neurips-2023/images/figure8/forecast_ours/"
+save_dir = "/Users/mwojno01/Desktop/TMP_test"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

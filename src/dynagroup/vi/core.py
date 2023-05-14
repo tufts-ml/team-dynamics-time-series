@@ -51,7 +51,7 @@ def run_CAVI_with_JAX(
             If (T,J), we assume this means (T,J,D) where D=1, and convert it to have 3 array dims.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
-        end_times: optional, has shape (E+1,)
+        event_end_times: optional, has shape (E+1,)
             An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
             where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
             time gap between timesteps, and a discontinuity in the continuous states x.
@@ -60,6 +60,10 @@ def run_CAVI_with_JAX(
                 end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
             So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
                     [end_times[e-1]+1 : end_times[e]].
+
+            If None, we populate it as [-1, T], where T is the length of the data, and then pass it forward,
+                so that downstream functions don't need to worry about conversions.
+
         M_step_toggles: Describes what kind of M-step should be done (gradient-descent, closed-form, or None)
             for each subclass of parameters (STP, ETP, CSP, IP).
 
@@ -124,10 +128,14 @@ def run_CAVI_with_JAX(
             f"The implementation can be changed to handle this case, though: Update the "
             f"code for doing the M-step for the initialization parameters."
         )
+
+    if event_end_times is None:
+        event_end_times = [-1, len(continuous_states)]
+
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And
     # use the data-free inits for everything else?
-    #
+
     if verbose:
         elbo_decomposed = compute_elbo_decomposed(
             all_params,

@@ -19,9 +19,6 @@ from dynagroup.initialize import (
     initialization_results_from_raw_initialization_results,
 )
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.model_factors import (
-    compute_log_entity_transition_probability_matrices_JAX,
-)
 from dynagroup.params import (
     ContinuousStateParameters_Gaussian_JAX,
     Dims,
@@ -30,7 +27,13 @@ from dynagroup.params import (
     InitializationParameters_Gaussian_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray3D
+from dynagroup.types import (
+    JaxNumpyArray1D,
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    NumpyArray1D,
+    NumpyArray3D,
+)
 from dynagroup.util import make_fixed_sticky_tpm_JAX
 from dynagroup.vi.E_step import (
     compute_log_continuous_state_emissions_JAX,
@@ -179,6 +182,7 @@ def make_data_free_initialization_of_EP_JAX(
 
 def fit_ARHMM_to_bottom_half_of_model(
     continuous_states: JaxNumpyArray3D,
+    event_end_times: JaxNumpyArray1D,
     CSP_JAX: ContinuousStateParameters_Gaussian_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_Gaussian_JAX,
@@ -217,7 +221,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         log_state_emissions = compute_log_continuous_state_emissions_JAX(
             CSP_JAX, IP_JAX, continuous_states, model
         )
-        log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
+        log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,
             continuous_states[:-1],
             model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
@@ -342,6 +346,7 @@ def fit_ARHMM_to_top_half_of_model(
 def smart_initialize_model_2a(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
+    event_end_times: Optional[NumpyArray1D],
     model: Model,
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
@@ -351,6 +356,19 @@ def smart_initialize_model_2a(
 ) -> InitializationResults:
     """
     Arguments:
+        event_end_times: optional, has shape (E+1,)
+            An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
+            where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
+            time gap between timesteps, and a discontinuity in the continuous states x.
+
+            If there are E events, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
+            So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+                    [end_times[e-1]+1 : end_times[e]].
+
+            If None, we populate it as [-1, T], where T is the length of the data, and then pass it forward,
+                so that downstream functions don't need to worry about conversions.
+
         use_continuous_states: If None, we assume all states should be utilized in inference.
             Otherwise, this is a (T,J) boolean vector such that
             the (t,j)-th element  is True if continuous_states[t,j] should be utilized
@@ -368,6 +386,9 @@ def smart_initialize_model_2a(
             a) smart initialization for covariates [Figure 8 experiment has no covariates]
             b) y-level observations, rather than x-level observations.
     """
+
+    if event_end_times is None:
+        event_end_times = [-1, len(continuous_states)]
 
     ### TODO: Make smart initialization better. E.g.
     # 1) Run init x times, pick the one with the best ELBO.
@@ -394,6 +415,7 @@ def smart_initialize_model_2a(
     ###
     results_bottom = fit_ARHMM_to_bottom_half_of_model(
         continuous_states,
+        event_end_times,
         CSP_JAX,
         ETP_JAX,
         IP_JAX,

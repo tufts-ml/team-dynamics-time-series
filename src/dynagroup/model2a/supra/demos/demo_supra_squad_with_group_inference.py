@@ -11,6 +11,9 @@ from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
+from dynagroup.model2a.supra.diagnostics.soldier_dynamics import (
+    report_on_directional_attractors,
+)
 from dynagroup.model2a.supra.diagnostics.soldier_segmentations import (
     compute_likely_soldier_regimes,
     panel_plot_the_soldier_headings_with_learned_segmentations,
@@ -39,7 +42,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 event_end_times = None
 
 ### Model specification
-num_entity_regimes = 3
+num_entity_regimes = 4
 num_system_regimes = 3
 alpha_system_prior, kappa_system_prior = 1.0, 50.0
 only_use_north_security = True
@@ -54,7 +57,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_and_only_three_sys_and_ent_regimes_and_stickier/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_L=3_K=4_still_stickier/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -228,3 +231,9 @@ polar_plot_the_soldier_headings_with_learned_segmentations(
 panel_plot_the_soldier_headings_with_learned_segmentations(
     snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir
 )
+
+###
+# Post Inference Reports
+###
+
+report_on_directional_attractors(params_learned)

@@ -42,7 +42,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 event_end_times = None
 
 ### Model specification
-num_entity_regimes = 4
+num_entity_regimes = 12
 num_system_regimes = 4
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 only_use_north_security = True
@@ -52,12 +52,12 @@ show_plots_after_init = True
 bottom_half_self_transition_prob = 0.995
 bottom_half_changepoint_penalty = 10.0
 bottom_half_min_segment_size = 10
-bottom_half_num_EM_iterations = 3
+bottom_half_num_EM_iterations = 1
 top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_K=4_K=4_less_sticky_long_clip/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_K=4_K=4_less_sticky_long_clip_1EM_it_for_bottom_half_init/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -133,6 +133,7 @@ results_init = smart_initialize_model_2a_for_circles(
     bottom_half_num_EM_iterations,
     top_half_num_EM_iterations,
     initialization_seed,
+    parallelize_the_CSP_M_step_for_the_bottom_half_model=True,
 )
 params_init = results_init.params
 

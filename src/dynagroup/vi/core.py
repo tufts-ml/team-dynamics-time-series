@@ -329,8 +329,6 @@ def run_CAVI_with_JAX(
             print(
                 f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
-        if np.isnan(elbo_decomposed.elbo):
-            breakpoint()
 
         ###
         # M-step (IP)

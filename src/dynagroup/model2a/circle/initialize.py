@@ -1,4 +1,3 @@
-import warnings
 from typing import Optional, Union
 
 import jax.numpy as jnp
@@ -93,7 +92,9 @@ def fit_ARHMM_to_bottom_half_of_model(
     init_self_transition_prob: float,
     init_changepoint_penalty: float,
     init_min_segment_size: int,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
     verbose: bool = True,
+    parallelize_the_CSP_M_step_across_regimes: bool = False,
 ) -> ResultsFromBottomHalfInit:
     """
     We assume the transitions are governed by an ordinary tpm.
@@ -129,37 +130,26 @@ def fit_ARHMM_to_bottom_half_of_model(
         # alternatively, this is simple to recompute from EZ_summaries.
 
         # TODO: I'll just assume that eventually running this will produce non-nan results.
-        log_normalizer_for_this_entity = np.nan
-        num_attempts_to_do_bottom_level_inference_for_this_entity = 0
-        while np.isnan(log_normalizer_for_this_entity):
-            num_attempts_to_do_bottom_level_inference_for_this_entity += 1
-            if verbose:
-                if num_attempts_to_do_bottom_level_inference_for_this_entity > 1:
-                    warnings.warn(
-                        f"Now running attempt {num_attempts_to_do_bottom_level_inference_for_this_entity} "
-                        "at initializing bottom-level model for entity {j}. "
-                    )
+        (
+            posterior_summary,
+            emissions_params_by_regime_learned,
+            transitions,
+        ) = run_EM_for_von_mises_arhmm(
+            team_angles[:, j],
+            num_regimes,
+            num_EM_iterations,
+            init_self_transition_prob,
+            init_changepoint_penalty,
+            init_min_segment_size,
+            fix_ar_kappa_to_unity_rather_than_estimate=fix_ar_kappa_to_unity_rather_than_estimate,
+            parallelize_the_M_step=parallelize_the_CSP_M_step_across_regimes,
+        )
 
-            (
-                posterior_summary,
-                emissions_params_by_regime_learned,
-                transitions,
-            ) = run_EM_for_von_mises_arhmm(
-                team_angles[:, j],
-                num_regimes,
-                num_EM_iterations,
-                init_self_transition_prob,
-                init_changepoint_penalty,
-                init_min_segment_size,
-            )
-
-            # update attributes for HMM posterior summaries
-            expected_regimes[:, j, :] = posterior_summary.expected_regimes
-            expected_joints[:, j, :, :] = posterior_summary.expected_joints
-            log_normalizers[j] = posterior_summary.log_normalizer
-
-            log_normalizer_for_this_entity = posterior_summary.log_normalizer
-            entropies[j] = posterior_summary.entropy
+        # update attributes for HMM posterior summaries
+        expected_regimes[:, j, :] = posterior_summary.expected_regimes
+        expected_joints[:, j, :, :] = posterior_summary.expected_joints
+        log_normalizers[j] = posterior_summary.log_normalizer
+        entropies[j] = posterior_summary.entropy
 
         # update attributes for CSP_JAX
         # TODO: Should I store these as VonMisesParams instead of CSP?
@@ -311,7 +301,8 @@ def smart_initialize_model_2a_for_circles(
     bottom_half_num_EM_iterations: int = 3,
     top_half_num_EM_iterations: int = 20,
     seed: int = 0,
-    verbose: bool = True,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
+    parallelize_the_CSP_M_step_for_the_bottom_half_model: bool = False,
 ) -> InitializationResults:
     """
     Remarks:
@@ -341,6 +332,8 @@ def smart_initialize_model_2a_for_circles(
         bottom_half_self_transition_prob,
         bottom_half_changepoint_penalty,
         bottom_half_min_segment_size,
+        fix_ar_kappa_to_unity_rather_than_estimate=fix_ar_kappa_to_unity_rather_than_estimate,
+        parallelize_the_CSP_M_step_across_regimes=parallelize_the_CSP_M_step_for_the_bottom_half_model,
     )
 
     ###

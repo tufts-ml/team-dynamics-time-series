@@ -30,11 +30,8 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 ###
 
 # Directories
-data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_basketball_one_player/"
-
-# Data properties
-event_end_times = None
+data_load_dir = "/Users/mwojno01/Repos/dynagroup/data/basketball/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_multievent_basketball/"
 
 
 # Initialization
@@ -43,7 +40,7 @@ num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 
 # Model specification
-K = 3
+K = 5
 L = 5
 
 # For inference
@@ -60,12 +57,23 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # I/O
 ###
 ensure_dir(save_dir)
-xs_unnormalized = np.load(data_load_dir + "basketball_play.npy")
+xs_unnormalized = np.load(data_load_dir + "basketball_game_TOR_vs_CHA_stacked_starter_plays.npy")
+event_end_times = np.load(data_load_dir + "basketball_game_TOR_vs_CHA_end_times.npy")
 
 ###
 # Preprocess Data
 ###
 
+### Handle NANs
+# Patch up the few nans  (41/21467) that for some reason only exist in player 0's data
+T, J, D = np.shape(xs_unnormalized)
+j = 0
+for t in range(T):
+    if np.isnan(xs_unnormalized[t, j, 0]):
+        xs_unnormalized[t, j, :] = xs_unnormalized[t - 1, j, :]
+
+
+### Normalize Basketball coordinates
 # From: https://github.com/linouk23/NBA-Player-Movements/blob/master/Constant.py
 X_MAX = 100
 Y_MAX = 50
@@ -73,6 +81,8 @@ Y_MAX = 50
 xs = copy.copy(xs_unnormalized)
 xs[:, :, 0] /= X_MAX
 xs[:, :, 1] /= Y_MAX
+
+xs[:, :, 0] *= 2  # let first dim be twice as big..
 
 
 ###
@@ -152,26 +162,58 @@ deterministic_trajectories = get_deterministic_trajectories(
 )
 plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
-### plot regime occupancies
+### print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
 
-####
-# Inference
-####
+###
+# TRY FORECASTING
+###
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-    jnp.asarray(xs),
-    n_cavi_iterations,
-    results_init,
+from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_slice
+
+
+T_snippet_for_fit_to_observations = 400
+seeds_for_forecasting = [i + 1 for i in range(5)]
+entity_idxs_for_forecasting = [0, 1, 2, 3, 4]
+T_slice_for_forecasting = 100
+T_slice_for_old_forecasting = 100
+y_lim = None
+
+find_t0_for_entity_sample = lambda x: 75
+
+plot_fit_and_forecast_on_slice(
+    xs,
+    params_init,
+    results_init.ES_summary,
+    results_init.EZ_summaries,
+    T_slice_for_forecasting,
     model_basketball,
-    event_end_times,
-    M_step_toggles_from_strings(
-        M_step_toggle_for_STP,
-        M_step_toggle_for_ETP,
-        M_step_toggle_for_continuous_state_parameters,
-        M_step_toggle_for_IP,
-    ),
-    num_M_step_iters,
-    system_transition_prior,
-    system_covariates,
+    seeds_for_forecasting,
+    save_dir,
+    entity_idxs_for_forecasting,
+    find_t0_for_entity_sample,
+    y_lim,
+    filename_prefix=f"AFTER_INITIALIZATION_",
 )
+
+
+# # ####
+# # # Inference
+# # ####
+
+# VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+#     jnp.asarray(xs),
+#     n_cavi_iterations,
+#     results_init,
+#     model_basketball,
+#     event_end_times,
+#     M_step_toggles_from_strings(
+#         M_step_toggle_for_STP,
+#         M_step_toggle_for_ETP,
+#         M_step_toggle_for_continuous_state_parameters,
+#         M_step_toggle_for_IP,
+#     ),
+#     num_M_step_iters,
+#     system_transition_prior,
+#     system_covariates,
+# )

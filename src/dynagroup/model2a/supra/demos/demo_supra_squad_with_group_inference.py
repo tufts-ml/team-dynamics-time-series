@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 import numpy as np
-import pandas as pd
 from scipy import stats
 
 
@@ -12,6 +11,7 @@ from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
+from dynagroup.model2a.supra.get_data import get_df
 from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
@@ -74,10 +74,8 @@ initialization_seed = 2
 # Get sample
 ###
 
-filepath = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
-
 if not "df" in globals():
-    df = pd.read_csv(filepath)
+    df = get_df()
 
 
 entity_names = ["SL", "ATL", "AGRN", "AAR", "BTL", "BRM", "BGRN", "BAR"]  # no ARM

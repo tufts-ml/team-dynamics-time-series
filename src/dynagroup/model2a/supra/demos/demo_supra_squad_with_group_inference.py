@@ -91,7 +91,7 @@ time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
 
 snip = make_data_snippet(df, time_snippet)
 
-polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir)
+polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir, show_plot=True)
 
 # TODO: Consider whether standardizing this is a good idea or not.
 system_covariates = (
@@ -226,10 +226,10 @@ if show_plots_after_init:
 likely_soldier_regimes = compute_likely_soldier_regimes(VEZ_summaries.expected_regimes)
 
 polar_plot_the_soldier_headings_with_learned_segmentations(
-    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir
+    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir, show_plot=True
 )
 panel_plot_the_soldier_headings_with_learned_segmentations(
-    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir
+    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir, show_plot=True
 )
 
 ###

@@ -43,8 +43,8 @@ event_end_times = None
 
 ### Model specification
 num_entity_regimes = 4
-num_system_regimes = 3
-alpha_system_prior, kappa_system_prior = 1.0, 50.0
+num_system_regimes = 4
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
 only_use_north_security = True
 
 ### Initialization
@@ -57,7 +57,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_L=3_K=4_still_stickier/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_K=4_K=4_less_sticky_long_clip/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -85,7 +85,7 @@ if not "df" in globals():
 time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
     df,
     elapsed_secs_after_contact_start_for_starting=0,
-    elapsed_secs_after_start_for_snipping=60.0,
+    elapsed_secs_after_start_for_snipping=(8 * 60.0),
     timestep_every=20,
 )
 

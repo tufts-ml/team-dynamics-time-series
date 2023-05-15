@@ -109,15 +109,22 @@ def find_timestep_end_to_match_desired_elapsed_time(
     return timestep_end
 
 
-def make_time_snippet_from_contact_start_with_desired_elapsed_secs(
-    df: DataFrame, timestep_every: int, elapsed_secs_desired: float
+def make_time_snippet_based_on_desired_elapsed_secs(
+    df: DataFrame,
+    elapsed_secs_after_contact_start_for_starting: float,
+    elapsed_secs_after_start_for_snipping: float,
+    timestep_every: int,
 ) -> TimeSnippet:
+    timestep_start = find_timestep_end_to_match_desired_elapsed_time(
+        df,
+        TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1,
+        timestep_every,
+        elapsed_secs_after_contact_start_for_starting,
+    )
     timestep_end = find_timestep_end_to_match_desired_elapsed_time(
-        df, TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, timestep_every, elapsed_secs_desired
+        df, timestep_start, timestep_every, elapsed_secs_after_start_for_snipping
     )
-    return TimeSnippet(
-        TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, timestep_end, timestep_every
-    )
+    return TimeSnippet(timestep_start, timestep_end, timestep_every)
 
 
 def make_data_snippet(df: DataFrame, time_snippet: TimeSnippet) -> DataSnippet:

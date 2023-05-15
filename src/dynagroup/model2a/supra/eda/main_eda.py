@@ -5,7 +5,7 @@ from dynagroup.model2a.supra.eda.show_squad_headings import (
 from dynagroup.model2a.supra.get_data import (
     get_df,
     make_data_snippet,
-    make_time_snippet_from_contact_start_with_desired_elapsed_secs,
+    make_time_snippet_based_on_desired_elapsed_secs,
 )
 
 
@@ -30,8 +30,14 @@ if not "df" in globals():
     df = get_df()
 
 
-time_snippet = make_time_snippet_from_contact_start_with_desired_elapsed_secs(
-    df, timestep_every=20, elapsed_secs_desired=60.0
-)
-snip = make_data_snippet(df, time_snippet)
-polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir=None)
+for i in range(9):
+    print(f"Showing the {i+1}-st minute")
+    time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
+        df,
+        elapsed_secs_after_contact_start_for_starting=60 * i,
+        elapsed_secs_after_start_for_snipping=60,
+        timestep_every=20,
+    )
+
+    snip = make_data_snippet(df, time_snippet)
+    polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir=None)

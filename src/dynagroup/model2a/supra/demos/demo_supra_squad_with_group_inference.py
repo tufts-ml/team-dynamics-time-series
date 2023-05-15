@@ -11,41 +11,33 @@ from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
-from dynagroup.model2a.supra.get_data import get_df
+from dynagroup.model2a.supra.eda.show_squad_headings import (
+    polar_plot_the_squad_headings,
+)
+from dynagroup.model2a.supra.get_data import (
+    get_df,
+    make_data_snippet,
+    make_time_snippet_based_on_desired_elapsed_secs,
+)
 from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
+from dynagroup.util import normalize_matrix_by_mean_and_std_of_columns
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
-from dynagroup.von_mises.util import degrees_to_radians
 
 
 ###
 # Configs
 ###
 
-### Sample selection
-
-# start of contact: 9:18:50.  Around timestep 203100
-# end of contact 9:28:00.
-#
-# roughly (based on a single clip), 13 timesteps is about 1/10 of a second.
-# 20 timestep downsampling is good to get regimes that correspond to turning
-# directions and back in the clip below
-# t_start, t_end, t_every = 130000, 134000, 20
-# entity_idx = 2
-# num_entity_regimes = 2
-#
-# t_start, t_end, t_every = 19000, 23000, 20
-# t_start, t_end, t_every = 203100, 207100, 20
-# t_start, t_end, t_every = 130000, 134000, 20
-t_start, t_end, t_every = 203100, 211100, 20
+### Events
 event_end_times = None
-
 
 ### Model specification
 num_entity_regimes = 4
-num_system_regimes = 4
-alpha_system_prior, kappa_system_prior = 1.0, 10.0
+num_system_regimes = 3
+alpha_system_prior, kappa_system_prior = 1.0, 50.0
+only_use_north_security = True
 
 ### Initialization
 show_plots_after_init = True
@@ -57,7 +49,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_back_to_short/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_and_only_three_sys_regimes_and_stickier/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -71,59 +63,46 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 initialization_seed = 2
 
 ###
+# Procedural
+###
+
+ensure_dir(save_dir)
+
+###
 # Get sample
 ###
 
 if not "df" in globals():
     df = get_df()
 
+time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
+    df,
+    elapsed_secs_after_contact_start_for_starting=0,
+    elapsed_secs_after_start_for_snipping=60.0,
+    timestep_every=20,
+)
 
-entity_names = ["SL", "ATL", "AGRN", "AAR", "BTL", "BRM", "BGRN", "BAR"]  # no ARM
-feature_name = "HELMET_HEADING"
-system_covariate_names = [
-    "SQUAD_SECURITYN",
-    "SQUAD_SECURITYW",
-    "SQUAD_SECURITYE",
-    "SQUAD_SECURITYS",
-    "SQUAD_SECURITY",
-]
+snip = make_data_snippet(df, time_snippet)
 
-T = len(df)
-J = len(entity_names)
-heading_angles_as_degrees = np.zeros((T, J))
-for j, entity_name in enumerate(entity_names):
-    heading_angles_as_degrees[:, j] = df[f"{entity_name}_{feature_name}"]
-heading_angles = degrees_to_radians(heading_angles_as_degrees)
-
-# clock_times_all= np.array([x.split(" ")[1] for x in df["DATETIME"]])
-clock_times_all = np.array([x.split(" ")[1].split(".")[0] for x in df["DATETIME"]])
-
-###
-# Subset data
-###
-
-squad_angles = heading_angles[t_start:t_end:t_every]
-clock_times = clock_times_all[t_start:t_end:t_every]
-
-# Per Lee Clifford Hancock's email on 5/8/23,
-# PLT1-3 need directional relabelings
-# (N to E, W to S, E to N, and S to W)
-
-security_E = np.asarray(df["SQUAD_SECURITYN"])[t_start:t_end:t_every]
-security_S = np.asarray(df["SQUAD_SECURITYW"])[t_start:t_end:t_every]
-security_N = np.asarray(df["SQUAD_SECURITYE"])[t_start:t_end:t_every]
-security_W = np.asarray(df["SQUAD_SECURITYS"])[t_start:t_end:t_every]
-security_four_directions = np.vstack((security_N, security_E, security_S, security_W)).T
-
-# we use security from last timestep as a system-level covariate
-# (actually skip-level recurrence, but formally it's the same as a covariate)
-system_covariates_zero_to_hundred = np.vstack((np.zeros(4), security_four_directions[:-1]))
+polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir=None)
 
 # TODO: Consider whether standardizing this is a good idea or not.
 system_covariates = (
-    system_covariates_zero_to_hundred - np.mean(system_covariates_zero_to_hundred)
-) / np.std(system_covariates_zero_to_hundred)
+    snip.system_covariates_zero_to_hundred - np.mean(snip.system_covariates_zero_to_hundred)
+) / np.std(snip.system_covariates_zero_to_hundred)
 
+
+if only_use_north_security:
+    INDEX_OF_NORTH_DIRECTION = 0
+    system_covariates_zero_to_hundred = snip.system_covariates_zero_to_hundred[
+        :, INDEX_OF_NORTH_DIRECTION
+    ][:, None]
+    system_covariates_dim_labels = ["N"]
+else:
+    system_covariates_zero_to_hundred = snip.system_covariates_zero_to_hundred
+    system_covariates_dim_labels = ["N", "E", "S", "W"]
+
+system_covariates = normalize_matrix_by_mean_and_std_of_columns(system_covariates)
 
 ####
 # Smart Initialization for HSRDM (WIP)
@@ -131,14 +110,14 @@ system_covariates = (
 
 
 # Setup DIMS
-J = np.shape(squad_angles)[1]
+J = np.shape(snip.squad_angles)[1]
 D, D_t, N, M_s, M_e = 1, 0, 0, 4, 0
 DIMS = Dims(J, num_entity_regimes, num_system_regimes, D, D_t, N, M_s, M_e)
 
 # Initialization
 results_init = smart_initialize_model_2a_for_circles(
     DIMS,
-    squad_angles,
+    snip.squad_angles,
     system_covariates,
     circle_model_JAX,
     bottom_half_self_transition_prob,
@@ -150,20 +129,17 @@ results_init = smart_initialize_model_2a_for_circles(
 )
 params_init = results_init.params
 
-s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=int)
 
 ###
 # Post-Initialization Diagnostics
 ###
-
-ensure_dir(save_dir)
 
 ### Post-Initialization ELBO
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
     system_transition_prior,
-    squad_angles,
+    snip.squad_angles,
     circle_model_JAX,
     event_end_times,
     system_covariates,
@@ -171,22 +147,13 @@ elbo_init = compute_elbo_from_initialization_results(
 print(f"\nELBO after init: {elbo_init:.02f}")
 
 
-### Are the system-level states related to security scores? : Correlations
-
-for compass_direction in range(4):
-    # Compute the point-biserial correlation coefficient
-    corr, pval = stats.pointbiserialr(
-        s_hat, system_covariates_zero_to_hundred[:, compass_direction]
-    )
-    # Print the correlation coefficient and p-value
-    print(
-        f"Compass dir: {compass_direction}. Correlation coefficient: {corr:.02f}, P-value: {pval:.03f}"
-    )
-
-
 ### Are the system-level states related to security scores? : Plots
+s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
-    system_covariates_zero_to_hundred, s_hat, clock_times, dim_labels=["N", "E", "S", "W"]
+    system_covariates_zero_to_hundred,
+    s_hat,
+    snip.clock_times,
+    dim_labels=system_covariates_dim_labels,
 )
 plt.ylabel("Security scores")
 plt.tight_layout
@@ -194,13 +161,26 @@ fig.savefig(save_dir + "system_segmentations_with_security_scores_after_init.pdf
 if show_plots_after_init:
     plt.show()
 
+### Are the system-level states related to security scores? : Correlations
+
+for compass_direction in range(4):
+    # Compute the point-biserial correlation coefficient
+    corr, pval = stats.pointbiserialr(
+        s_hat, snip.system_covariates_zero_to_hundred[:, compass_direction]
+    )
+    # Print the correlation coefficient and p-value
+    print(
+        f"Compass dir: {compass_direction}. Correlation coefficient: {corr:.02f}, P-value: {pval:.03f}"
+    )
+
+
 ###
 # Inference
 ###
 
 # TODO: Check if results_init (or something ele?) needs to be jax numpyified
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-    jnp.asarray(squad_angles),
+    jnp.asarray(snip.squad_angles),
     n_cavi_iterations,
     results_init,
     circle_model_JAX,
@@ -222,7 +202,10 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Are the system-level states related to security scores? : Plots
 s_hat = np.array(np.argmax(VES_summary.expected_regimes, 1), dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
-    system_covariates_zero_to_hundred, s_hat, clock_times, dim_labels=["N", "E", "S", "W"]
+    system_covariates_zero_to_hundred,
+    s_hat,
+    snip.clock_times,
+    dim_labels=system_covariates_dim_labels,
 )
 plt.ylabel("Security scores")
 plt.tight_layout

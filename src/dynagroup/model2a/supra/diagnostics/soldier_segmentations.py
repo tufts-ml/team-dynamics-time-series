@@ -45,6 +45,7 @@ def polar_plot_the_soldier_headings_with_learned_segmentations(
     clock_times: NumpyArray1D,
     likely_soldier_regimes: NumpyArray2D,
     save_dir: Optional[str] = None,
+    show_plot: bool = True,
 ):
     """
     Arguments:
@@ -64,7 +65,8 @@ def polar_plot_the_soldier_headings_with_learned_segmentations(
 
         if save_dir is not None:
             fig.savefig(save_dir + f"soldier_{j}_segmented_headings_on_circle.pdf")
-        plt.show()
+        if show_plot:
+            plt.show()
 
 
 def panel_plot_the_soldier_headings_with_learned_segmentations(
@@ -72,6 +74,7 @@ def panel_plot_the_soldier_headings_with_learned_segmentations(
     clock_times: NumpyArray1D,
     likely_soldier_regimes: NumpyArray2D,
     save_dir: Optional[str] = None,
+    show_plot: bool = True,
 ):
     T, J = np.shape(squad_angles)
 
@@ -85,4 +88,5 @@ def panel_plot_the_soldier_headings_with_learned_segmentations(
         ax.set_yticklabels(LABELS_OF_DIRECTIONS)
         if save_dir is not None:
             fig.savefig(save_dir + f"soldier_{j}_segmented_headings_on_line_segment.pdf")
-        plt.show()
+        if show_plot:
+            plt.show()

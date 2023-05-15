@@ -22,7 +22,9 @@ sns.set_style("white")
 sns.set_context("talk")
 
 
-def polar_plot_the_squad_headings(squad_angles, clock_times, save_dir: Optional[str] = None):
+def polar_plot_the_squad_headings(
+    squad_angles, clock_times, save_dir: Optional[str] = None, show_plot=True
+):
     J = np.shape(squad_angles)[1]
 
     fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
@@ -45,4 +47,5 @@ def polar_plot_the_squad_headings(squad_angles, clock_times, save_dir: Optional[
 
     if save_dir is not None:
         fig.savefig(save_dir + f"squad_headings_on_circle.pdf")
-    plt.show()
+    if show_plot:
+        plt.show()

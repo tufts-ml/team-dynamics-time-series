@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, time
 
 import numpy as np
 import pandas as pd
@@ -8,15 +9,9 @@ from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.von_mises.util import degrees_to_radians
 
 
-def get_df() -> DataFrame:
-    """
-    Takes a bit to load.  Recommended usage:
-
-    if not "df" in globals():
-        df=get_df()
-    """
-    FILEPATH = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
-    return pd.read_csv(FILEPATH)
+###
+# Structs
+###
 
 
 @dataclass
@@ -34,19 +29,106 @@ class TimeSnippet:
 
 
 ###
-# Get sample
+# Constants
 ###
 
-CONTACT_START = TimeSnippet(t_start=203100, t_end=211100, t_every=20)
-CONTACT_ALL = TimeSnippet(t_start=203100, t_end=273427, t_every=20)
+DATA_FILEPATH_FOR_PLATOON_2_SQUAD_1 = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
+TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1 = 203100
+ENTITY_NAMES = [
+    "SL",
+    "ATL",
+    "AGRN",
+    "AAR",
+    "BTL",
+    "BRM",
+    "BGRN",
+    "BAR",
+]  # no ARM in this DATA_FILEPATH
+FEATURE_NAME = "HELMET_HEADING"
+
+###
+# Helpers
+###
+
+
+def clock_time_as_datetime(clock_time: str) -> datetime:
+    """
+    Remarks:
+        We use datetime instance instead of time instance because the
+        former can be combined.  Note that to do this we create a fake day
+        (today) at which these events happened.
+
+    """
+    hour, minute, second = [int(x) for x in clock_time.split(":")]
+    time_instance = time(hour=hour, minute=minute, second=second)
+    return datetime.combine(datetime.today().date(), time_instance)
+
+
+def get_df() -> DataFrame:
+    """
+    Takes a bit to load.  Recommended usage:
+
+    if not "df" in globals():
+        df=get_df()
+    """
+    return pd.read_csv(DATA_FILEPATH_FOR_PLATOON_2_SQUAD_1)
+
+
+###
+# Key Time snippets of interest
+###
+
+CONTACT_FIRST_MINUTE = TimeSnippet(
+    t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=210840, t_every=20
+)
+CONTACT_ALL = TimeSnippet(
+    t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=273427, t_every=20
+)
 # this squad doesn't have actions on objective phase, so the final timestep for contact
 # equals the final timestep for the whole time series
 
+###
+# Functions
+###
+
+
+def find_timestep_end_to_match_desired_elapsed_time(
+    df: DataFrame, timestep_start: int, timestep_every: int, elapsed_secs_desired: float
+) -> int:
+    clock_times_all = np.array([x.split(" ")[1].split(".")[0] for x in df["DATETIME"]])
+
+    timestep_end = len(clock_times_all)
+    clock_time_start = clock_time_as_datetime(clock_times_all[timestep_start])
+
+    for timestep_curr in range(timestep_start, timestep_end, timestep_every):
+        clock_time_curr = clock_time_as_datetime(clock_times_all[timestep_curr])
+        clock_time_diff = clock_time_curr - clock_time_start
+        if clock_time_diff.total_seconds() > elapsed_secs_desired:
+            return timestep_curr
+
+    return timestep_end
+
+
+def make_time_snippet_from_contact_start_with_desired_elapsed_secs(
+    df: DataFrame, timestep_every: int, elapsed_secs_desired: float
+) -> TimeSnippet:
+    timestep_end = find_timestep_end_to_match_desired_elapsed_time(
+        df, TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, timestep_every, elapsed_secs_desired
+    )
+    return TimeSnippet(
+        TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, timestep_end, timestep_every
+    )
+
 
 def make_data_snippet(df: DataFrame, time_snippet: TimeSnippet) -> DataSnippet:
+    ###
+    # UP FRONT INFO RELATED TO FILE
+    ###
     TS = time_snippet
-    ENTITY_NAMES = ["SL", "ATL", "AGRN", "AAR", "BTL", "BRM", "BGRN", "BAR"]  # no ARM
-    FEATURE_NAME = "HELMET_HEADING"
+
+    ###
+    # organize all data
+    ###
 
     T = len(df)
     J = len(ENTITY_NAMES)

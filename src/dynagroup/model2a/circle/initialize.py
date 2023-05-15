@@ -1,5 +1,5 @@
 import warnings
-from typing import Union
+from typing import Optional, Union
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -24,7 +24,7 @@ from dynagroup.params import (
     InitializationParameters_VonMises_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray2D, NumpyArray2D, NumpyArray3D
+from dynagroup.types import JaxNumpyArray2D, NumpyArray1D, NumpyArray2D, NumpyArray3D
 from dynagroup.util import make_fixed_sticky_tpm_JAX
 from dynagroup.vi.E_step import run_VES_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
@@ -200,15 +200,25 @@ def fit_ARHMM_to_top_half_of_model(
     num_M_step_iterations_for_STP_gradient_descent: int,
     seed: int = 0,
     verbose: bool = True,
+    event_end_times: Optional[NumpyArray1D] = None,
 ) -> ResultsFromTopHalfInit:
     """
     Arguments:
         group_angles: array of shape (T,J) or (T,J,1)
     """
+
+    ###
+    # Setup
+    ###
+
     T, J = np.shape(group_angles)[:2]
 
     # force there to be a third array dimension for the D
     group_angles = group_angles.reshape((T, J, -1))
+
+    # make event_end_times have the right structure
+    if event_end_times is None:
+        event_end_times = np.array([-1, T])
 
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
@@ -244,6 +254,7 @@ def fit_ARHMM_to_top_half_of_model(
             group_angles,
             EZ_summaries,
             model,
+            event_end_times,
             system_covariates,
         )
 
@@ -261,6 +272,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
+            event_end_times,
             verbose=verbose,
         )
 
@@ -276,6 +288,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_STP_gradient_descent,
             model,
+            event_end_times,
             system_covariates,
         )
 

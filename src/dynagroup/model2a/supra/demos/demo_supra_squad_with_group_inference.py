@@ -11,6 +11,11 @@ from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.circle.initialize import smart_initialize_model_2a_for_circles
 from dynagroup.model2a.circle.model_factors import circle_model_JAX
+from dynagroup.model2a.supra.diagnostics.soldier_segmentations import (
+    compute_likely_soldier_regimes,
+    panel_plot_the_soldier_headings_with_learned_segmentations,
+    polar_plot_the_soldier_headings_with_learned_segmentations,
+)
 from dynagroup.model2a.supra.eda.show_squad_headings import (
     polar_plot_the_squad_headings,
 )
@@ -199,6 +204,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ###
 # Post Inference Plots
 ###
+
 ### Are the system-level states related to security scores? : Plots
 s_hat = np.array(np.argmax(VES_summary.expected_regimes, 1), dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
@@ -212,3 +218,14 @@ plt.tight_layout
 fig.savefig(save_dir + "system_segmentations_with_security_scores_after_learning.pdf")
 if show_plots_after_init:
     plt.show()
+
+### Solder-level segmentations
+
+likely_soldier_regimes = compute_likely_soldier_regimes(VEZ_summaries.expected_regimes)
+
+polar_plot_the_soldier_headings_with_learned_segmentations(
+    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir
+)
+panel_plot_the_soldier_headings_with_learned_segmentations(
+    snip.squad_angles, snip.clock_times, likely_soldier_regimes, save_dir
+)

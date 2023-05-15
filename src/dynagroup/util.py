@@ -54,6 +54,17 @@ def normalize_potentials_by_axis_JAX(potentials: jnp.array, axis: int) -> jnp.ar
 
 
 ###
+# Normalization of array via mean,std
+###
+
+
+def normalize_matrix_by_mean_and_std_of_columns(arr: NumpyArray2D) -> NumpyArray2D:
+    if arr.ndim != 2:
+        raise ValueError
+    return (arr - np.mean(arr, 0)) / np.std(arr, 0)
+
+
+###
 # Generate random objects
 ###
 

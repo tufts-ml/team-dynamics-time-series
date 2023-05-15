@@ -9,6 +9,23 @@ from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.von_mises.util import degrees_to_radians
 
 
+"""
+
+Obtaining Dataset (and Snippets) from the SUPRA data for Platoon 2 Squad 1.
+
+    Info about "Contact" Phase of the simulated battle
+        start of contact: 9:18:50.  Around timestep 203100
+        end of contact 9:28:00. 
+
+    Info about downsampling:
+        roughly (based on a single clip), 13 timesteps is about 1/10 of a second.
+        20 timestep downsampling is good to get regimes that correspond to turning
+        directions and back in the clip below
+            t_start, t_end, t_every = 130000, 134000, 20
+            entity_idx = 2
+            num_entity_regimes = 2
+"""
+
 ###
 # Structs
 ###

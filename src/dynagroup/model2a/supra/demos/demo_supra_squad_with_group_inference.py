@@ -39,7 +39,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 event_end_times = None
 
 ### Model specification
-num_entity_regimes = 4
+num_entity_regimes = 3
 num_system_regimes = 3
 alpha_system_prior, kappa_system_prior = 1.0, 50.0
 only_use_north_security = True
@@ -54,7 +54,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_and_only_three_sys_regimes_and_stickier/"
+save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_and_only_three_sys_and_ent_regimes_and_stickier/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -64,7 +64,6 @@ M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_von_mises"
 M_step_toggle_for_IP = "closed_form_von_mises"
 num_M_step_iters = 50
-alpha_system_prior, kappa_system_prior = 1.0, 10.0
 initialization_seed = 2
 
 ###
@@ -89,7 +88,7 @@ time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
 
 snip = make_data_snippet(df, time_snippet)
 
-polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir=None)
+polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir)
 
 # TODO: Consider whether standardizing this is a good idea or not.
 system_covariates = (

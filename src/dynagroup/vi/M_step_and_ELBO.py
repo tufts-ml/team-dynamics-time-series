@@ -15,6 +15,7 @@ from dynagroup.events import (
     eligible_transitions_to_next,
     get_initialization_times,
     get_non_initialization_times,
+    only_one_event,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -681,7 +682,8 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             f"states are not used."
         )
 
-    if event_end_times is not None:
+    T = len(group_angles)
+    if not only_one_event(event_end_times, T):
         raise NotImplementedError(
             f"This function has not yet been expanded to handle the case where the time series is "
             f"spliced into separate events.  For guidance, see how this was handled in the Gaussian case."

@@ -101,6 +101,21 @@ class VonMisesParams:
 
 
 ###
+# Enforcers
+###
+def enforce_von_mises_params_to_have_kappa_at_least_unity(
+    von_mises_params: VonMisesParams,
+) -> VonMisesParams:
+    kappa = von_mises_params.kappa
+    if kappa <= 1.0:
+        new_kappa = 1.0
+        von_mises_params = VonMisesParams(
+            von_mises_params.drift, new_kappa, von_mises_params.ar_coef
+        )
+    return von_mises_params
+
+
+###
 # Helpers for Inference
 ###
 
@@ -275,6 +290,7 @@ def estimate_von_mises_params(
     sample_weights: Optional[np.array] = None,
     suppress_warnings: bool = False,
     allow_negative_kappas: bool = True,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
 ) -> VonMisesParams:
     """
     Arguments:
@@ -327,10 +343,13 @@ def estimate_von_mises_params(
                 sample_weights=sample_weights,
                 suppress_warnings=suppress_warnings,
             )
-            # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
-            kappa = estimate_kappa_for_autoregression(
-                angles, drift, ar_coef, sample_weights=sample_weights
-            )
+            if fix_ar_kappa_to_unity_rather_than_estimate:
+                kappa = 1.0
+            else:
+                # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
+                kappa = estimate_kappa_for_autoregression(
+                    angles, drift, ar_coef, sample_weights=sample_weights
+                )
             num_attempts += 1
             if (num_attempts >= MAX_NUM_ATTEMPTS) or (kappa > 0.0) or (allow_negative_kappas):
                 break

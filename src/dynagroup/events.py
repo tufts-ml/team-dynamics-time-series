@@ -14,32 +14,50 @@ from dynagroup.types import (
 
 
 """
-An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
-where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
-time gap between timesteps, and a discontinuity in the continuous states x.
 
-If there are E events, then along with the observations, we store 
-    end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th event ended.  
+What is an event?
 
-So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
-        [end_times[e-1]+1 : end_times[e]].
+    An event can be considered as an (iid) training example from a group dynamics model.
+    A separate event might induce a large time gap between time-steps, 
+    and a discontinuity in the continuous states x. Thus is should be handled correctly. 
 
-Example:
-    data has shape (T,D)=(10,2)
-    event_times=[-1, 5, 10]
+What is the data representation strategy in the presence of multiple events?
+
+    The sequences for each event are stacked on top of one another. 
+    So the dimensionality of observations will be (T,J,N), 
+    where T is the total number of timesteps, J is the number of entities, 
+    and N is the observation dimension. Here, T= T_1 + T_2 + ... +T_E,
+    where E  is the number of events (or training examples). We track the ending indices of each event 
+    for efficient indexing in `event_end_times`, which looks like 
+    [-1, <bunch of times giving ends of all segments besides the last one>, T]
+    In particular, if there are E events, then along with the observations, we store 
+    event_end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th event ended.  
+    So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+        [event_end_times[e-1]+1 : event_end_times[e]].
+
+    Examples:
+        * If the data has shape (T,J,D)=(10,3,2), we might have event_end_times=[-1, 5, 10].
+        * In the default case, where there are not multiple events, the `event_end_times` are 
+    taken to be [-1,T].
+
+What is the inference strategy in the presence of multiple events?
+
+    Inspecting the proof for filtering and smoothing in HMM's with time-dependent transitions 
+    (e.g., arHMMs) reveals that we can handle this situation as follows:
+
+        * E-steps (VEZ or VES): Whenever we get to a cross-event boundary (so for any pair of timesteps 
+            (t_1, t_2) where t_1 is in event_end_times), we replace the usual transition function with the 
+            appropriate initial regime distribution. Similarly, whenever we have started a new event 
+            (so for any timestep t where t+1 is in event_end_times), we replace the usual emissions with the 
+            initial emissions.
+        * M-steps: We update the initialization parameters IP using any data from any timesteps that ARE at 
+            the beginning of an event (so any timesteps t where t+1 is in event_end_times). We update the continuous 
+            state parameters CSP using data from any timesteps t that AREN'T at the beginning of an event 
+            (so any timesteps t where t+1 is in event_end_times). We update the entity transition parameters ETP 
+            and system transition parameters STP using any pair timesteps that don't straddle a transition boundary 
+            (so we ignore any pair of timesteps (t_1, t_2) where t_1 is in event_end_times).
         
 """
-
-"""
-
-TODO: 
-[DONE] 1. patch up entity transitions 
-[DONE] 2. patch up emissions for continuous states
-3. patch up system transitions 
-4. patch up - overall function 
-
-"""
-
 
 ###
 # Helpers

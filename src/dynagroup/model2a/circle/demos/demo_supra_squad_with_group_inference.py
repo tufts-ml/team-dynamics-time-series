@@ -39,6 +39,7 @@ from dynagroup.von_mises.util import degrees_to_radians
 # t_start, t_end, t_every = 203100, 207100, 20
 # t_start, t_end, t_every = 130000, 134000, 20
 t_start, t_end, t_every = 203100, 211100, 20
+event_end_times = None
 
 
 ### Model specification
@@ -166,6 +167,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     squad_angles,
     circle_model_JAX,
+    event_end_times,
     system_covariates,
 )
 print(f"\nELBO after init: {elbo_init:.02f}")
@@ -204,6 +206,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     circle_model_JAX,
+    event_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

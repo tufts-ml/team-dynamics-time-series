@@ -6,6 +6,11 @@ import jax.random as jr
 import numpy as np
 from sklearn.cluster import KMeans
 
+from dynagroup.events import (
+    event_end_times_are_proper,
+    fix__log_emissions_from_entities__at_event_boundaries,
+    fix_log_entity_transitions_at_event_boundaries,
+)
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
@@ -19,9 +24,6 @@ from dynagroup.initialize import (
     initialization_results_from_raw_initialization_results,
 )
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.model_factors import (
-    compute_log_entity_transition_probability_matrices_JAX,
-)
 from dynagroup.params import (
     ContinuousStateParameters_Gaussian_JAX,
     Dims,
@@ -30,15 +32,20 @@ from dynagroup.params import (
     InitializationParameters_Gaussian_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray3D
-from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step import (
-    compute_log_continuous_state_emissions_JAX,
-    run_VES_step_JAX,
+from dynagroup.types import (
+    JaxNumpyArray1D,
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    NumpyArray1D,
+    NumpyArray3D,
 )
+from dynagroup.util import make_fixed_sticky_tpm_JAX
+from dynagroup.vi.E_step import compute_log_entity_emissions_JAX, run_VES_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
+    M_Step_Toggle_Value,
     run_M_step_for_CSP_in_closed_form__Gaussian_case,
     run_M_step_for_ETP_via_gradient_descent,
+    run_M_step_for_IP,
     run_M_step_for_STP_in_closed_form,
 )
 
@@ -179,6 +186,7 @@ def make_data_free_initialization_of_EP_JAX(
 
 def fit_ARHMM_to_bottom_half_of_model(
     continuous_states: JaxNumpyArray3D,
+    event_end_times: Optional[JaxNumpyArray1D],
     CSP_JAX: ContinuousStateParameters_Gaussian_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_Gaussian_JAX,
@@ -212,20 +220,40 @@ def fit_ARHMM_to_bottom_half_of_model(
         )
 
         ###
-        # Get ingredients for HMM.
+        # Get ingredients for the E-step
         ###
-        log_state_emissions = compute_log_continuous_state_emissions_JAX(
+
+        ### TODO: See if I can get the same result with a call to run_VEZ_step.
+        ### This would replace 6 function calls with one. Lots of effort saved!
+
+        log_entity_emissions = compute_log_entity_emissions_JAX(
             CSP_JAX, IP_JAX, continuous_states, model
         )
-        log_transition_matrices = compute_log_entity_transition_probability_matrices_JAX(
+        log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,
             continuous_states[:-1],
             model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
         )
-        # TODO: The averaging should make sense, because for the purposes of initialziation, we have constructed the entity-level transition probs to be identical
+        # TODO: The averaging should make sense, because for the purposes of initialziation,
+        # we have constructed the entity-level transition probs to be identical
         # for the system-level regimes
         log_transition_matrices_averaged_over_system_regimes = jnp.mean(
             log_transition_matrices, axis=2
+        )  # has shape (T-1, J, K, K )
+
+        ###
+        # Patch the ingredients for the E-step if there are separate events.
+        ###
+
+        log_transition_matrices_averaged_over_system_regimes = (
+            fix_log_entity_transitions_at_event_boundaries(
+                log_transition_matrices_averaged_over_system_regimes,
+                IP_JAX,
+                event_end_times,
+            )
+        )
+        log_entity_emissions = fix__log_emissions_from_entities__at_event_boundaries(
+            log_entity_emissions, continuous_states, IP_JAX, model, event_end_times
         )
 
         ###
@@ -233,7 +261,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         ###
         EZ_summaries = compute_hmm_posterior_summaries_JAX(
             log_transition_matrices_averaged_over_system_regimes,
-            log_state_emissions,
+            log_entity_emissions,
             IP_JAX.pi_entities,
         )
         for j in range(J):
@@ -249,7 +277,9 @@ def fit_ARHMM_to_bottom_half_of_model(
         # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
         # work when we have J tpms, and then
         tpms = compute_closed_form_M_step_on_posterior_summaries(
-            EZ_summaries, use_continuous_states
+            EZ_summaries,
+            use_continuous_states,
+            event_end_times,
         )
         Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
         ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
@@ -257,8 +287,9 @@ def fit_ARHMM_to_bottom_half_of_model(
         ###
         # M-step (for CSP)
         ###
-
-        CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(EZ_summaries, continuous_states)
+        CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
+            EZ_summaries.expected_regimes, continuous_states, event_end_times
+        )
 
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
 
@@ -270,6 +301,7 @@ def fit_ARHMM_to_bottom_half_of_model(
 
 def fit_ARHMM_to_top_half_of_model(
     continuous_states: NumpyArray3D,
+    event_end_times: Optional[JaxNumpyArray1D],
     STP_JAX: SystemTransitionParameters_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_Gaussian_JAX,
@@ -309,6 +341,7 @@ def fit_ARHMM_to_top_half_of_model(
             continuous_states,
             EZ_summaries,
             model,
+            event_end_times,
             system_covariates=None,
             use_continuous_states=use_continuous_states,
         )
@@ -324,13 +357,14 @@ def fit_ARHMM_to_top_half_of_model(
             i,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
+            event_end_times,
             use_continuous_states,
             verbose,
         )
 
         ### M-step (STP)
         # Note the VES step has already taken care of the `use_continuous_states` mask.
-        STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary)
+        STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
 
@@ -342,6 +376,7 @@ def fit_ARHMM_to_top_half_of_model(
 def smart_initialize_model_2a(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
+    event_end_times: Optional[NumpyArray1D],
     model: Model,
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
@@ -351,6 +386,16 @@ def smart_initialize_model_2a(
 ) -> InitializationResults:
     """
     Arguments:
+        event_end_times: optional, has shape (E+1,)
+            An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
+            where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
+            time gap between timesteps, and a discontinuity in the continuous states x.
+
+            If there are E events, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
+            So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+                    [end_times[e-1]+1 : end_times[e]].
+
         use_continuous_states: If None, we assume all states should be utilized in inference.
             Otherwise, this is a (T,J) boolean vector such that
             the (t,j)-th element  is True if continuous_states[t,j] should be utilized
@@ -368,11 +413,21 @@ def smart_initialize_model_2a(
             a) smart initialization for covariates [Figure 8 experiment has no covariates]
             b) y-level observations, rather than x-level observations.
     """
-
     ### TODO: Make smart initialization better. E.g.
     # 1) Run init x times, pick the one with the best ELBO.
     # 2) Find a way to do smarter init for the recurrence parameters
     # 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
+
+    if event_end_times is None:
+        T = len(continuous_states)
+        event_end_times = np.array([-1, T])
+
+    if not event_end_times_are_proper(event_end_times, len(continuous_states)):
+        raise ValueError(
+            f"Event end times do not have the proper format. Consult the `events` module "
+            f"and try again.  Event_end_times MUST begin with -1 and end with T, the length "
+            f"of the grand time series."
+        )
 
     continuous_states = jnp.asarray(continuous_states)
 
@@ -394,6 +449,7 @@ def smart_initialize_model_2a(
     ###
     results_bottom = fit_ARHMM_to_bottom_half_of_model(
         continuous_states,
+        event_end_times,
         CSP_JAX,
         ETP_JAX,
         IP_JAX,
@@ -418,6 +474,7 @@ def smart_initialize_model_2a(
     num_M_step_iterations_for_ETP_gradient_descent = 5
     results_top = fit_ARHMM_to_top_half_of_model(
         continuous_states,
+        event_end_times,
         STP_JAX,
         ETP_JAX,
         IP_JAX,
@@ -428,5 +485,16 @@ def smart_initialize_model_2a(
         use_continuous_states,
         verbose=verbose,
     )
+
+    ### Update Initialization Params
+    IP_JAX = run_M_step_for_IP(
+        IP_JAX,
+        M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN,
+        results_top.ES_summary,
+        results_bottom.EZ_summaries,
+        continuous_states,
+        event_end_times,
+    )
+
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw)

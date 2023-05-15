@@ -14,7 +14,7 @@ from dynagroup.initialize import (
     initialization_results_from_raw_initialization_results,
 )
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.initialize import (
+from dynagroup.model2a.gaussian.initialize import (
     make_data_free_initialization_of_EP_JAX,
     make_data_free_initialization_of_ETP_JAX,
 )

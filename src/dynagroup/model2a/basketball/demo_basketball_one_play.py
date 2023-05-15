@@ -8,17 +8,17 @@ from dynagroup.diagnostics.occupancies import (
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model import Model
-from dynagroup.model2a.figure8.initialize import smart_initialize_model_2a
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_system_transition_probability_matrices_JAX,
 )
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
+from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import Dims
 from dynagroup.types import JaxNumpyArray1D
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
@@ -34,7 +34,7 @@ data_load_dir = "/Users/mwojno01/Desktop/"
 save_dir = "/Users/mwojno01/Desktop/basketball_devel/"
 
 # Data properties
-# t_every
+event_end_times = None
 
 
 # Initialization
@@ -101,7 +101,7 @@ def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_mat
 # TODO: Can I set up the entity and system to be generic across fig8 and circles so that we
 # call a single function each time?
 model_basketball = Model(
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
@@ -137,7 +137,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, system_covariates
+#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -163,6 +163,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
+    event_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

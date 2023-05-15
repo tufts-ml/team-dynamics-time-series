@@ -19,7 +19,13 @@ from dynagroup.params import (
     SystemTransitionParameters,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray3D, JaxNumpyArray5D, NumpyArray3D, NumpyArray5D
+from dynagroup.types import (
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    JaxNumpyArray5D,
+    NumpyArray3D,
+    NumpyArray5D,
+)
 from dynagroup.util import (
     normalize_log_potentials,
     normalize_log_potentials_by_axis_JAX,
@@ -337,17 +343,17 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
     return log_pdfs_after_initial_timestep
 
 
-def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+def compute_log_initial_continuous_state_emissions_JAX(
     IP: InitializationParameters_JAX,
-    continuous_states: JaxNumpyArray3D,
-):
+    initial_continuous_states: JaxNumpyArray2D,
+) -> JaxNumpyArray2D:
     """
     Compute the log (autoregressive, switching) emissions for the continuous states at the INITIAL timestep
         x_0^j ~ N( mu_0[j,k], Sigma_0[j,k] )
     for entity-level regimes k=1,...,K and entities j=1,...,J
 
     Arguments:
-        continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
+        initial_continuous_states : np.array of shape (J,D) where the (j)-th entry is
             in R^D
 
     Returns:
@@ -367,7 +373,7 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
     # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
     means_init_time, covs_init_time = IP.mu_0s, IP.Sigma_0s
     log_pdfs_init_time = mvn_JAX.logpdf(
-        continuous_states[0, :, None, :], means_init_time, covs_init_time
+        initial_continuous_states[:, None, :], means_init_time, covs_init_time
     )
     # Pre-vectorized version of initial times...for clarity
     # for j in range(J):
@@ -380,7 +386,7 @@ def compute_log_continuous_state_emissions_at_initial_timestep_JAX(
 
 
 figure8_model_JAX = Model(
-    compute_log_continuous_state_emissions_at_initial_timestep_JAX,
+    compute_log_initial_continuous_state_emissions_JAX,
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,

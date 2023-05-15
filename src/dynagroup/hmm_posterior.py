@@ -6,6 +6,7 @@ import jax_dataclasses as jdc
 import numpy as np
 from ssm.messages import hmm_expected_states
 
+from dynagroup.events import eligible_transitions_to_next
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -467,6 +468,7 @@ def make_list_from_hmm_posterior_summaries(
 def compute_closed_form_M_step(
     posterior_summary: HMM_Posterior_Summary_NUMPY,
     use_continuous_states: Optional[NumpyArray2D] = None,
+    event_end_times: Optional[NumpyArray1D] = None,
 ) -> NumpyArray2D:
     """
     Returns:
@@ -483,15 +485,23 @@ def compute_closed_form_M_step(
     if use_continuous_states is None:
         use_continuous_states = np.full((T), True)
 
+    if event_end_times is None:
+        event_end_times = np.array([-1, T])
+
     # Compute tpm
     tpm_empirical = np.zeros((K, K))
     for k in range(K):
         for k_prime in range(K):
             tpm_empirical[k, k_prime] = np.sum(
-                posterior_summary.expected_joints[:, k, k_prime] * use_continuous_states[1:],
+                posterior_summary.expected_joints[:, k, k_prime]
+                * use_continuous_states[1:]
+                * eligible_transitions_to_next(event_end_times),
                 axis=0,
             ) / np.sum(
-                posterior_summary.expected_regimes[:-1, k] * use_continuous_states[1:], axis=0
+                posterior_summary.expected_regimes[:-1, k]
+                * use_continuous_states[1:]
+                * eligible_transitions_to_next(event_end_times),
+                axis=0,
             )
 
     # Add in a small bit of a uniform distribution to bound away from exact ones and zeros.
@@ -507,6 +517,7 @@ def compute_closed_form_M_step(
 def compute_closed_form_M_step_on_posterior_summaries(
     posterior_summaries: HMM_Posterior_Summaries_NUMPY,
     use_continuous_states: Optional[NumpyArray2D] = None,
+    event_end_times: Optional[NumpyArray1D] = None,
 ) -> NumpyArray3D:
     """
     Arguments:
@@ -525,12 +536,15 @@ def compute_closed_form_M_step_on_posterior_summaries(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
+    if event_end_times is None:
+        event_end_times = np.array([-1, T])
+
     posterior_summaries_list = make_list_from_hmm_posterior_summaries(posterior_summaries)
 
     tpms = [None] * J
     for j in range(J):
         tpms[j] = compute_closed_form_M_step(
-            posterior_summaries_list[j], use_continuous_states[:, j]
+            posterior_summaries_list[j], use_continuous_states[:, j], event_end_times
         )
 
     return np.array(tpms)

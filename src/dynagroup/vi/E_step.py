@@ -3,6 +3,12 @@ from typing import Optional
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.events import (
+    fix__log_emissions_from_entities__at_event_boundaries,
+    fix__log_emissions_from_system__at_event_boundaries,
+    fix_log_entity_transitions_at_event_boundaries,
+    fix_log_system_transitions_at_event_boundaries,
+)
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -16,7 +22,13 @@ from dynagroup.params import (
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, JaxNumpyArray4D
+from dynagroup.types import (
+    JaxNumpyArray1D,
+    JaxNumpyArray2D,
+    JaxNumpyArray3D,
+    JaxNumpyArray4D,
+    NumpyArray1D,
+)
 
 
 ###
@@ -83,6 +95,7 @@ def run_VES_step_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
+    event_end_times: Optional[JaxNumpyArray1D],
     system_covariates: Optional[JaxNumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> HMM_Posterior_Summary_JAX:
@@ -143,11 +156,12 @@ def run_VES_step_JAX(
         STP, T - 1, system_covariates
     )
 
-    # `inital_log_emission` has shape (L,)
+    # ` initial_log_emission_for_each_system_regime` is a float after summing over (J,K) objects
     initial_log_emission_for_each_system_regime = jnp.sum(
         VEZ_summaries.expected_regimes[0] * np.log(IP.pi_entities)
     )
 
+    # `inital_log_emission` has shape (L,)
     initial_log_emission = jnp.repeat(initial_log_emission_for_each_system_regime, L)
 
     # `log_emissions_for_each_entity_after_initial_time` is (T-1) x J x L.. We need to collapse the J; emissions are independent over J.
@@ -172,6 +186,19 @@ def run_VES_step_JAX(
     # 'log_emissions' is TxL
     log_emissions = jnp.vstack((initial_log_emission, log_emissions_after_initial_time))
 
+    ###
+    # Patch the ingredients for the E-step if there are separate events.
+    ###
+    log_transitions = fix_log_system_transitions_at_event_boundaries(
+        log_transitions,
+        IP,
+        event_end_times,
+    )
+
+    log_emissions = fix__log_emissions_from_system__at_event_boundaries(
+        log_emissions, VEZ_summaries.expected_regimes, IP, event_end_times
+    )
+
     return compute_hmm_posterior_summary_JAX(
         log_transitions,
         log_emissions,
@@ -186,7 +213,7 @@ def run_VES_step_JAX(
 
 def compute_expected_log_entity_transition_probability_matrices_wrt_system_regimes_JAX(
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
-    variationally_expected_system_regimes: JaxNumpyArray2D,
+    VES_expected_regimes: JaxNumpyArray2D,
     continuous_states: JaxNumpyArray3D,
     model: Model,
 ) -> JaxNumpyArray3D:
@@ -197,7 +224,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     Arguments:
         continuous_states : np.array of shape (T,J,D) where the (t,j)-th entry is
             in R^D
-        variationally_expected_system_regimes : np.array of size (T,L) whose (t,l)-th element gives
+        VES_expected_regimes : np.array of size (T,L) whose (t,l)-th element gives
             the probability distribution of system regime l, q(s_t=l).
 
             May come from a HMM_Posterior_Summary instance created by the VES step.
@@ -226,7 +253,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     expected_log_transition_matrices = jnp.einsum(
         "tjlkd, tl -> tjkd",
         log_transition_matrices,
-        variationally_expected_system_regimes[1:],
+        VES_expected_regimes[1:],
     )
 
     # TODO: Write unit test that the einsum is performing as expected.
@@ -234,12 +261,12 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     # e.g.
     # t,j = 1,0  # note t needs to start at t=1 or later.
     # A= log_transition_matrices[t,j]
-    # B= variationally_expected_system_regimes[t]
+    # B= VES_expected_regimes[t]
     # assert np.allclose(expected_log_transition_matrices[t,j], (A.T @ B).T)
     return expected_log_transition_matrices
 
 
-def compute_log_continuous_state_emissions_JAX(
+def compute_log_entity_emissions_JAX(
     CSP: ContinuousStateParameters_JAX,
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
@@ -269,9 +296,9 @@ def compute_log_continuous_state_emissions_JAX(
     """
 
     ### Initial times
-    log_pdfs_init_time = model.compute_log_continuous_state_emissions_at_initial_timestep_JAX(
+    log_pdfs_init_time = model.compute_log_initial_continuous_state_emissions_JAX(
         IP,
-        continuous_states,
+        continuous_states[0],
     )
     #### Remaining times
     log_pdfs_remaining_times = (
@@ -291,8 +318,9 @@ def run_VEZ_step_JAX(
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
-    variationally_expected_system_regimes: JaxNumpyArray2D,
+    VES_expected_regimes: JaxNumpyArray2D,
     model: Model,
+    event_end_times: NumpyArray1D,
 ) -> HMM_Posterior_Summaries_JAX:
     """
     Arguments:
@@ -300,7 +328,7 @@ def run_VEZ_step_JAX(
             in R^D.  These can be sampled for the full model (where x's are not observed)
             or observed (if we have a switching
             AR-HMM i.e. a meta-switching recurrent AR model)
-        variationally_expected_system_regimes : np.array of size (T,L) whose (t,l)-th element gives
+        VES_expected_regimes : np.array of size (T,L) whose (t,l)-th element gives
             the probability distribution of system regime l, q(s_t=l).
 
             May come from a HMM_Posterior_Summary instance created by the VES step.
@@ -315,13 +343,11 @@ def run_VEZ_step_JAX(
         D: dimension of continuous states
     """
 
-    T, J = jnp.shape(continuous_states)[:2]
-
     # `transitions` has shape (T-1,J,K,K)
-    log_transitions = (
+    log_entity_transitions_expected = (
         compute_expected_log_entity_transition_probability_matrices_wrt_system_regimes_JAX(
             ETP,
-            variationally_expected_system_regimes,
+            VES_expected_regimes,
             continuous_states,
             model,
         )
@@ -338,11 +364,22 @@ def run_VEZ_step_JAX(
 
     # TODO: Below this is where I left off.  It's copy pasta'd!
 
-    # log_state_emissions has shape (T,J,K)
-    log_state_emissions = compute_log_continuous_state_emissions_JAX(
+    # log_emissions_from_entities  has shape (T,J,K)
+    log_emissions_from_entities = compute_log_entity_emissions_JAX(
         CSP,
         IP,
         continuous_states,
         model,
     )
-    return compute_hmm_posterior_summaries_JAX(log_transitions, log_state_emissions, IP.pi_entities)
+
+    log_entity_transitions_expected = fix_log_entity_transitions_at_event_boundaries(
+        log_entity_transitions_expected,
+        IP,
+        event_end_times,
+    )
+    log_emissions_from_entities = fix__log_emissions_from_entities__at_event_boundaries(
+        log_emissions_from_entities, continuous_states, IP, model, event_end_times
+    )
+    return compute_hmm_posterior_summaries_JAX(
+        log_entity_transitions_expected, log_emissions_from_entities, IP.pi_entities
+    )

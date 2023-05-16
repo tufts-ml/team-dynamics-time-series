@@ -174,6 +174,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
+    system_covariates,
     use_continuous_states,
 )
 params_init = results_init.params

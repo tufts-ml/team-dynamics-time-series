@@ -93,7 +93,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_does_fig8_still_work_even_after_developing/"
+save_dir = "/Users/mwojno01/Desktop/TMP_does_fig8_still_work_after_init_handles_system_covs/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -180,6 +180,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
+    system_covariates,
     use_continuous_states,
 )
 params_init = results_init.params

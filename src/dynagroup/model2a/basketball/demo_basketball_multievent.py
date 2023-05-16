@@ -1,6 +1,3 @@
-import copy
-
-import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.diagnostics.occupancies import (
@@ -8,6 +5,7 @@ from dynagroup.diagnostics.occupancies import (
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model import Model
+from dynagroup.model2a.basketball.get_data import get_data
 from dynagroup.model2a.figure8.model_factors import (
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
@@ -21,8 +19,7 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
 from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import Dims
 from dynagroup.types import JaxNumpyArray1D
-from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
-from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
+from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 ###
@@ -30,7 +27,6 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 ###
 
 # Directories
-data_load_dir = "/Users/mwojno01/Repos/dynagroup/data/basketball/"
 save_dir = "/Users/mwojno01/Desktop/DEVEL_multievent_basketball/"
 
 
@@ -53,36 +49,11 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
-###
-# I/O
-###
-ensure_dir(save_dir)
-xs_unnormalized = np.load(data_load_dir + "basketball_game_TOR_vs_CHA_stacked_starter_plays.npy")
-event_end_times = np.load(data_load_dir + "basketball_game_TOR_vs_CHA_end_times.npy")
 
 ###
-# Preprocess Data
+# Get data
 ###
-
-### Handle NANs
-# Patch up the few nans  (41/21467) that for some reason only exist in player 0's data
-T, J, D = np.shape(xs_unnormalized)
-j = 0
-for t in range(T):
-    if np.isnan(xs_unnormalized[t, j, 0]):
-        xs_unnormalized[t, j, :] = xs_unnormalized[t - 1, j, :]
-
-
-### Normalize Basketball coordinates
-# From: https://github.com/linouk23/NBA-Player-Movements/blob/master/Constant.py
-X_MAX = 100
-Y_MAX = 50
-
-xs = copy.copy(xs_unnormalized)
-xs[:, :, 0] /= X_MAX
-xs[:, :, 1] /= Y_MAX
-
-xs[:, :, 0] *= 2  # let first dim be twice as big..
+DATA = get_data()
 
 
 ###
@@ -91,7 +62,7 @@ xs[:, :, 0] *= 2  # let first dim be twice as big..
 
 #### Setup Dims
 
-J = np.shape(xs)[1]
+J = np.shape(DATA.xs)[1]
 D, D_t = 2, 2
 N = 0
 M_s, M_e = 0, 0  # for now!
@@ -123,6 +94,11 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 
 
 ###
+# I/O
+###
+ensure_dir(save_dir)
+
+###
 # INITIALIZATION
 ###
 
@@ -134,10 +110,11 @@ print("Running smart initialization.")
 # 2) Find a way to do smarter init for the recurrence parameters
 # 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
 
+# TODO; Develop this and bring in system covariates.
 results_init = smart_initialize_model_2a(
     DIMS,
-    xs,
-    event_end_times,
+    DATA.xs,
+    DATA.event_end_times,
     model_basketball,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
@@ -158,7 +135,7 @@ params_init = results_init.params
 
 ### plot learned dynamical modes
 deterministic_trajectories = get_deterministic_trajectories(
-    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=xs[0]
+    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=DATA.xs[0]
 )
 plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
@@ -182,7 +159,7 @@ y_lim = None
 find_t0_for_entity_sample = lambda x: 75
 
 plot_fit_and_forecast_on_slice(
-    xs,
+    DATA.xs,
     params_init,
     results_init.ES_summary,
     results_init.EZ_summaries,
@@ -215,5 +192,5 @@ plot_fit_and_forecast_on_slice(
 #     ),
 #     num_M_step_iters,
 #     system_transition_prior,
-#     system_covariates,
+#     system_covariates = DATA.has_ball_team,
 # )

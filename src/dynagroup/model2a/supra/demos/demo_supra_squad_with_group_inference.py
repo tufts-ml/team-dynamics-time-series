@@ -27,6 +27,9 @@ from dynagroup.model2a.supra.get_data import (
     make_data_snippet,
     make_time_snippet_based_on_desired_elapsed_secs,
 )
+from dynagroup.model2a.supra.system_covariates import (
+    compute_running_vulnerability_to_north,
+)
 from dynagroup.params import Dims
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
 from dynagroup.util import normalize_matrix_by_mean_and_std_of_columns
@@ -42,22 +45,22 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 event_end_times = None
 
 ### Model specification
-num_entity_regimes = 12
+num_entity_regimes = 4
 num_system_regimes = 4
-alpha_system_prior, kappa_system_prior = 1.0, 10.0
-only_use_north_security = True
+alpha_system_prior, kappa_system_prior = 1.0, 50.0
+system_covariate_type = "running_vulnerability_to_north"  # ["four_security", "north_security", "running_vulnerablity_to_north"]
 
 ### Initialization
 show_plots_after_init = True
 bottom_half_self_transition_prob = 0.995
 bottom_half_changepoint_penalty = 10.0
 bottom_half_min_segment_size = 10
-bottom_half_num_EM_iterations = 1
+bottom_half_num_EM_iterations = 3
 top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/supra_devel_only_north_security_K=4_K=4_less_sticky_long_clip_1EM_it_for_bottom_half_init/"
+save_dir = "/Users/mwojno01/Desktop/TRY_running_vulnerability_to_north_as_covariate/"
 
 ### Inference
 n_cavi_iterations = 10
@@ -84,8 +87,8 @@ if not "df" in globals():
 
 time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
     df,
-    elapsed_secs_after_contact_start_for_starting=0,
-    elapsed_secs_after_start_for_snipping=(8 * 60.0),
+    elapsed_secs_after_contact_start_for_starting=(0 * 60.0),
+    elapsed_secs_after_start_for_snipping=(1 * 60.0),
     timestep_every=20,
 )
 
@@ -93,23 +96,26 @@ snip = make_data_snippet(df, time_snippet)
 
 polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir, show_plot=True)
 
-# TODO: Consider whether standardizing this is a good idea or not.
-system_covariates = (
-    snip.system_covariates_zero_to_hundred - np.mean(snip.system_covariates_zero_to_hundred)
-) / np.std(snip.system_covariates_zero_to_hundred)
 
-
-if only_use_north_security:
+if system_covariate_type == "four_security":
     INDEX_OF_NORTH_DIRECTION = 0
-    system_covariates_zero_to_hundred = snip.system_covariates_zero_to_hundred[
-        :, INDEX_OF_NORTH_DIRECTION
-    ][:, None]
+    system_covariates_to_plot = snip.system_covariates_zero_to_hundred[:, INDEX_OF_NORTH_DIRECTION][
+        :, None
+    ]
+    system_covariates = normalize_matrix_by_mean_and_std_of_columns(system_covariates_to_plot)
     system_covariates_dim_labels = ["N"]
-else:
-    system_covariates_zero_to_hundred = snip.system_covariates_zero_to_hundred
+elif system_covariate_type == "north_security":
+    system_covariates_to_plot = snip.system_covariates_zero_to_hundred
     system_covariates_dim_labels = ["N", "E", "S", "W"]
+    system_covariates = normalize_matrix_by_mean_and_std_of_columns(system_covariates_to_plot)
+elif system_covariate_type == "running_vulnerability_to_north":
+    # `running_vulnerability_to_north` is computed in separate file
+    system_covariates_to_plot = compute_running_vulnerability_to_north(snip.squad_angles)[:, None]
+    system_covariates = system_covariates_to_plot
+    system_covariates_dim_labels = ["running vulnerability"]
+else:
+    raise ValueError("What is the system covariate type?")
 
-system_covariates = normalize_matrix_by_mean_and_std_of_columns(system_covariates)
 
 ####
 # Smart Initialization for HSRDM (WIP)
@@ -133,7 +139,7 @@ results_init = smart_initialize_model_2a_for_circles(
     bottom_half_num_EM_iterations,
     top_half_num_EM_iterations,
     initialization_seed,
-    parallelize_the_CSP_M_step_for_the_bottom_half_model=True,
+    parallelize_the_CSP_M_step_for_the_bottom_half_model=False,
 )
 params_init = results_init.params
 
@@ -158,7 +164,7 @@ print(f"\nELBO after init: {elbo_init:.02f}")
 ### Are the system-level states related to security scores? : Plots
 s_hat = np.array(results_init.record_of_most_likely_system_states[:, -1], dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
-    system_covariates_zero_to_hundred,
+    system_covariates_to_plot,
     s_hat,
     snip.clock_times,
     dim_labels=system_covariates_dim_labels,
@@ -211,7 +217,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Are the system-level states related to security scores? : Plots
 s_hat = np.array(np.argmax(VES_summary.expected_regimes, 1), dtype=int)
 fig, ax = plot_time_series_with_regime_panels(
-    system_covariates_zero_to_hundred,
+    system_covariates_to_plot,
     s_hat,
     snip.clock_times,
     dim_labels=system_covariates_dim_labels,

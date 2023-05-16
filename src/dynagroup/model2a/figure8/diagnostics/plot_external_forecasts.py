@@ -7,8 +7,10 @@ from dynagroup.io import ensure_dir
 
 
 ### Configs
-load_dir = "/Users/mwojno01/Repos/dynagroup/results/DSARF_Results_Preetish/forecast_npy_files/"
-save_dir = "/Users/mwojno01/Repos/dynagroup/results/DSARF_Results_Preetish/forecast_plots_by_mike/"
+load_dir = "/Users/mwojno01/Repos/dynagroup/results/DSARF_Results_Preetish_2/forecast_npy_files/"
+save_dir = (
+    "/Users/mwojno01/Repos/dynagroup/results/DSARF_Results_Preetish_2/forecast_plots_by_mike/"
+)
 
 ### Setup
 ensure_dir(save_dir)

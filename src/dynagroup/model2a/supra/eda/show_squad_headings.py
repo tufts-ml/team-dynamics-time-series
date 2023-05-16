@@ -7,9 +7,9 @@ from matplotlib import pyplot as plt
 
 ### Define a custom color palette
 SYSTEM_REGIME_COLOR_NAMES = [
-    "pale olive",
-    "light lavender",
-    "bubblegum pink",
+    "light yellow",
+    "light green",
+    "light red",
     "coral",
     "peach",
     "light turquoise",

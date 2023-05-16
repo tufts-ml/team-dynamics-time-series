@@ -14,16 +14,23 @@ from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray3D
 
 ### Define a custom color palette
 ENTITY_REGIME_COLOR_NAMES = [
-    "maroon",
-    "baby blue",
-    "magenta",
-    "teal",
-    "lime",
-    "cyan",
-    "olive",
-    "silver",
+    "windows blue",
+    "red",
+    "amber",
+    "faded green",
+    "dusty purple",
+    "orange",
+    "clay",
+    "pink",
+    "greyish",
+    "mint",
+    "light cyan",
+    "steel blue",
+    "forest green",
+    "pastel purple",
+    "salmon",
+    "dark brown",
 ]
-
 ENTITY_REGIME_COLORS = sns.xkcd_palette(ENTITY_REGIME_COLOR_NAMES)
 sns.set_style("white")
 sns.set_context("talk")

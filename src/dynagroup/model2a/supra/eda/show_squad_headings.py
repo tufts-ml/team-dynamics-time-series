@@ -23,7 +23,11 @@ sns.set_context("talk")
 
 
 def polar_plot_the_squad_headings(
-    squad_angles, clock_times, save_dir: Optional[str] = None, show_plot=True
+    squad_angles,
+    clock_times,
+    save_dir: Optional[str] = None,
+    basename_prefix: Optional[str] = "",
+    show_plot=True,
 ):
     J = np.shape(squad_angles)[1]
 
@@ -46,6 +50,6 @@ def polar_plot_the_squad_headings(
     ax.legend(loc="lower left", bbox_to_anchor=(0.5 + np.cos(angle) / 2, 0.5 + np.sin(angle) / 2))
 
     if save_dir is not None:
-        fig.savefig(save_dir + f"squad_headings_on_circle.pdf")
+        fig.savefig(save_dir + f"{basename_prefix}_squad_headings_on_circle.pdf")
     if show_plot:
         plt.show()

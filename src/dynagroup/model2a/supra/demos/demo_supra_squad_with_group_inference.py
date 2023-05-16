@@ -46,8 +46,8 @@ event_end_times = None
 
 ### Model specification
 num_entity_regimes = 4
-num_system_regimes = 4
-alpha_system_prior, kappa_system_prior = 1.0, 50.0
+num_system_regimes = 3
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
 system_covariate_type = "running_vulnerability_to_north"  # ["four_security", "north_security", "running_vulnerablity_to_north"]
 
 ### Initialization
@@ -60,10 +60,10 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/TRY_running_vulnerability_to_north_as_covariate/"
+save_dir = "/Users/mwojno01/Desktop/TRY_running_vulnerability_to_north_as_covariate_L=3_and_kappa=10_one_CAVI_it/"
 
 ### Inference
-n_cavi_iterations = 10
+n_cavi_iterations = 1
 M_step_toggle_for_STP = "gradient_descent"
 # can i do M_step_toggle_for_ETP in closed form, even though there are L of them?
 M_step_toggle_for_ETP = "gradient_descent"
@@ -187,6 +187,30 @@ for compass_direction in range(4):
         f"Compass dir: {compass_direction}. Correlation coefficient: {corr:.02f}, P-value: {pval:.03f}"
     )
 
+
+### Solder-level segmentations
+
+likely_soldier_regimes_init = compute_likely_soldier_regimes(
+    results_init.EZ_summaries.expected_regimes
+)
+polar_plot_the_soldier_headings_with_learned_segmentations(
+    snip.squad_angles,
+    snip.clock_times,
+    likely_soldier_regimes_init,
+    save_dir,
+    basename_prefix="init",
+    show_plot=True,
+)
+panel_plot_the_soldier_headings_with_learned_segmentations(
+    snip.squad_angles,
+    snip.clock_times,
+    likely_soldier_regimes_init,
+    save_dir,
+    basename_prefix="init",
+    show_plot=True,
+)
+
+report_on_directional_attractors(params_init)
 
 ###
 # Inference

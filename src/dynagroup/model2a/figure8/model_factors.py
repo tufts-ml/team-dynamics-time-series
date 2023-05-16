@@ -327,6 +327,14 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
         covs_after_initial_timestep,
     )
 
+    # Warning: mvn_JAX.logpdf() can return nans!
+    # Since all we need to do is compare to value of the emissions
+    # across entity regimes, we can just replace these with a very low number
+    OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS = -1e12
+    log_pdfs_after_initial_timestep = jnp.nan_to_num(
+        log_pdfs_after_initial_timestep, nan=OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS
+    )
+
     # Pre-vectorized version for clarity
     # for t in range(1, T):
     #     for j in range(J):

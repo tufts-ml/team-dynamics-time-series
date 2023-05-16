@@ -62,7 +62,7 @@ DATA = get_data()
 
 #### Setup Dims
 
-J = np.shape(DATA.xs)[1]
+J = np.shape(DATA.positions)[1]
 D, D_t = 2, 2
 N = 0
 M_s, M_e = 0, 0  # for now!
@@ -113,7 +113,7 @@ print("Running smart initialization.")
 # TODO; Develop this and bring in system covariates.
 results_init = smart_initialize_model_2a(
     DIMS,
-    DATA.xs,
+    DATA.positions,
     DATA.event_end_times,
     model_basketball,
     num_em_iterations_for_bottom_half_init,
@@ -127,7 +127,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.positions, model, event_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -137,7 +137,7 @@ params_init = results_init.params
 
 ### plot learned dynamical modes
 deterministic_trajectories = get_deterministic_trajectories(
-    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=DATA.xs[0]
+    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=DATA.positions[0]
 )
 plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
@@ -161,7 +161,7 @@ y_lim = None
 find_t0_for_entity_sample = lambda x: 75
 
 plot_fit_and_forecast_on_slice(
-    DATA.xs,
+    DATA.positions,
     params_init,
     results_init.ES_summary,
     results_init.EZ_summaries,

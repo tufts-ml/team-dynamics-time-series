@@ -122,7 +122,6 @@ elif system_covariate_type == "running_vulnerability_to_north":
     system_covariates_to_plot = compute_running_vulnerability_to_north(snip.squad_angles)[:, None]
     system_covariates = system_covariates_to_plot
     system_covariates_dim_labels = None
-else:
     raise ValueError("What is the system covariate type?")
 
 
@@ -257,6 +256,7 @@ fig, ax = plot_time_series_with_regime_panels(
     SYSTEM_REGIME_COLORS,
 )
 plt.tight_layout()
+plt.ylabel("Security risk")
 fig.savefig(save_dir + "system_segmentations_with_security_scores_after_learning.pdf")
 if show_plots_after_init:
     plt.show()

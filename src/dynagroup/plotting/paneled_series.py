@@ -74,7 +74,7 @@ def plot_time_series_with_regime_panels(
 
     # let's set a sensible defaut size for the subplots
     matplotlib_options = {
-        "figsize": (10, 8),  # figure size
+        "figsize": (8, 6),  # figure size
     }
     # add/update the options given by the user
     matplotlib_options.update(kwargs)
@@ -107,7 +107,7 @@ def plot_time_series_with_regime_panels(
         )
 
     if time_labels is not None:
-        ticks = list(range(0, n_samples, int(n_samples / 8))) + [n_samples - 1]
+        ticks = np.linspace(0, n_samples - 1, 6, dtype=int)
         ax.set_xticks(ticks, time_labels[ticks])
 
     # Below uses alternating colors... we'll save this for HMM, so as to not falsely suggest correspondences.

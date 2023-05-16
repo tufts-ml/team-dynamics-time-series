@@ -10,8 +10,8 @@ from ruptures.utils import pairwise
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 
 
-COLOR_NAMES = ["windows blue", "red", "amber", "faded green", "dusty purple", "orange"]
-COLORS = sns.xkcd_palette(COLOR_NAMES)
+SOME_COLOR_NAMES = ["windows blue", "red", "amber", "faded green", "dusty purple", "orange"]
+SOME_COLORS = sns.xkcd_palette(SOME_COLOR_NAMES)
 sns.set_style("white")
 sns.set_context("talk")
 
@@ -54,6 +54,7 @@ def plot_time_series_with_regime_panels(
     fitted_regime_sequence: NumpyArray1D,
     time_labels: Optional[NumpyArray1D] = None,
     dim_labels: Optional[List[str]] = None,
+    COLORS=None,
     **kwargs
 ):
     """
@@ -67,6 +68,9 @@ def plot_time_series_with_regime_panels(
     Returns:
         tuple: (figure, axis_array) with a :class:`matplotlib.figure.Figure` object and an array of Axes objects.
     """
+
+    if COLORS is None:
+        COLORS = SOME_COLORS
 
     # let's set a sensible defaut size for the subplots
     matplotlib_options = {

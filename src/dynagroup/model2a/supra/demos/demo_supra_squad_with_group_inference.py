@@ -20,6 +20,7 @@ from dynagroup.model2a.supra.diagnostics.soldier_segmentations import (
     polar_plot_the_soldier_headings_with_learned_segmentations,
 )
 from dynagroup.model2a.supra.eda.show_squad_headings import (
+    SYSTEM_REGIME_COLORS,
     polar_plot_the_squad_headings,
 )
 from dynagroup.model2a.supra.get_data import (
@@ -65,7 +66,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/TRY_small_dataset_with_running_vulnerablity_and_dest_bias_via_recurrence/"
+save_dir = "/Users/mwojno01/Desktop/LATE_redo_plots/"
 
 ### Inference
 show_plots_after_learning = False
@@ -120,21 +121,9 @@ elif system_covariate_type == "running_vulnerability_to_north":
     # `running_vulnerability_to_north` is computed in separate file
     system_covariates_to_plot = compute_running_vulnerability_to_north(snip.squad_angles)[:, None]
     system_covariates = system_covariates_to_plot
-    system_covariates_dim_labels = ["running vulnerability"]
+    system_covariates_dim_labels = None
 else:
     raise ValueError("What is the system covariate type?")
-
-###
-# Update recurrence
-###
-
-import copy
-
-
-supra_model = copy.copy(circle_model_JAX)
-supra_model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (
-    lambda x_vec: jnp.ones_like(x_vec)
-)
 
 
 ####
@@ -144,7 +133,7 @@ supra_model.transform_of_continuous_state_vector_before_premultiplying_by_recurr
 
 # Setup DIMS
 J = np.shape(snip.squad_angles)[1]
-D, D_t, N, M_s, M_e = 1, 0, 0, 4, 0
+D, D_t, N, M_s, M_e = 1, 1, 0, 4, 0
 DIMS = Dims(J, num_entity_regimes, num_system_regimes, D, D_t, N, M_s, M_e)
 
 # Initialization
@@ -187,7 +176,8 @@ fig, ax = plot_time_series_with_regime_panels(
     system_covariates_to_plot,
     s_hat_init,
     snip.clock_times,
-    dim_labels=system_covariates_dim_labels,
+    system_covariates_dim_labels,
+    SYSTEM_REGIME_COLORS,
 )
 plt.tight_layout
 fig.savefig(save_dir + "system_segmentations_with_security_scores_after_init.pdf")
@@ -263,9 +253,10 @@ fig, ax = plot_time_series_with_regime_panels(
     system_covariates_to_plot,
     s_hat,
     snip.clock_times,
-    dim_labels=system_covariates_dim_labels,
+    system_covariates_dim_labels,
+    SYSTEM_REGIME_COLORS,
 )
-plt.tight_layout
+plt.tight_layout()
 fig.savefig(save_dir + "system_segmentations_with_security_scores_after_learning.pdf")
 if show_plots_after_init:
     plt.show()

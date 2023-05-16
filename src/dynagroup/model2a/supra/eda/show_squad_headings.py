@@ -6,18 +6,22 @@ from matplotlib import pyplot as plt
 
 
 ### Define a custom color palette
-COLOR_NAMES = [
-    "bubblegum pink",
-    "baby blue",
-    "light lavender",
+SYSTEM_REGIME_COLOR_NAMES = [
     "pale olive",
+    "light lavender",
+    "bubblegum pink",
     "coral",
     "peach",
     "light turquoise",
     "dusty purple",
+    "pastel yellow",
+    "pale pink",
+    "lavender",
 ]
 
-COLORS = sns.xkcd_palette(COLOR_NAMES)
+SYSTEM_REGIME_COLORS = sns.xkcd_palette(SYSTEM_REGIME_COLOR_NAMES)
+# Note: I'm calling these `SYSTEM_REGIME_COLORS`, and use them as such elsewhere,
+# but here I'm using them for entity colors... kind of confusing..
 sns.set_style("white")
 sns.set_context("talk")
 
@@ -34,7 +38,7 @@ def polar_plot_the_squad_headings(
     fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
 
     for j in range(J):
-        ax.plot(squad_angles[:, j], clock_times, color=COLORS[j], label=f"{j}")
+        ax.plot(squad_angles[:, j], clock_times, color=SYSTEM_REGIME_COLORS[j], label=f"{j}")
     ax.set_yticklabels([])
 
     # Set the tick locations and labels

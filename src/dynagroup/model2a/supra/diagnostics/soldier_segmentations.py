@@ -13,18 +13,18 @@ from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray3D
 
 
 ### Define a custom color palette
-COLOR_NAMES = [
-    "bubblegum pink",
+ENTITY_REGIME_COLOR_NAMES = [
+    "maroon",
     "baby blue",
-    "light lavender",
-    "pale olive",
-    "coral",
-    "peach",
-    "light turquoise",
-    "dusty purple",
+    "magenta",
+    "teal",
+    "lime",
+    "cyan",
+    "olive",
+    "silver",
 ]
 
-COLORS = sns.xkcd_palette(COLOR_NAMES)
+ENTITY_REGIME_COLORS = sns.xkcd_palette(ENTITY_REGIME_COLOR_NAMES)
 sns.set_style("white")
 sns.set_context("talk")
 
@@ -57,7 +57,9 @@ def polar_plot_the_soldier_headings_with_learned_segmentations(
         print(f"Entity {j}")
         fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         ax.scatter(
-            squad_angles[:, j], clock_times, color=[COLORS[z] for z in likely_soldier_regimes[:, j]]
+            squad_angles[:, j],
+            clock_times,
+            color=[ENTITY_REGIME_COLORS[z] for z in likely_soldier_regimes[:, j]],
         )
         ax.set_yticklabels([])
         # Set the tick locations and labels
@@ -87,6 +89,7 @@ def panel_plot_the_soldier_headings_with_learned_segmentations(
             squad_angles[:, j],
             likely_soldier_regimes[:, j],
             clock_times,
+            COLORS=ENTITY_REGIME_COLORS,
         )
         ax.set_yticks(RADIANS_OF_DIRECTIONS)
         ax.set_yticklabels(LABELS_OF_DIRECTIONS)

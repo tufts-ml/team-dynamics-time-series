@@ -29,4 +29,9 @@ def compute_running_vulnerability_to_north(squad_angles: NumpyArray2D) -> NumpyA
         else:
             timesteps_since_someone_looked_in_north_quadrant += 1
 
+    # we use a RELU normalization here.. after twenty seconds you are fully vulnerable.
+    # ABOUT_TWENTY_SECONDS_IN_TIMESTEPS = 1290
+    # return np.minimum(running_vulnerability_to_north_unnormalized/ABOUT_TWENTY_SECONDS_IN_TIMESTEPS,1)
+    #
+    # the below only works for short datasets
     return running_vulnerability_to_north_unnormalized / T

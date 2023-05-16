@@ -707,7 +707,6 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             all_params.CSP.drifts[j, k],
             sample_weights=np.asarray(VEZ_expected_regimes[:, j, k]),
             suppress_warnings=True,
-            allow_negative_kappas=False,
         )
         return emissions_params.ar_coef, emissions_params.drift, emissions_params.kappa
 

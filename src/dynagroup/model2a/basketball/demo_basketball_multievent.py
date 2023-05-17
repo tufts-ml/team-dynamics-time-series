@@ -32,7 +32,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/TRY_basketball_stickier_system_K=5_L=5_again/"
+save_dir = "/Users/mwojno01/Desktop/just_init/"
 
 # Initialization
 do_init_plots = False
@@ -208,7 +208,7 @@ s_hats = np.argmax(VES_summary.expected_regimes, 1)
 if do_post_inference_plots:
     ### Fit and Forecast
     event_idx = 4
-    pct_event_to_skip = 0.5
+    pct_event_to_skip = 0.50
 
     event_start = DATA.event_end_times[event_idx] + 1
     event_end = DATA.event_end_times[event_idx + 1]

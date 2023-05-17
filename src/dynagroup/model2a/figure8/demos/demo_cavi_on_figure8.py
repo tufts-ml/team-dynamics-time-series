@@ -93,7 +93,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_does_fig8_still_work_after_init_handles_system_covs/"
+save_dir = "/Users/mwojno01/Desktop/TMP_rerun_fig8_to_make_plot/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

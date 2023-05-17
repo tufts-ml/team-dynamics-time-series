@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-import jax.random as jr
 import matplotlib.pyplot as plt
 import seaborn as sns
 from dynamax.utils.plotting import gradient_cmap
@@ -13,7 +12,7 @@ https://github.com/probml/dynamax/blob/main/docs/notebooks/hmm/autoregressive_hm
 ###
 # Configs
 ###
-params = params_init
+params = params_learned
 J, K = 5, 5
 
 ###

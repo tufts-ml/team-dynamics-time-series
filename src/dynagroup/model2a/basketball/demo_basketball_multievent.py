@@ -5,6 +5,7 @@ from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_s
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
+from dynagroup.diagnostics.team_slice import plot_team_slice
 from dynagroup.io import ensure_dir
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.get_data import get_data
@@ -31,7 +32,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/TRY_basketball_STP_was_turned_off/"
+save_dir = "/Users/mwojno01/Desktop/TRY_basketball_stickier_system_K=5_L=5_again/"
 
 # Initialization
 do_init_plots = False
@@ -51,7 +52,7 @@ M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
 num_M_step_iters = 50
-alpha_system_prior, kappa_system_prior = 1.0, 1.0
+alpha_system_prior, kappa_system_prior = 1.0, 50.0
 
 
 ###
@@ -170,7 +171,7 @@ if do_init_plots:
         results_init.EZ_summaries,
         T_slice_max,
         model_basketball,
-        forecast_seeds=[i + 1 for i in range(5)],
+        forecast_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
         entity_idxs=None,
         find_t0_for_entity_sample=lambda x: T_start,
@@ -202,7 +203,10 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     system_covariates=jnp.asarray(system_covariates),
 )
 
+s_hats = np.argmax(VES_summary.expected_regimes, 1)
+
 if do_post_inference_plots:
+    ### Fit and Forecast
     event_idx = 4
     pct_event_to_skip = 0.5
 
@@ -213,6 +217,18 @@ if do_post_inference_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     T_slice_max = event_end - T_start
 
+    plot_team_slice(
+        DATA.positions,
+        T_start,
+        T_slice_max,
+        s_hats,
+        x_lim=(0, 2),
+        y_lim=(0, 1),
+        save_dir=save_dir,
+        show_plot=True,
+        figsize=(8, 6),
+    )
+
     plot_fit_and_forecast_on_slice(
         DATA.positions,
         params_init,
@@ -220,7 +236,7 @@ if do_post_inference_plots:
         results_init.EZ_summaries,
         T_slice_max,
         model_basketball,
-        forecast_seeds=[i + 1 for i in range(5)],
+        forecast_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
         entity_idxs=None,
         find_t0_for_entity_sample=lambda x: T_start,

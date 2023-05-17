@@ -1,3 +1,4 @@
+import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_slice
@@ -20,6 +21,8 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
 from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import Dims
 from dynagroup.types import JaxNumpyArray1D
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import run_CAVI_with_JAX
 from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
@@ -32,6 +35,7 @@ save_dir = "/Users/mwojno01/Desktop/CHECK_IN_multievent_basketball/"
 
 
 # Initialization
+do_init_plots = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -41,6 +45,7 @@ K = 5
 L = 5
 
 # For inference
+do_post_inference_plots = True
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -135,62 +140,93 @@ params_init = results_init.params
 ###
 # Initialization Diagnostics
 ###
+if do_init_plots:
+    ### plot learned dynamical modes
+    deterministic_trajectories = get_deterministic_trajectories(
+        params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=DATA.positions[0]
+    )
+    plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
-### plot learned dynamical modes
-deterministic_trajectories = get_deterministic_trajectories(
-    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=DATA.positions[0]
-)
-plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
-
-### print regime occupancies
-print_multi_level_regime_occupancies_after_init(results_init)
+# ### print regime occupancies
+# print_multi_level_regime_occupancies_after_init(results_init)
 
 ###
 # TRY FORECASTING
 ###
-T_snippet_for_fit_to_observations = 400
-seeds_for_forecasting = [i + 1 for i in range(5)]
-entity_idxs_for_forecasting = [0, 1, 2, 3, 4]
-T_start = 75
-T_slice_for_forecasting = 70
+if do_init_plots:
+    event_idx = 4
+    pct_event_to_skip = 0.5
 
+    event_start = DATA.event_end_times[event_idx] + 1
+    event_end = DATA.event_end_times[event_idx + 1]
+    event_duration = event_end - event_start
 
-find_t0_for_entity_sample = lambda x: T_start
+    T_start = int(event_start + pct_event_to_skip * (event_duration))
+    T_slice_max = event_end - T_start
 
-plot_fit_and_forecast_on_slice(
-    DATA.positions,
-    params_init,
-    results_init.ES_summary,
-    results_init.EZ_summaries,
-    T_slice_for_forecasting,
-    model_basketball,
-    seeds_for_forecasting,
-    save_dir,
-    entity_idxs_for_forecasting,
-    find_t0_for_entity_sample,
-    x_lim=(0, 2),
-    y_lim=(0, 1),
-    filename_prefix=f"AFTER_INITIALIZATION_",
-)
+    plot_fit_and_forecast_on_slice(
+        DATA.positions,
+        params_init,
+        results_init.ES_summary,
+        results_init.EZ_summaries,
+        T_slice_max,
+        model_basketball,
+        forecast_seeds=[i + 1 for i in range(5)],
+        save_dir=save_dir,
+        entity_idxs=None,
+        find_t0_for_entity_sample=lambda x: T_start,
+        x_lim=(0, 2),
+        y_lim=(0, 1),
+        filename_prefix=f"AFTER_INITIALIZATION_",
+        figsize=(8, 4),
+    )
 
 
 # # ####
 # # # Inference
 # # ####
 
-# VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-#     jnp.asarray(xs),
-#     n_cavi_iterations,
-#     results_init,
-#     model_basketball,
-#     event_end_times,
-#     M_step_toggles_from_strings(
-#         M_step_toggle_for_STP,
-#         M_step_toggle_for_ETP,
-#         M_step_toggle_for_continuous_state_parameters,
-#         M_step_toggle_for_IP,
-#     ),
-#     num_M_step_iters,
-#     system_transition_prior,
-#     system_covariates = DATA.has_ball_team,
-# )
+VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+    jnp.asarray(DATA.positions),
+    n_cavi_iterations,
+    results_init,
+    model_basketball,
+    DATA.event_end_times,
+    M_step_toggles_from_strings(
+        M_step_toggle_for_STP,
+        M_step_toggle_for_ETP,
+        M_step_toggle_for_continuous_state_parameters,
+        M_step_toggle_for_IP,
+    ),
+    num_M_step_iters,
+    system_transition_prior,
+    system_covariates=jnp.asarray(DATA.has_ball_team),
+)
+
+if do_post_inference_plots:
+    event_idx = 4
+    pct_event_to_skip = 0.5
+
+    event_start = DATA.event_end_times[event_idx] + 1
+    event_end = DATA.event_end_times[event_idx + 1]
+    event_duration = event_end - event_start
+
+    T_start = int(event_start + pct_event_to_skip * (event_duration))
+    T_slice_max = event_end - T_start
+
+    plot_fit_and_forecast_on_slice(
+        DATA.positions,
+        params_init,
+        results_init.ES_summary,
+        results_init.EZ_summaries,
+        T_slice_max,
+        model_basketball,
+        forecast_seeds=[i + 1 for i in range(5)],
+        save_dir=save_dir,
+        entity_idxs=None,
+        find_t0_for_entity_sample=lambda x: T_start,
+        x_lim=(0, 2),
+        y_lim=(0, 1),
+        filename_prefix=f"AFTER_CAVI_",
+        figsize=(8, 4),
+    )

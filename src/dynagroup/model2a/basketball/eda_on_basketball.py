@@ -27,23 +27,25 @@ ensure_dir(save_dir)
 # Plot trajectory slices
 ###
 
-event_idx = 4
-pct_event_to_skip = 0.5
+for event_idx in range(10):
+    input(f"Event idx is now {event_idx}")
 
-event_start = DATA.event_end_times[event_idx]
-event_end = DATA.event_end_times[event_idx + 1]
-event_duration = event_end - event_start
+    pct_event_to_skip = 0.0
 
-T_start = int(event_start + pct_event_to_skip * (event_duration))
-T_slice_max = event_end - T_start
+    event_start = DATA.event_end_times[event_idx] + 1
+    event_end = DATA.event_end_times[event_idx + 1]
+    event_duration = event_end - event_start
 
-plot_trajectory_slices(
-    DATA.positions,
-    T_start,
-    T_slice_max,
-    entity_idxs=None,
-    x_lim=(0, 2),
-    y_lim=(0, 1),
-    save_dir=None,
-    show_plot=True,
-)
+    T_start = int(event_start + pct_event_to_skip * (event_duration))
+    T_slice_max = event_end - T_start
+
+    plot_trajectory_slices(
+        DATA.positions,
+        T_start,
+        T_slice_max,
+        x_lim=(0, 2),
+        y_lim=(0, 1),
+        save_dir=None,
+        show_plot=True,
+        figsize=(8, 4),
+    )

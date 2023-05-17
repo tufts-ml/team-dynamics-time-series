@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dynagroup.eda.show_trajectory_slices import plot_trajectory_slices
+from dynagroup.eda.show_trajectory_slices import plot_trajectory_slice
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -28,6 +28,7 @@ def plot_fit_and_forecast_on_slice(
     x_lim: Optional[Tuple] = None,
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = None,
+    figsize: Optional[Tuple[int]] = (8, 4),
 ) -> None:
     """
     Arguments:
@@ -52,14 +53,15 @@ def plot_fit_and_forecast_on_slice(
 
     for j in entity_idxs:
         t_0 = find_t0_for_entity_sample(continuous_states[:, j])
-        plot_trajectory_slices(
-            continuous_states,
+        plot_trajectory_slice(
+            continuous_states[:, j],
             t_0,
             T_slice_max,
-            entity_idxs,
+            j,
             x_lim,
             y_lim,
             save_dir,
+            figsize=figsize,
         )
 
     ###
@@ -115,7 +117,7 @@ def plot_fit_and_forecast_on_slice(
                 prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
                 x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
 
-        fig = plt.figure(figsize=(4, 6))
+        fig = plt.figure(figsize=figsize)
         plt.scatter(
             x_means[:, 0],
             x_means[:, 1],
@@ -146,7 +148,7 @@ def plot_fit_and_forecast_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
-            fig1 = plt.figure(figsize=(4, 6))
+            fig1 = plt.figure(figsize=figsize)
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],
                 sample_ahead.xs[:, j, 1],

@@ -1,5 +1,6 @@
 import numpy as np
 
+from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_slice
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
@@ -147,18 +148,14 @@ print_multi_level_regime_occupancies_after_init(results_init)
 ###
 # TRY FORECASTING
 ###
-
-from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_slice
-
-
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [0, 1, 2, 3, 4]
-T_slice_for_forecasting = 100
-T_slice_for_old_forecasting = 100
-y_lim = None
+T_start = 75
+T_slice_for_forecasting = 70
 
-find_t0_for_entity_sample = lambda x: 75
+
+find_t0_for_entity_sample = lambda x: T_start
 
 plot_fit_and_forecast_on_slice(
     DATA.positions,
@@ -171,7 +168,8 @@ plot_fit_and_forecast_on_slice(
     save_dir,
     entity_idxs_for_forecasting,
     find_t0_for_entity_sample,
-    y_lim,
+    x_lim=(0, 2),
+    y_lim=(0, 1),
     filename_prefix=f"AFTER_INITIALIZATION_",
 )
 

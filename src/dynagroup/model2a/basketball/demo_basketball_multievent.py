@@ -31,7 +31,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/CHECK_IN_multievent_basketball/"
+save_dir = "/Users/mwojno01/Desktop/TRY_basketball_has_ball_team/"
 
 
 # Initialization
@@ -51,7 +51,6 @@ M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
-system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
@@ -60,7 +59,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # Get data
 ###
 DATA = get_data()
-
+system_covariates = DATA.has_ball_players
 
 ###
 # Setup Model
@@ -125,7 +124,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
-    DATA.has_ball_team,
+    system_covariates,
 )
 
 params_init = results_init.params
@@ -200,7 +199,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     ),
     num_M_step_iters,
     system_transition_prior,
-    system_covariates=jnp.asarray(DATA.has_ball_team),
+    system_covariates=jnp.asarray(system_covariates),
 )
 
 if do_post_inference_plots:

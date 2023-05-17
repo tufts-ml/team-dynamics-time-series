@@ -3,6 +3,7 @@ from typing import Callable, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
+from dynagroup.eda.show_trajectory_slices import plot_trajectory_slices
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -24,6 +25,7 @@ def plot_fit_and_forecast_on_slice(
     save_dir: str,
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
+    x_lim: Optional[Tuple] = None,
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = None,
 ) -> None:
@@ -44,8 +46,24 @@ def plot_fit_and_forecast_on_slice(
     if entity_idxs is None:
         entity_idxs = [j for j in range(J)]
 
+    ####
+    # First plot the trajectory slices:
     ###
-    # START PROCESSING
+
+    for j in entity_idxs:
+        t_0 = find_t0_for_entity_sample(continuous_states[:, j])
+        plot_trajectory_slices(
+            continuous_states,
+            t_0,
+            T_slice_max,
+            entity_idxs,
+            x_lim,
+            y_lim,
+            save_dir,
+        )
+
+    ###
+    # Now do the rest of the stuff
     ###
     for j in entity_idxs:
         ###
@@ -62,13 +80,12 @@ def plot_fit_and_forecast_on_slice(
         ###
         # Find starting point for entity
         ###
-        t_0 = find_t0_for_entity_sample(sample_entity)
         x_0 = sample_entity[t_0]
         t_end = np.min((t_0 + T_slice_max, T))
         T_slice = t_end - t_0
 
         ###
-        # Plotting the truth
+        # Plotting the truth for the whole entity.
         ###
         print("Plotting the truth (whole)")
         plt.close("all")
@@ -81,25 +98,6 @@ def plot_fit_and_forecast_on_slice(
             alpha=1.0,
         )
         fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
-
-        fig2 = plt.figure(figsize=(2, 6))
-        cax = fig2.add_subplot()
-        cbar = fig1.colorbar(im, cax=cax)
-        cbar.set_label("Timesteps", rotation=90)
-        plt.tight_layout()
-        fig2.savefig(save_dir + "colorbar_whole.pdf")
-
-        print("Plotting the truth (clip)")
-        plt.close("all")
-        fig = plt.figure(figsize=(4, 6))
-        plt.scatter(
-            continuous_states[t_0:t_end, j, 0],
-            continuous_states[t_0:t_end, j, 1],
-            c=[i for i in range(t_0, t_end)],
-            cmap="cool",
-            alpha=1.0,
-        )
-        fig.savefig(save_dir + f"truth_clip_entity_{j}.pdf")
 
         ###
         # Function: compute fit via posterior means.
@@ -158,6 +156,8 @@ def plot_fit_and_forecast_on_slice(
             )
             if y_lim:
                 plt.ylim(y_lim)
+            if x_lim:
+                plt.xlim(x_lim)
             fig1.savefig(save_dir + f"{tag}_sample_ahead_forecast_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))

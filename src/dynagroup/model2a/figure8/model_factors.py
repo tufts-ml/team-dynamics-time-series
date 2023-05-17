@@ -146,6 +146,11 @@ def compute_log_system_transition_probability_matrices_JAX(
         T: number of timesteps
         L: number of system-level regimes
     """
+    if system_covariates is None:
+        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        T = T_minus_1 + 1
+        system_covariates = np.zeros((T, 0))
+
     # TODO: Check t vs t-1
     bias_from_system_covariates = jnp.einsum(
         "ld,td->tl", STP.Upsilon, system_covariates[:-1]

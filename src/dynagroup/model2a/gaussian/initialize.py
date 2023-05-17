@@ -354,6 +354,10 @@ def fit_ARHMM_to_top_half_of_model(
     T = len(continuous_states)
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
+    if system_covariates is None:
+        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        system_covariates = np.zeros((T, 0))
+
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
     for iteration in range(num_EM_iterations):

@@ -137,7 +137,9 @@ def plot_fit_and_forecast_on_slice(
         fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0:t_end]
 
         for forecast_seed in forecast_seeds:
-            print(f"Plotting the forecast with the model using forecast_seed {forecast_seed}.")
+            print(
+                f"Plotting the partial forecast for entity {j} using forecast_seed {forecast_seed}."
+            )
             sample_ahead = sample_team_dynamics(
                 params,
                 T_slice,

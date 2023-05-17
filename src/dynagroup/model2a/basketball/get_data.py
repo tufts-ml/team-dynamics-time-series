@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from dynagroup.types import NumpyArray1D, NumpyArray3D
+from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray3D
 
 
 ###
@@ -14,6 +14,7 @@ class Data:
     positions: NumpyArray3D  # (T_grand,J,D)
     event_end_times: NumpyArray1D  # (E,)
     has_ball_team: NumpyArray1D  # (T_grand, )
+    has_ball_players: NumpyArray2D  # (T_grand, J)
 
 
 def get_data() -> Data:
@@ -133,4 +134,4 @@ def get_data() -> Data:
     System level covariates
         * team has ball
     """
-    return Data(positions, event_end_times, has_ball_team)
+    return Data(positions, event_end_times, has_ball_team, has_ball_players)

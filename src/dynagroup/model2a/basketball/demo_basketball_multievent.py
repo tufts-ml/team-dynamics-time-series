@@ -31,8 +31,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/TRY_basketball_has_ball_team/"
-
+save_dir = "/Users/mwojno01/Desktop/TRY_basketball_STP_was_turned_off/"
 
 # Initialization
 do_init_plots = False
@@ -47,12 +46,12 @@ L = 5
 # For inference
 do_post_inference_plots = True
 n_cavi_iterations = 10
-M_step_toggle_for_STP = "closed_form_tpm"
+M_step_toggle_for_STP = "gradient_descent"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
 num_M_step_iters = 50
-alpha_system_prior, kappa_system_prior = 1.0, 10.0
+alpha_system_prior, kappa_system_prior = 1.0, 1.0
 
 
 ###
@@ -60,6 +59,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 ###
 DATA = get_data()
 system_covariates = DATA.has_ball_players
+M_s = np.shape(system_covariates)[1]
 
 ###
 # Setup Model
@@ -70,7 +70,7 @@ system_covariates = DATA.has_ball_players
 J = np.shape(DATA.positions)[1]
 D, D_t = 2, 2
 N = 0
-M_s, M_e = 0, 0  # for now!
+M_e = 0  # for now!
 DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 #### Setup Recurrence
@@ -80,7 +80,7 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
     x_vec: JaxNumpyArray1D,
 ) -> JaxNumpyArray1D:
-    KAPPA = 0.05
+    KAPPA = 0.20
     return KAPPA * x_vec
 
 
@@ -147,14 +147,14 @@ if do_init_plots:
     plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
 # ### print regime occupancies
-# print_multi_level_regime_occupancies_after_init(results_init)
+print_multi_level_regime_occupancies_after_init(results_init)
 
 ###
 # TRY FORECASTING
 ###
 if do_init_plots:
     event_idx = 4
-    pct_event_to_skip = 0.5
+    pct_event_to_skip = 0.0
 
     event_start = DATA.event_end_times[event_idx] + 1
     event_end = DATA.event_end_times[event_idx + 1]

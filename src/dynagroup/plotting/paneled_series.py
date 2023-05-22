@@ -1,5 +1,5 @@
 import copy
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib
 import numpy as np
@@ -55,6 +55,14 @@ def plot_time_series_with_regime_panels(
     time_labels: Optional[NumpyArray1D] = None,
     dim_labels: Optional[List[str]] = None,
     COLORS=None,
+    regime_color_index_offset: Optional[int] = None,
+    axis_to_write_on: Optional[matplotlib.axes._axes.Axes] = None,
+    fig_to_write_on=None,
+    figsize: Optional[Tuple[int]] = (8, 6),
+    add_x_label: Optional[bool] = True,
+    x_lim: Optional[Tuple[int]] = None,
+    y_lim: Optional[Tuple[int]] = None,
+    suppress_panels: bool = False,
     **kwargs
 ):
     """
@@ -72,12 +80,11 @@ def plot_time_series_with_regime_panels(
     if COLORS is None:
         COLORS = SOME_COLORS
 
-    # let's set a sensible defaut size for the subplots
-    matplotlib_options = {
-        "figsize": (8, 6),  # figure size
-    }
-    # add/update the options given by the user
-    matplotlib_options.update(kwargs)
+    if fig_to_write_on is None:
+        # let's set a sensible defaut size for the subplots
+        matplotlib_options = {"figsize": figsize}
+        # add/update the options given by the user
+        matplotlib_options.update(kwargs)
 
     # remove unused regime sequences
     fitted_regime_sequence_relabeled = _relabel_regime_sequence_to_remove_unused_regimes(
@@ -92,7 +99,11 @@ def plot_time_series_with_regime_panels(
         dim_labels = [None] * n_dims
 
     # create plots
-    fig, ax = plt.subplots(1, 1, **matplotlib_options)
+    if axis_to_write_on is None:
+        fig, ax = plt.subplots(1, 1, **matplotlib_options)
+    else:
+        fig = fig_to_write_on
+        ax = axis_to_write_on
 
     for d in range(n_dims):
         dim_color = "black" if d % 2 == 0 else "navy"
@@ -114,13 +125,32 @@ def plot_time_series_with_regime_panels(
     segments = _make_segments(fitted_regime_sequence_relabeled)
     alpha = 0.2  # transparency of the colored background
 
-    for start, end in pairwise(segments):
-        k = fitted_regime_sequence_relabeled[start]
-        # `axvspan` adds a vertical span (rectangle) across the Axes.
-        ax.axvspan(xmin=max(0, start - 0.5), xmax=end - 0.5, facecolor=COLORS[k], alpha=alpha)
+    if not suppress_panels:
+        for start, end in pairwise(segments):
+            k = fitted_regime_sequence_relabeled[start]
+            # `axvspan` adds a vertical span (rectangle) across the Axes.
+            ax.axvspan(
+                xmin=max(0, start - 0.5),
+                xmax=end - 0.5,
+                facecolor=COLORS[k + regime_color_index_offset],
+                alpha=alpha,
+            )
 
     if dim_labels[0] is not None:
         plt.legend(loc="best")
 
+    if add_x_label:
+        ax.set_xlabel("Time step")
+
+    if x_lim is not None:
+        ax.set_ylim(x_lim)
+
+    if y_lim is not None:
+        ax.set_ylim(y_lim)
+
+    # ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
     plt.tight_layout()
+
     return fig, ax

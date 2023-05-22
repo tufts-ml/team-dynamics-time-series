@@ -101,6 +101,21 @@ class VonMisesParams:
 
 
 ###
+# Enforcers
+###
+def enforce_von_mises_params_to_have_kappa_at_least_unity(
+    von_mises_params: VonMisesParams,
+) -> VonMisesParams:
+    kappa = von_mises_params.kappa
+    if kappa <= 1.0:
+        new_kappa = 1.0
+        von_mises_params = VonMisesParams(
+            von_mises_params.drift, new_kappa, von_mises_params.ar_coef
+        )
+    return von_mises_params
+
+
+###
 # Helpers for Inference
 ###
 
@@ -227,6 +242,7 @@ def estimate_kappa_for_autoregression(
     drift_angle: float,
     ar_coef: float,
     sample_weights: Optional[np.array] = None,
+    min_kappa_allowed: float = 1.0,
 ) -> float:
     """
     We find the root of an equation whose root gives the MLE for the concentration parameter, kappa,
@@ -259,7 +275,12 @@ def estimate_kappa_for_autoregression(
     inner_product_over_time = np.einsum("td,td->t", observed_points[1:], expected_points)
     RHS = np.dot(inner_product_over_time, sample_weights[1:]) / np.sum(sample_weights[1:])
 
-    return _estimate_kappa_for_general_von_mises_model(RHS)
+    kappa_estimated = _estimate_kappa_for_general_von_mises_model(RHS)
+
+    if kappa_estimated > min_kappa_allowed:
+        return kappa_estimated
+    else:
+        return min_kappa_allowed
 
 
 ###
@@ -274,6 +295,7 @@ def estimate_von_mises_params(
     drift_angle_init: Optional[float] = None,
     sample_weights: Optional[np.array] = None,
     suppress_warnings: bool = False,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
 ) -> VonMisesParams:
     """
     Arguments:
@@ -323,10 +345,13 @@ def estimate_von_mises_params(
             sample_weights=sample_weights,
             suppress_warnings=suppress_warnings,
         )
-        # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
-        kappa = estimate_kappa_for_autoregression(
-            angles, drift, ar_coef, sample_weights=sample_weights
-        )
+        if fix_ar_kappa_to_unity_rather_than_estimate:
+            kappa = 1.0
+        else:
+            # RK: kappa can be poorly estimated - even negative! - if drift and ar_coef are poorly estimated.
+            kappa = estimate_kappa_for_autoregression(
+                angles, drift, ar_coef, sample_weights=sample_weights
+            )
         return VonMisesParams(drift, kappa, ar_coef)
     else:
         raise ValueError("What model type do you want?")

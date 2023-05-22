@@ -3,6 +3,7 @@ from typing import Callable, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
+from dynagroup.eda.show_trajectory_slices import plot_trajectory_slice
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -24,8 +25,10 @@ def plot_fit_and_forecast_on_slice(
     save_dir: str,
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
+    x_lim: Optional[Tuple] = None,
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = None,
+    figsize: Optional[Tuple[int]] = (8, 4),
 ) -> None:
     """
     Arguments:
@@ -44,8 +47,25 @@ def plot_fit_and_forecast_on_slice(
     if entity_idxs is None:
         entity_idxs = [j for j in range(J)]
 
+    ####
+    # First plot the trajectory slices:
     ###
-    # START PROCESSING
+
+    for j in entity_idxs:
+        t_0 = find_t0_for_entity_sample(continuous_states[:, j])
+        plot_trajectory_slice(
+            continuous_states[:, j],
+            t_0,
+            T_slice_max,
+            j,
+            x_lim,
+            y_lim,
+            save_dir,
+            figsize=figsize,
+        )
+
+    ###
+    # Now do the rest of the stuff
     ###
     for j in entity_idxs:
         ###
@@ -62,13 +82,12 @@ def plot_fit_and_forecast_on_slice(
         ###
         # Find starting point for entity
         ###
-        t_0 = find_t0_for_entity_sample(sample_entity)
         x_0 = sample_entity[t_0]
         t_end = np.min((t_0 + T_slice_max, T))
         T_slice = t_end - t_0
 
         ###
-        # Plotting the truth
+        # Plotting the truth for the whole entity.
         ###
         print("Plotting the truth (whole)")
         plt.close("all")
@@ -81,25 +100,6 @@ def plot_fit_and_forecast_on_slice(
             alpha=1.0,
         )
         fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
-
-        fig2 = plt.figure(figsize=(2, 6))
-        cax = fig2.add_subplot()
-        cbar = fig1.colorbar(im, cax=cax)
-        cbar.set_label("Timesteps", rotation=90)
-        plt.tight_layout()
-        fig2.savefig(save_dir + "colorbar_whole.pdf")
-
-        print("Plotting the truth (clip)")
-        plt.close("all")
-        fig = plt.figure(figsize=(4, 6))
-        plt.scatter(
-            continuous_states[t_0:t_end, j, 0],
-            continuous_states[t_0:t_end, j, 1],
-            c=[i for i in range(t_0, t_end)],
-            cmap="cool",
-            alpha=1.0,
-        )
-        fig.savefig(save_dir + f"truth_clip_entity_{j}.pdf")
 
         ###
         # Function: compute fit via posterior means.
@@ -117,7 +117,7 @@ def plot_fit_and_forecast_on_slice(
                 prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
                 x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
 
-        fig = plt.figure(figsize=(4, 6))
+        fig = plt.figure(figsize=figsize)
         plt.scatter(
             x_means[:, 0],
             x_means[:, 1],
@@ -137,7 +137,9 @@ def plot_fit_and_forecast_on_slice(
         fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0:t_end]
 
         for forecast_seed in forecast_seeds:
-            print(f"Plotting the forecast with the model using forecast_seed {forecast_seed}.")
+            print(
+                f"Plotting the partial forecast for entity {j} using forecast_seed {forecast_seed}."
+            )
             sample_ahead = sample_team_dynamics(
                 params,
                 T_slice,
@@ -148,7 +150,7 @@ def plot_fit_and_forecast_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
-            fig1 = plt.figure(figsize=(4, 6))
+            fig1 = plt.figure(figsize=figsize)
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],
                 sample_ahead.xs[:, j, 1],
@@ -158,6 +160,8 @@ def plot_fit_and_forecast_on_slice(
             )
             if y_lim:
                 plt.ylim(y_lim)
+            if x_lim:
+                plt.xlim(x_lim)
             fig1.savefig(save_dir + f"{tag}_sample_ahead_forecast_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))

@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import jax_dataclasses as jdc
 import numpy as np
 from dynamax.utils.optimize import run_gradient_descent
+from joblib import Parallel, delayed
 from statsmodels.regression.linear_model import WLS
 from statsmodels.tools.tools import add_constant
 
@@ -15,6 +16,7 @@ from dynagroup.events import (
     eligible_transitions_to_next,
     get_initialization_times,
     get_non_initialization_times,
+    only_one_event,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -58,6 +60,10 @@ from dynagroup.util import (
     normalize_potentials_by_axis_JAX,
 )
 from dynagroup.vi.prior import SystemTransitionPrior_JAX
+from dynagroup.von_mises.inference.ar import (
+    VonMisesModelType,
+    estimate_von_mises_params,
+)
 
 
 ###
@@ -612,7 +618,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     # Preprocess based on the possible existence of event segmentation times
     times_to_use = slice(None)
-    if event_end_times is not None:
+    if not only_one_event(event_end_times, T):
         times_to_use = get_non_initialization_times(event_end_times)
 
     VEZ_expected_regimes_to_use = VEZ_expected_regimes[times_to_use]
@@ -650,11 +656,6 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 # TODO: Consider moving `run_M_step_for_VonMises_CSP_in_closed_form`
 #  out of the general M-step module (which should be only for general gradient descent)
 
-from dynagroup.von_mises.inference.ar import (
-    VonMisesModelType,
-    estimate_von_mises_params,
-)
-
 
 def run_M_step_for_CSP_in_closed_form__VonMises_case(
     VEZ_expected_regimes: JaxNumpyArray3D,
@@ -662,6 +663,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
     all_params: AllParameters_JAX,
     event_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D],
+    parallelize: bool = True,
 ) -> ContinuousStateParameters_VonMises_JAX:
     """
     Arguments:
@@ -681,7 +683,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             f"states are not used."
         )
 
-    if event_end_times is not None:
+    if not only_one_event(event_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"This function has not yet been expanded to handle the case where the time series is "
             f"spliced into separate events.  For guidance, see how this was handled in the Gaussian case."
@@ -697,19 +699,41 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
     drifts = np.zeros((J, K))
     kappas = np.zeros((J, K))
 
-    for j in range(J):
-        for k in range(K):
-            emissions_params = estimate_von_mises_params(
-                np.asarray(group_angles[:, j]),
-                VonMisesModelType.AUTOREGRESSION,
-                all_params.CSP.ar_coefs[j, k],
-                all_params.CSP.drifts[j, k],
-                sample_weights=np.asarray(VEZ_expected_regimes[:, j, k]),
-                suppress_warnings=True,
-            )
-            ar_coefs[j, k] = emissions_params.ar_coef
-            drifts[j, k] = emissions_params.drift
-            kappas[j, k] = emissions_params.kappa
+    def estimate_params(j, k):
+        emissions_params = estimate_von_mises_params(
+            np.asarray(group_angles[:, j]),
+            VonMisesModelType.AUTOREGRESSION,
+            all_params.CSP.ar_coefs[j, k],
+            all_params.CSP.drifts[j, k],
+            sample_weights=np.asarray(VEZ_expected_regimes[:, j, k]),
+            suppress_warnings=True,
+        )
+        return emissions_params.ar_coef, emissions_params.drift, emissions_params.kappa
+
+    if not parallelize:
+        for j in range(J):
+            for k in range(K):
+                emissions_params = estimate_params(j, k)
+                ar_coefs[j, k] = emissions_params.ar_coef
+                drifts[j, k] = emissions_params.drift
+                kappas[j, k] = emissions_params.kappa
+
+    else:
+        # Parallelize the loop using joblib
+        results = Parallel(n_jobs=-1)(
+            delayed(estimate_params)(j, k) for j in range(J) for k in range(K)
+        )
+
+        # Unpack the results
+        ar_coefs = np.empty((J, K))
+        drifts = np.empty((J, K))
+        kappas = np.empty((J, K))
+        for i, (ar_coef, drift, kappa) in enumerate(results):
+            j = i // K
+            k = i % K
+            ar_coefs[j, k] = ar_coef
+            drifts[j, k] = drift
+            kappas[j, k] = kappa
 
     return ContinuousStateParameters_VonMises_JAX(
         jnp.asarray(ar_coefs), jnp.asarray(drifts), jnp.asarray(kappas)
@@ -1078,7 +1102,7 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
     group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     event_end_times: NumpyArray1D,
 ) -> InitializationParameters_VonMises_JAX:
-    if event_end_times is not None:
+    if not only_one_event(event_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"Haven't yet implemented M-step for init params in von mises case when there are "
             f"multiple events."

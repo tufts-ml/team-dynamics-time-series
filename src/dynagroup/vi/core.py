@@ -128,7 +128,6 @@ def run_CAVI_with_JAX(
         )
 
     if event_end_times is None:
-        T = len(continuous_states)
         event_end_times = np.array([-1, T])
 
     if not event_end_times_are_proper(event_end_times, len(continuous_states)):
@@ -137,6 +136,10 @@ def run_CAVI_with_JAX(
             f"and try again.  `event_end_times` MUST begin with -1 and end with T, the length "
             f"of the grand time series."
         )
+
+    if system_covariates is None:
+        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        system_covariates = np.zeros((T, 0))
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And

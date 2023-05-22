@@ -1,8 +1,6 @@
-import warnings
-from typing import Union
+from typing import Optional, Union
 
 import jax.numpy as jnp
-import jax.random as jr
 import numpy as np
 
 from dynagroup.hmm_posterior import HMM_Posterior_Summaries_JAX
@@ -17,15 +15,14 @@ from dynagroup.model import Model
 from dynagroup.model2a.gaussian.initialize import (
     make_data_free_initialization_of_EP_JAX,
     make_data_free_initialization_of_ETP_JAX,
+    make_data_free_initialization_of_STP_JAX,
 )
 from dynagroup.params import (
     ContinuousStateParameters_VonMises_JAX,
     Dims,
     InitializationParameters_VonMises_JAX,
-    SystemTransitionParameters_JAX,
 )
-from dynagroup.types import JaxNumpyArray2D, NumpyArray2D, NumpyArray3D
-from dynagroup.util import make_fixed_sticky_tpm_JAX
+from dynagroup.types import JaxNumpyArray2D, NumpyArray1D, NumpyArray2D, NumpyArray3D
 from dynagroup.vi.E_step import run_VES_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     run_M_step_for_ETP_via_gradient_descent,
@@ -37,38 +34,6 @@ from dynagroup.von_mises.inference.arhmm import run_EM_for_von_mises_arhmm
 ###
 # PARAMETER INITS
 ###
-
-
-# TODO: Integrate this with the parameter inits from figure 8,
-# move to a single param_init module!
-
-
-def make_data_free_initialization_of_STP_JAX(
-    DIMS: Dims,
-    method_for_Upsilon: str,
-    fixed_self_transition_prob: float,
-    seed: int,
-) -> SystemTransitionParameters_JAX:
-    """
-    method_for_Psis : zeros or rnorm
-    """
-    key = jr.PRNGKey(seed)
-    # TODO: Support fixed or random draws from prior.
-    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
-
-    Gammas = jnp.zeros((J, L, K))
-
-    # make a tpm
-    tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
-    Pi = jnp.asarray(tpm)
-
-    if method_for_Upsilon == "rnorm":
-        Upsilon = jr.normal(key, (L, M_s))
-    elif method_for_Upsilon == "zeros":
-        Upsilon = jnp.zeros((L, M_s))
-    else:
-        raise ValueError("What is the method for Upsilon?")
-    return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
 def make_data_free_initialization_of_IP_JAX(
@@ -93,7 +58,9 @@ def fit_ARHMM_to_bottom_half_of_model(
     init_self_transition_prob: float,
     init_changepoint_penalty: float,
     init_min_segment_size: int,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
     verbose: bool = True,
+    parallelize_the_CSP_M_step_across_regimes: bool = False,
 ) -> ResultsFromBottomHalfInit:
     """
     We assume the transitions are governed by an ordinary tpm.
@@ -129,37 +96,26 @@ def fit_ARHMM_to_bottom_half_of_model(
         # alternatively, this is simple to recompute from EZ_summaries.
 
         # TODO: I'll just assume that eventually running this will produce non-nan results.
-        log_normalizer_for_this_entity = np.nan
-        num_attempts_to_do_bottom_level_inference_for_this_entity = 0
-        while np.isnan(log_normalizer_for_this_entity):
-            num_attempts_to_do_bottom_level_inference_for_this_entity += 1
-            if verbose:
-                if num_attempts_to_do_bottom_level_inference_for_this_entity > 1:
-                    warnings.warn(
-                        f"Now running attempt {num_attempts_to_do_bottom_level_inference_for_this_entity} "
-                        "at initializing bottom-level model for entity {j}. "
-                    )
+        (
+            posterior_summary,
+            emissions_params_by_regime_learned,
+            transitions,
+        ) = run_EM_for_von_mises_arhmm(
+            team_angles[:, j],
+            num_regimes,
+            num_EM_iterations,
+            init_self_transition_prob,
+            init_changepoint_penalty,
+            init_min_segment_size,
+            fix_ar_kappa_to_unity_rather_than_estimate=fix_ar_kappa_to_unity_rather_than_estimate,
+            parallelize_the_M_step=parallelize_the_CSP_M_step_across_regimes,
+        )
 
-            (
-                posterior_summary,
-                emissions_params_by_regime_learned,
-                transitions,
-            ) = run_EM_for_von_mises_arhmm(
-                team_angles[:, j],
-                num_regimes,
-                num_EM_iterations,
-                init_self_transition_prob,
-                init_changepoint_penalty,
-                init_min_segment_size,
-            )
-
-            # update attributes for HMM posterior summaries
-            expected_regimes[:, j, :] = posterior_summary.expected_regimes
-            expected_joints[:, j, :, :] = posterior_summary.expected_joints
-            log_normalizers[j] = posterior_summary.log_normalizer
-
-            log_normalizer_for_this_entity = posterior_summary.log_normalizer
-            entropies[j] = posterior_summary.entropy
+        # update attributes for HMM posterior summaries
+        expected_regimes[:, j, :] = posterior_summary.expected_regimes
+        expected_joints[:, j, :, :] = posterior_summary.expected_joints
+        log_normalizers[j] = posterior_summary.log_normalizer
+        entropies[j] = posterior_summary.entropy
 
         # update attributes for CSP_JAX
         # TODO: Should I store these as VonMisesParams instead of CSP?
@@ -200,15 +156,25 @@ def fit_ARHMM_to_top_half_of_model(
     num_M_step_iterations_for_STP_gradient_descent: int,
     seed: int = 0,
     verbose: bool = True,
+    event_end_times: Optional[NumpyArray1D] = None,
 ) -> ResultsFromTopHalfInit:
     """
     Arguments:
         group_angles: array of shape (T,J) or (T,J,1)
     """
+
+    ###
+    # Setup
+    ###
+
     T, J = np.shape(group_angles)[:2]
 
     # force there to be a third array dimension for the D
     group_angles = group_angles.reshape((T, J, -1))
+
+    # make event_end_times have the right structure
+    if event_end_times is None:
+        event_end_times = np.array([-1, T])
 
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
@@ -244,6 +210,7 @@ def fit_ARHMM_to_top_half_of_model(
             group_angles,
             EZ_summaries,
             model,
+            event_end_times,
             system_covariates,
         )
 
@@ -261,6 +228,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
+            event_end_times,
             verbose=verbose,
         )
 
@@ -276,6 +244,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_STP_gradient_descent,
             model,
+            event_end_times,
             system_covariates,
         )
 
@@ -298,7 +267,8 @@ def smart_initialize_model_2a_for_circles(
     bottom_half_num_EM_iterations: int = 3,
     top_half_num_EM_iterations: int = 20,
     seed: int = 0,
-    verbose: bool = True,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
+    parallelize_the_CSP_M_step_for_the_bottom_half_model: bool = False,
 ) -> InitializationResults:
     """
     Remarks:
@@ -328,6 +298,8 @@ def smart_initialize_model_2a_for_circles(
         bottom_half_self_transition_prob,
         bottom_half_changepoint_penalty,
         bottom_half_min_segment_size,
+        fix_ar_kappa_to_unity_rather_than_estimate=fix_ar_kappa_to_unity_rather_than_estimate,
+        parallelize_the_CSP_M_step_across_regimes=parallelize_the_CSP_M_step_for_the_bottom_half_model,
     )
 
     ###

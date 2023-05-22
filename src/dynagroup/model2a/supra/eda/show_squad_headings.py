@@ -6,15 +6,17 @@ from matplotlib import pyplot as plt
 
 
 ### Define a custom color palette
+
 SYSTEM_REGIME_COLOR_NAMES = [
-    "light yellow",
-    "light green",
-    "light red",
+    "pastel yellow",
+    "baby blue",
+    "light lavender",
+    "pale olive",
     "coral",
     "peach",
-    "light turquoise",
     "dusty purple",
-    "pastel yellow",
+    "light turquoise",
+    "bubblegum pink",
     "pale pink",
     "lavender",
 ]
@@ -38,12 +40,17 @@ def polar_plot_the_squad_headings(
     fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
 
     for j in range(J):
-        ax.plot(squad_angles[:, j], clock_times, color=SYSTEM_REGIME_COLORS[j], label=f"{j}")
+        ax.plot(
+            squad_angles[:, j] + np.pi, clock_times, color=SYSTEM_REGIME_COLORS[j], label=f"{j}"
+        )
     ax.set_yticklabels([])
 
     # Set the tick locations and labels
+    # ax.set_xticks(np.arange(0, 2 * np.pi, np.pi / 4))
+    # ax.set_xticklabels(["0 (W)", "45", "90 (S)", "135", "180 (E)", "225", "270 (N)", "315"])
+
     ax.set_xticks(np.arange(0, 2 * np.pi, np.pi / 4))
-    ax.set_xticklabels(["0 (W)", "45", "90 (S)", "135", "180 (E)", "225", "270 (N)", "315"])
+    ax.set_xticklabels(["0 (E)", "45", "90 (N)", "135", "180 (W)", "225", "270 (S)", "315"])
 
     ## legend
     # For polar axes, it may be useful to move the legend slightly away from the
@@ -52,7 +59,7 @@ def polar_plot_the_squad_headings(
     # at an angle of 67.5 degrees in polar coordinates.
     angle = np.deg2rad(340)
     ax.legend(loc="lower left", bbox_to_anchor=(0.5 + np.cos(angle) / 2, 0.5 + np.sin(angle) / 2))
-
+    # ax.legend(loc="lower left", bbox_to_anchor=(1.15, 0.5))
     if save_dir is not None:
         fig.savefig(save_dir + f"{basename_prefix}_squad_headings_on_circle.pdf")
     if show_plot:

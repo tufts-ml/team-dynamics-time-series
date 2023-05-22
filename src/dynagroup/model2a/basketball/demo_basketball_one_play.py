@@ -7,20 +7,13 @@ from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
 from dynagroup.io import ensure_dir
-from dynagroup.model import Model
-from dynagroup.model2a.figure8.model_factors import (
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_entity_transition_probability_matrices_JAX,
-    compute_log_initial_continuous_state_emissions_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-)
+from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
 from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
 from dynagroup.params import Dims
-from dynagroup.types import JaxNumpyArray1D
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
@@ -86,27 +79,6 @@ D, D_t = 2, 2
 N = 0
 M_s, M_e = 0, 0  # for now!
 DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
-
-#### Setup Recurrence
-
-
-# TODO: can I still the identity transformation  be a default?
-def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
-    x_vec: JaxNumpyArray1D,
-) -> JaxNumpyArray1D:
-    KAPPA = 0.05
-    return KAPPA * x_vec
-
-
-# TODO: Can I set up the entity and system to be generic across fig8 and circles so that we
-# call a single function each time?
-model_basketball = Model(
-    compute_log_initial_continuous_state_emissions_JAX,
-    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
-    compute_log_system_transition_probability_matrices_JAX,
-    compute_log_entity_transition_probability_matrices_JAX,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
-)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)

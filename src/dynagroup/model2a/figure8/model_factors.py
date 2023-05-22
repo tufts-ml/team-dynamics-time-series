@@ -90,6 +90,36 @@ def compute_log_system_transition_probability_matrices_NUMPY(
 # TODO: For Model 2a, this function needs to use covariates and Upsilon!.
 
 
+# def compute_log_system_transition_probability_matrices_JAX(
+#     STP: SystemTransitionParameters_JAX,
+#     T_minus_1: int,
+#     system_covariates: Optional[jnp.array] = None,
+# ):
+#     """
+#     Compute log system transition probability matrices.
+#     These are time varying, but only if at least one of the following conditions are true:
+#         * system-level covariates exist (in which case the function signature needs to be updated).
+#             The covariate effect is governed by the parameters in STP.Upsilon
+#         * there is recurrent feedback from the previous entities zs[t-1], as in Model 1.
+#             The recurrence effect is governed by the parameters in STP.Gammas
+
+#     Arguments:
+#         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
+#             system regime probabilities are governed by the initial parameters.
+#         system_covariates: An optional array of shape (T, M_s).
+
+#     Returns:
+#         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
+#             from regime l to regime l' when transitioning into time t+1.
+
+#     Notation:
+#         T: number of timesteps
+#         L: number of system-level regimes
+#     """
+#     # TODO: Incorporate covariates
+#     return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
+
+
 def compute_log_system_transition_probability_matrices_JAX(
     STP: SystemTransitionParameters_JAX,
     T_minus_1: int,
@@ -116,8 +146,21 @@ def compute_log_system_transition_probability_matrices_JAX(
         T: number of timesteps
         L: number of system-level regimes
     """
-    # TODO: Incorporate covariates
-    return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
+    if system_covariates is None:
+        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        T = T_minus_1 + 1
+        system_covariates = np.zeros((T, 0))
+
+    # TODO: Check t vs t-1
+    bias_from_system_covariates = jnp.einsum(
+        "ld,td->tl", STP.Upsilon, system_covariates[:-1]
+    )  # (T-1, L)
+
+    # Pi: has shape (L, L)
+    log_potentials = (
+        bias_from_system_covariates[:, None, :] + STP.Pi[None, :, :]
+    )  # (T-1, None, L) + (None,L,L) = (T-1, L,L)
+    return normalize_log_potentials_by_axis_JAX(log_potentials, axis=2)
 
 
 def compute_log_entity_transition_probability_matrices_NUMPY(
@@ -325,6 +368,14 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
         continuous_states_after_initial_timestep,
         means_after_initial_timestep,
         covs_after_initial_timestep,
+    )
+
+    # Warning: mvn_JAX.logpdf() can return nans!
+    # Since all we need to do is compare to value of the emissions
+    # across entity regimes, we can just replace these with a very low number
+    OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS = -1e12
+    log_pdfs_after_initial_timestep = jnp.nan_to_num(
+        log_pdfs_after_initial_timestep, nan=OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS
     )
 
     # Pre-vectorized version for clarity

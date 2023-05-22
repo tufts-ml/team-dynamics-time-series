@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Tuple
 
 import numpy as np
@@ -18,6 +19,7 @@ from dynagroup.util import make_fixed_sticky_tpm
 from dynagroup.von_mises.inference.ar import (
     VonMisesModelType,
     VonMisesParams,
+    enforce_von_mises_params_to_have_kappa_at_least_unity,
     estimate_von_mises_params,
 )
 from dynagroup.von_mises.patches import try_changepoint_initialization_n_times
@@ -112,11 +114,18 @@ def smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
     min_segment_size: int = 10,
     verbose: float = True,
 ) -> List[VonMisesParams]:
+    # get params by changepoint segment
     params_by_changepoint_segment = (
         estimate_von_mises_autoregression_params_separately_over_changepoint_segments(
             angles, changepoint_penalty, min_segment_size
         )
     )
+    # enforce kappas at least unity
+    params_by_changepoint_segment = [
+        enforce_von_mises_params_to_have_kappa_at_least_unity(vmp)
+        for vmp in params_by_changepoint_segment
+    ]
+
     num_changepoint_segments = len(params_by_changepoint_segment)
     if verbose:
         print(
@@ -164,12 +173,24 @@ def smart_initialize_emission_params_by_regime_for_von_mises_arhmm(
             if len(changepoint_segments_to_use) > num_regimes:
                 break
 
+    if len(changepoint_segments_to_use) < num_regimes:
+        # My _get_indices_for_largest_values_of_distance_matrix sometimes doesn't return enough pairs.
+        # If it doesn't, just use the first `num_regimes` regimes, as a hack for now.
+        # TODO: Improve all this later.
+        warnings.warn(
+            "Resulting to hack for which changepoint segments to use. Fix implementation."
+        )
+        changepoint_segments_to_use = [i for i in range(num_regimes)]
+
     params_by_regime = [None] * num_regimes
     for k in range(num_regimes):
         c = changepoint_segments_to_use[k]
         params_by_regime[k] = params_by_changepoint_segment[c]
 
     return params_by_regime
+
+
+from joblib import Parallel, delayed
 
 
 def run_EM_for_von_mises_arhmm(
@@ -179,7 +200,9 @@ def run_EM_for_von_mises_arhmm(
     init_self_transition_prob: float,
     init_changepoint_penalty: float = 10.0,
     init_min_segment_size: int = 10,
+    fix_ar_kappa_to_unity_rather_than_estimate: bool = False,
     verbose: bool = True,
+    parallelize_the_M_step: bool = False,
 ) -> Tuple[HMM_Posterior_Summary_NUMPY, List[VonMisesParams], NumpyArray2D]:
     """
     Remarks
@@ -220,27 +243,43 @@ def run_EM_for_von_mises_arhmm(
         posterior_summary = compute_hmm_posterior_summary_NUMPY(
             log_transitions, log_emissions, init_dist_over_regimes
         )
+        if np.isnan(posterior_summary.log_normalizer):
+            breakpoint()
 
         ###
         # M-step
         ###
-
-        ### Emissions M-step
-        for k in range(K):
-            if verbose:
-                print(
-                    f"\nFor regime {k}, the params before learning were {emissions_params_by_regime_learned[k]}."
-                )
-            emissions_params_by_regime_learned[k] = estimate_von_mises_params(
+        ### Emissions M-step (in parallel)
+        def _estimate_von_mises_params_on_one_regime(k):
+            return estimate_von_mises_params(
                 angles,
                 VonMisesModelType.AUTOREGRESSION,
                 emissions_params_by_regime_learned[k].ar_coef,
                 emissions_params_by_regime_learned[k].drift,
                 sample_weights=posterior_summary.expected_regimes[:, k],
-                suppress_warnings=True,
+                suppress_warnings=False,
+                fix_ar_kappa_to_unity_rather_than_estimate=fix_ar_kappa_to_unity_rather_than_estimate,
             )
 
-            if verbose:
+        if verbose:
+            for k in range(K):
+                print(
+                    f"\nFor regime {k}, the params before learning were {emissions_params_by_regime_learned[k]}."
+                )
+
+        if parallelize_the_M_step:
+            # Parallelize the loop using joblib
+            results = Parallel(n_jobs=-1)(
+                delayed(_estimate_von_mises_params_on_one_regime)(k) for k in range(K)
+            )
+            for k, result in enumerate(results):
+                emissions_params_by_regime_learned[k] = result
+        else:
+            for k in range(K):
+                emissions_params_by_regime_learned[k] = _estimate_von_mises_params_on_one_regime(k)
+
+        if verbose:
+            for k in range(K):
                 print(
                     f"For regime {k}, the params after learning were {emissions_params_by_regime_learned[k]}."
                 )

@@ -1,5 +1,5 @@
 import copy
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib
 import numpy as np
@@ -10,8 +10,8 @@ from ruptures.utils import pairwise
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 
 
-COLOR_NAMES = ["windows blue", "red", "amber", "faded green", "dusty purple", "orange"]
-COLORS = sns.xkcd_palette(COLOR_NAMES)
+SOME_COLOR_NAMES = ["windows blue", "red", "amber", "faded green", "dusty purple", "orange"]
+SOME_COLORS = sns.xkcd_palette(SOME_COLOR_NAMES)
 sns.set_style("white")
 sns.set_context("talk")
 
@@ -54,6 +54,15 @@ def plot_time_series_with_regime_panels(
     fitted_regime_sequence: NumpyArray1D,
     time_labels: Optional[NumpyArray1D] = None,
     dim_labels: Optional[List[str]] = None,
+    COLORS=None,
+    regime_color_index_offset: Optional[int] = None,
+    axis_to_write_on: Optional[matplotlib.axes._axes.Axes] = None,
+    fig_to_write_on=None,
+    figsize: Optional[Tuple[int]] = (8, 6),
+    add_x_label: Optional[bool] = True,
+    x_lim: Optional[Tuple[int]] = None,
+    y_lim: Optional[Tuple[int]] = None,
+    suppress_panels: bool = False,
     **kwargs
 ):
     """
@@ -68,12 +77,14 @@ def plot_time_series_with_regime_panels(
         tuple: (figure, axis_array) with a :class:`matplotlib.figure.Figure` object and an array of Axes objects.
     """
 
-    # let's set a sensible defaut size for the subplots
-    matplotlib_options = {
-        "figsize": (10, 8),  # figure size
-    }
-    # add/update the options given by the user
-    matplotlib_options.update(kwargs)
+    if COLORS is None:
+        COLORS = SOME_COLORS
+
+    if fig_to_write_on is None:
+        # let's set a sensible defaut size for the subplots
+        matplotlib_options = {"figsize": figsize}
+        # add/update the options given by the user
+        matplotlib_options.update(kwargs)
 
     # remove unused regime sequences
     fitted_regime_sequence_relabeled = _relabel_regime_sequence_to_remove_unused_regimes(
@@ -88,7 +99,11 @@ def plot_time_series_with_regime_panels(
         dim_labels = [None] * n_dims
 
     # create plots
-    fig, ax = plt.subplots(1, 1, **matplotlib_options)
+    if axis_to_write_on is None:
+        fig, ax = plt.subplots(1, 1, **matplotlib_options)
+    else:
+        fig = fig_to_write_on
+        ax = axis_to_write_on
 
     for d in range(n_dims):
         dim_color = "black" if d % 2 == 0 else "navy"
@@ -103,20 +118,39 @@ def plot_time_series_with_regime_panels(
         )
 
     if time_labels is not None:
-        ticks = list(range(0, n_samples, int(n_samples / 8))) + [n_samples - 1]
+        ticks = np.linspace(0, n_samples - 1, 6, dtype=int)
         ax.set_xticks(ticks, time_labels[ticks])
 
     # Below uses alternating colors... we'll save this for HMM, so as to not falsely suggest correspondences.
     segments = _make_segments(fitted_regime_sequence_relabeled)
     alpha = 0.2  # transparency of the colored background
 
-    for start, end in pairwise(segments):
-        k = fitted_regime_sequence_relabeled[start]
-        # `axvspan` adds a vertical span (rectangle) across the Axes.
-        ax.axvspan(xmin=max(0, start - 0.5), xmax=end - 0.5, facecolor=COLORS[k], alpha=alpha)
+    if not suppress_panels:
+        for start, end in pairwise(segments):
+            k = fitted_regime_sequence_relabeled[start]
+            # `axvspan` adds a vertical span (rectangle) across the Axes.
+            ax.axvspan(
+                xmin=max(0, start - 0.5),
+                xmax=end - 0.5,
+                facecolor=COLORS[k + regime_color_index_offset],
+                alpha=alpha,
+            )
 
     if dim_labels[0] is not None:
         plt.legend(loc="best")
 
+    if add_x_label:
+        ax.set_xlabel("Time step")
+
+    if x_lim is not None:
+        ax.set_ylim(x_lim)
+
+    if y_lim is not None:
+        ax.set_ylim(y_lim)
+
+    # ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
     plt.tight_layout()
+
     return fig, ax

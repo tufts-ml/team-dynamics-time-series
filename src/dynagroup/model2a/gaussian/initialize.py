@@ -10,6 +10,7 @@ from dynagroup.events import (
     event_end_times_are_proper,
     fix__log_emissions_from_entities__at_event_boundaries,
     fix_log_entity_transitions_at_event_boundaries,
+    only_one_event,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -37,6 +38,7 @@ from dynagroup.types import (
     JaxNumpyArray2D,
     JaxNumpyArray3D,
     NumpyArray1D,
+    NumpyArray2D,
     NumpyArray3D,
 )
 from dynagroup.util import make_fixed_sticky_tpm_JAX
@@ -47,12 +49,16 @@ from dynagroup.vi.M_step_and_ELBO import (
     run_M_step_for_ETP_via_gradient_descent,
     run_M_step_for_IP,
     run_M_step_for_STP_in_closed_form,
+    run_M_step_for_STP_via_gradient_descent,
 )
 
 
 ###
 # PARAM INITS
 ###
+
+# TODO: Integrate all these param ints with those from "circles" into a single param_init module!
+
 
 # TODO: Combine with helpers from init
 # TODO: Make Enum: "random", "fixed", "tpm_only", etc.
@@ -80,9 +86,31 @@ def make_tpm_only_initialization_of_STP_JAX(
 
 
 def make_data_free_initialization_of_STP_JAX(
-    DIMS: Dims, fixed_self_transition_prob: float
+    DIMS: Dims,
+    method_for_Upsilon: str,
+    fixed_self_transition_prob: float,
+    seed: int,
 ) -> SystemTransitionParameters_JAX:
-    return make_tpm_only_initialization_of_STP_JAX(DIMS, fixed_self_transition_prob)
+    """
+    method_for_Psis : zeros or rnorm
+    """
+    key = jr.PRNGKey(seed)
+    # TODO: Support fixed or random draws from prior.
+    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
+
+    Gammas = jnp.zeros((J, L, K))
+
+    # make a tpm
+    tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
+    Pi = jnp.asarray(tpm)
+
+    if method_for_Upsilon == "rnorm":
+        Upsilon = jr.normal(key, (L, M_s))
+    elif method_for_Upsilon == "zeros":
+        Upsilon = jnp.zeros((L, M_s))
+    else:
+        raise ValueError("What is the method for Upsilon?")
+    return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
 def make_data_free_initialization_of_ETP_JAX(
@@ -301,6 +329,7 @@ def fit_ARHMM_to_bottom_half_of_model(
 
 def fit_ARHMM_to_top_half_of_model(
     continuous_states: NumpyArray3D,
+    system_covariates: Optional[NumpyArray2D],
     event_end_times: Optional[JaxNumpyArray1D],
     STP_JAX: SystemTransitionParameters_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
@@ -325,11 +354,15 @@ def fit_ARHMM_to_top_half_of_model(
     T = len(continuous_states)
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
+    if system_covariates is None:
+        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        system_covariates = np.zeros((T, 0))
+
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
-    for i in range(num_EM_iterations):
+    for iteration in range(num_EM_iterations):
         print(
-            f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
+            f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
         )
 
         ###  E-step
@@ -342,11 +375,11 @@ def fit_ARHMM_to_top_half_of_model(
             EZ_summaries,
             model,
             event_end_times,
-            system_covariates=None,
+            system_covariates,
             use_continuous_states=use_continuous_states,
         )
 
-        record_of_most_likely_states[:, i] = np.argmax(ES_summary.expected_regimes, axis=1)
+        record_of_most_likely_states[:, iteration] = np.argmax(ES_summary.expected_regimes, axis=1)
 
         ### M-step (ETP)
         ETP_JAX = run_M_step_for_ETP_via_gradient_descent(
@@ -354,7 +387,7 @@ def fit_ARHMM_to_top_half_of_model(
             ES_summary,
             EZ_summaries,
             continuous_states,
-            i,
+            iteration,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
             event_end_times,
@@ -362,9 +395,27 @@ def fit_ARHMM_to_top_half_of_model(
             verbose,
         )
 
+        # TODO: Incorporate the system transition prior.  Can I can do this is closed form?
+        system_transition_prior = None
+
         ### M-step (STP)
-        # Note the VES step has already taken care of the `use_continuous_states` mask.
-        STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
+        if only_one_event(event_end_times, T):
+            # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
+            # But I might want to double check that.
+            STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
+        else:
+            NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT = 5
+            STP_JAX = run_M_step_for_STP_via_gradient_descent(
+                STP_JAX,
+                ES_summary,
+                system_transition_prior,
+                iteration,
+                NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT,
+                model,
+                event_end_times,
+                system_covariates,
+            )
+
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
 
@@ -381,6 +432,7 @@ def smart_initialize_model_2a(
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
     seed: int = 0,
+    system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> InitializationResults:
@@ -457,6 +509,7 @@ def smart_initialize_model_2a(
         num_em_iterations_for_bottom_half,
         use_continuous_states,
     )
+    # zhats = np.argmax(results_bottom.EZ_summaries.expected_regimes, axis=2) # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
 
     ###
     # Top-level HMM
@@ -466,14 +519,23 @@ def smart_initialize_model_2a(
     ETP_JAX = make_data_free_initialization_of_ETP_JAX(
         DIMS, method_for_Psis="rnorm", seed=seed
     )  # Psis is (J, L, K, D_t)
-    STP_JAX = make_tpm_only_initialization_of_STP_JAX(DIMS, fixed_self_transition_prob=0.95)
-    # zhats = np.argmax(results_bottom.EZ_summaries.expected_regimes, axis=2) # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
-    # TODO: Is there a better way to init the recurrence matrices?
+    STP_JAX = make_data_free_initialization_of_STP_JAX(
+        DIMS,
+        method_for_Upsilon="rnorm",
+        fixed_self_transition_prob=0.95,
+        seed=seed,
+    )
+    # TODO: Is there a better way to init the recurrence matrices and covariances matrices in STP_JAX and ETP_JAX than randomly?
 
     ### run HMM
     num_M_step_iterations_for_ETP_gradient_descent = 5
+
+    # num_M_step_iterations_for_STP_gradient_descent is specified within `fit_ARHMM_to_top_half_of_model`, since
+    # we only run gradient descent when there are system covariates
+
     results_top = fit_ARHMM_to_top_half_of_model(
         continuous_states,
+        system_covariates,
         event_end_times,
         STP_JAX,
         ETP_JAX,

@@ -69,6 +69,12 @@ def event_end_times_are_proper(event_end_times: NumpyArray1D, T: int) -> Optiona
     return event_end_times[0] == -1 and event_end_times[-1] == T
 
 
+def only_one_event(event_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
+    return (event_end_times is None) or (
+        len(event_end_times) == 2 and (event_end_times == [-1, T]).all()
+    )
+
+
 def get_initialization_times(event_end_times: NumpyArray1D) -> NumpyArray1D:
     """
     These are times just after event boundaries.

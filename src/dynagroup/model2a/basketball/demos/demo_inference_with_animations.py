@@ -12,6 +12,7 @@ from dynagroup.model2a.basketball.data.baller2vec_format import (
     get_event_in_baller2vec_format,
 )
 from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.plot_vector_fields import plot_vector_fields
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
@@ -160,6 +161,9 @@ plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=sav
 ### print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
 
+### plot vector fields
+plot_vector_fields(results_init.params.CSP, J=5)
+
 ####
 # Inference
 ####
@@ -191,6 +195,10 @@ deterministic_trajectories = get_deterministic_trajectories(
     params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100, x_init=xs[0]
 )
 plot_deterministic_trajectories(deterministic_trajectories, "Learned", save_dir=save_dir)
+
+### plot vector fields
+plot_vector_fields(params_learned.CSP, J=5)
+
 
 ### plot animation with system modes
 s_maxes = np.argmax(VES_summary.expected_regimes, 1)

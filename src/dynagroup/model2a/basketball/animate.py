@@ -101,7 +101,7 @@ def animate_event(event: Event):
 
     # TODO: Add the `play_description`.  This would tell us if the event was a rebound, etc.
     # It should be obtainable from the 'y' file created by the baller2vec repo.
-    play_description = "TODO: Add play description"
+    play_description = f"Event: {event.idx}. Label: {event.label}"
     n_frames = len(event.moments)
 
     # Create partial functions default arguments

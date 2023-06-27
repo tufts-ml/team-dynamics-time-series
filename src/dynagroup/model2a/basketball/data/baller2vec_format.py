@@ -62,6 +62,8 @@ class Moment:
 @dataclass
 class Event:
     moments: List[Moment]
+    idx: int
+    label: str
     player_names: List[str]
     start_game_secs_elapsed: float
     end_game_secs_elapsed: float
@@ -110,6 +112,8 @@ def player_names_from_player_ids(PLAYER_DATA: Dict[int, Dict], player_ids: List[
 
 def grab_event(
     GAME_DATA: NumpyArray2D,
+    EVENT_LABEL_DATA: NumpyArray1D,  # ints
+    EVENT_LABEL_DICT: Dict[str, int],
     PLAYER_DATA: Dict[int, Dict],
     event_idx: int,
     sampling_rate_Hz: int = 25,
@@ -124,6 +128,8 @@ def grab_event(
             is the dimensionality of  "information" about each of the T samples
             in a game.  This is what is loaded by an "X" file as created by the
             `generate_game_numpy_arrays_simplified` module from the baller2vec repo.
+        EVENT_LABEL_DATA: an np.array of shape (T,) with dtype="int" classifying the event,
+            with interpretation given by EVENT_LABEL_DICT
         PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_config_path function here,
             traces back to the pydict config constructed by the `generate_game_numpy_arrays_simplified` module
             from the baller2vec repo.
@@ -152,16 +158,30 @@ def grab_event(
     # TODO: Confirm this
     player_names = player_names_from_player_ids(PLAYER_DATA, moments[0].player_ids)
 
+    ### Get start and end times
     start_game_secs_elapsed = moments[0].game_time_elapsed_secs
     end_game_secs_elapsed = moments[-1].game_time_elapsed_secs
 
     if verbose:
         time_of_play = end_game_secs_elapsed - start_game_secs_elapsed
         print(
-            f"Play (event) {event_idx} lasts {time_of_play:.02f} seconds. Start: {start_game_secs_elapsed:.02f}. End: {end_game_secs_elapsed:.02f} "
+            f"Event (play) {event_idx} lasts {time_of_play:.02f} seconds. Start: {start_game_secs_elapsed:.02f}. End: {end_game_secs_elapsed:.02f} "
         )
 
-    return Event(moments, player_names, start_game_secs_elapsed, end_game_secs_elapsed)
+    ### Get event classification
+    event_label_idx = EVENT_LABEL_DATA[
+        timestep_first
+    ]  # Rk: assume event label doesn't change over course of event.
+    event_label = [k for k in EVENT_LABEL_DICT if EVENT_LABEL_DICT[k] == event_label_idx][0]
+
+    return Event(
+        moments,
+        event_idx,
+        event_label,
+        player_names,
+        start_game_secs_elapsed,
+        end_game_secs_elapsed,
+    )
 
 
 def load_player_data_from_pydict_config_path(path_to_config):
@@ -169,26 +189,48 @@ def load_player_data_from_pydict_config_path(path_to_config):
     return baller2vec_config["player_idx2props"]
 
 
-def get_event_in_baller2vec_format() -> Event:
+def load_event_label_decoder_from_pydict_config_path(path_to_config):
+    baller2vec_config = pickle.load(open(path_to_config, "rb"))
+    return baller2vec_config["event2event_idx"]
+
+
+def get_event_in_baller2vec_format(event_idx: int, sampling_rate_Hz=5) -> Event:
+    """
+    Arguments:
+        event_idx: Which event (or play) to pull from the game. This can be hard to set since
+            we don't know the maximum number of events in the file, but we at least print it out
+            while running this function.
+    """
+
     ### Configs
-    sampling_rate_Hz = 5
-    event_idx = 0
     path_to_game_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_X.npy"
+    path_to_event_label_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_y.npy"
     path_to_baller2vec_config = (
         "/Users/mwojno01/Repos/baller2vec_forked/data/baller2vec_config.pydict"
     )
 
     ### Load the data
     GAME_DATA = np.load(path_to_game_data)
+    EVENT_LABEL_DATA = np.load(path_to_event_label_data)
+    EVENT_LABEL_DICT = load_event_label_decoder_from_pydict_config_path(path_to_baller2vec_config)
     PLAYER_DATA = load_player_data_from_pydict_config_path(path_to_baller2vec_config)
+
+    num_events_in_this_game = int(GAME_DATA[-1][50])
+    print(f"The number of events in this game is {num_events_in_this_game}.")
+    if event_idx + 1 > num_events_in_this_game:
+        raise ValueError(
+            f"The desired event index {event_idx} is too large, since the number of "
+            f"events in this game is {num_events_in_this_game}."
+        )
 
     ### Explore a moment
     # moment = moment_from_game_slice(GAME_DATA[0])
     # pp.pprint(moment)
 
     ### Make event
-    event = grab_event(GAME_DATA, PLAYER_DATA, event_idx, sampling_rate_Hz)
+    event = grab_event(
+        GAME_DATA, EVENT_LABEL_DATA, EVENT_LABEL_DICT, PLAYER_DATA, event_idx, sampling_rate_Hz
+    )
 
     ### TODO: Normalize the data?
-    ### TODO: Append event classification (score, rebound, etc.)
     return event

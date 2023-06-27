@@ -169,27 +169,26 @@ def load_player_data_from_pydict_config_path(path_to_config):
     return baller2vec_config["player_idx2props"]
 
 
-###
-# MAIN
-###
+def get_event_in_baller2vec_format() -> Event:
+    ### Configs
+    sampling_rate_Hz = 5
+    event_idx = 0
+    path_to_game_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_X.npy"
+    path_to_baller2vec_config = (
+        "/Users/mwojno01/Repos/baller2vec_forked/data/baller2vec_config.pydict"
+    )
 
-### Configs
-sampling_rate_Hz = 5
-event_idx = 0
-path_to_game_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_X.npy"
-path_to_baller2vec_config = "/Users/mwojno01/Repos/baller2vec_forked/data/baller2vec_config.pydict"
+    ### Load the data
+    GAME_DATA = np.load(path_to_game_data)
+    PLAYER_DATA = load_player_data_from_pydict_config_path(path_to_baller2vec_config)
 
-### Load the data
-GAME_DATA = np.load(path_to_game_data)
-PLAYER_DATA = load_player_data_from_pydict_config_path(path_to_baller2vec_config)
+    ### Explore a moment
+    # moment = moment_from_game_slice(GAME_DATA[0])
+    # pp.pprint(moment)
 
-### Explore a moment
-moment = moment_from_game_slice(GAME_DATA[0])
+    ### Make event
+    event = grab_event(GAME_DATA, PLAYER_DATA, event_idx, sampling_rate_Hz)
 
-### Make events
-pp.pprint(moment)
-event = grab_event(GAME_DATA, PLAYER_DATA, event_idx, sampling_rate_Hz)
-
-
-### TODO: Normalize the data?
-### TODO: Append event classification to moment.
+    ### TODO: Normalize the data?
+    ### TODO: Append event classification (score, rebound, etc.)
+    return event

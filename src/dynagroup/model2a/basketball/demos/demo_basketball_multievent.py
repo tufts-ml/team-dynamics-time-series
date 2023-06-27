@@ -7,7 +7,9 @@ from dynagroup.diagnostics.occupancies import (
 )
 from dynagroup.diagnostics.team_slice import plot_team_slice
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.basketball.get_data import get_data
+from dynagroup.model2a.basketball.data.orig_format import (
+    get_data_in_original_formatting,
+)
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
@@ -51,7 +53,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 50.0
 ###
 # Get data
 ###
-DATA = get_data()
+DATA = get_data_in_original_formatting()
 system_covariates = DATA.has_ball_players
 M_s = np.shape(system_covariates)[1]
 

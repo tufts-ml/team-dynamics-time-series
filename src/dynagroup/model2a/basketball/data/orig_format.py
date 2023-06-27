@@ -17,7 +17,7 @@ class Data:
     has_ball_players: NumpyArray2D  # (T_grand, J)
 
 
-def get_data() -> Data:
+def get_data_in_original_formatting() -> Data:
     ###
     # Load Raw Data
     ###

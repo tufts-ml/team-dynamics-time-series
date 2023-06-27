@@ -1,6 +1,8 @@
 from dynagroup.eda.show_trajectory_slices import plot_trajectory_slices
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.basketball.get_data import get_data
+from dynagroup.model2a.basketball.data.orig_format import (
+    get_data_in_original_formatting,
+)
 
 
 ###
@@ -15,7 +17,7 @@ save_dir = "/Users/mwojno01/Desktop/explore_basketball/"
 # Get data
 ###
 if not "DATA" in globals():
-    DATA = get_data()
+    DATA = get_data_in_original_formatting()
 
 
 ###

@@ -8,7 +8,7 @@ import prettyprinter as pp
 
 pp.install_extras()
 
-from dynagroup.types import NumpyArray1D, NumpyArray2D
+from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray3D
 
 
 ###
@@ -67,6 +67,11 @@ class Event:
     player_names: List[str]
     start_game_secs_elapsed: float
     end_game_secs_elapsed: float
+
+
+Coords = NumpyArray3D
+# `Coords` has shape (T,J,D=2), where T is the number of timesteps, J is the number of players,
+# and D=2 is the dimensionality.
 
 
 ###
@@ -234,3 +239,13 @@ def get_event_in_baller2vec_format(event_idx: int, sampling_rate_Hz=5) -> Event:
 
     ### TODO: Normalize the data?
     return event
+
+
+def coords_from_moments(moments: List[Moment]) -> Coords:
+    T = len(moments)
+    J = 10
+    coords = np.zeros((T, J, 2))
+    for t in range(T):
+        coords[t, :, 0] = moments[t].player_xs
+        coords[t, :, 1] = moments[t].player_ys
+    return coords

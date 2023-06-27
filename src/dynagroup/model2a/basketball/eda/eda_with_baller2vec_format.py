@@ -4,7 +4,8 @@ from dynagroup.model2a.basketball.data.baller2vec_format import (
 )
 
 
-event_idx = 0
-event = get_event_in_baller2vec_format(event_idx)
-print(f"Now animating event idx {event_idx}, which has type {event.label}")
-animate_event(event)
+event_idxs = [0, 1, 2, 3, 4]
+for event_idx in event_idxs:
+    event = get_event_in_baller2vec_format(event_idx)
+    print(f"Now animating event idx {event_idx}, which has type {event.label}")
+    animate_event(event)

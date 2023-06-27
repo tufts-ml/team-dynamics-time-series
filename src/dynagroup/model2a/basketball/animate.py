@@ -2,12 +2,14 @@
 ### Reference: https://github.com/gmf05/nba/blob/master/scripts/notebooks/svmovie.ipynb
 
 from functools import partial
+from typing import Dict, Optional
 
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 from dynagroup.model2a.basketball.data.baller2vec_format import Event
+from dynagroup.types import NumpyArray1D
 
 
 ###
@@ -46,7 +48,15 @@ def init(ax, info_text, player_text, player_circ, ball_circ, play_description: s
 
 
 # Animation function / loop
-def animate(n, event, info_text, player_text, player_circ, ball_circ):
+def animate(
+    n,
+    event,
+    info_text,
+    player_text,
+    player_circ,
+    ball_circ,
+    model_dict: Optional[Dict[str, NumpyArray1D]],
+):
     ### 1. Draw players by team, with jersey numbers
     for i in range(10):
         player_circ[i].center = (event.moments[n].player_xs[i], event.moments[n].player_ys[i])
@@ -68,14 +78,35 @@ def animate(n, event, info_text, player_text, player_circ, ball_circ):
     )
     info_text[2].set_text(f"Shot clock: {event.moments[n].shot_clock:.02f}")
 
+    if model_dict is not None:
+        for i, (k, v) in enumerate(model_dict.items()):
+            # TODO: make this dict ordered
+            info_text[3 + i].set_text(f"{k}:{v[n]}")
+
     plt.pause(0.2)  # Uncomment to watch movie as it's being made
     return tuple(info_text) + tuple(player_text) + tuple(player_circ) + (ball_circ,)
 
 
-def animate_event(event: Event):
+def animate_event(event: Event, model_dict: Optional[Dict[str, NumpyArray1D]] = None):
     """
-    Animates an event, where an event has type Event (baller2vec format)
+    Animates an event, where an event has type Event (baller2vec format).
+
+    Arguments:
+        model_dict: Optionally append info at the bottom of the animation about what the model
+            learned at each timestep.  Each NumpyArray1D value should have the same length as the number
+            of moments in the flattened_events.
     """
+
+    # TODO:  Each NumpyArray1D value should have the same length as the number
+    #        of moments in the flattened_events.
+
+    if model_dict is not None:
+        for v in model_dict.values():
+            if len(v) != len(event.moments):
+                raise ValueError(
+                    f" Each NumpyArray1D value in the model_dict should have the same length as the number "
+                    f" of moments in the event!"
+                )
 
     # animation
     plt.close("all")
@@ -83,10 +114,15 @@ def animate_event(event: Event):
     ax = plt.gca()
 
     # Animated elements
-    info_text = [None] * 3
+    num_info = 3 + len(model_dict) if model_dict is not None else 3
+    info_text = [None] * num_info
     info_text[0] = ax.text(0, -5, "")
     info_text[1] = ax.text(10, -5, "")
     info_text[2] = ax.text(40, -5, "")
+    if model_dict is not None:
+        for i in range(len(model_dict)):
+            x_loc = 40 + (i + 1) * 20
+            info_text[3 + i] = ax.text(x_loc, -5, "")
     player_text = [None] * 10
     player_circ = [None] * 10
     R = 2.2
@@ -121,6 +157,7 @@ def animate_event(event: Event):
         player_text=player_text,
         player_circ=player_circ,
         ball_circ=ball_circ,
+        model_dict=model_dict,
     )
     ani = animation.FuncAnimation(  # noqa
         fig,

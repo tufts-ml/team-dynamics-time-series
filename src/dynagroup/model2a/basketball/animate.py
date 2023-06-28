@@ -48,7 +48,7 @@ def init(ax, info_text, player_text, player_circ, ball_circ, play_description: s
 
 
 # Animation function / loop
-def animate(
+def update(
     n,
     event,
     info_text,
@@ -150,8 +150,8 @@ def animate_event(event: Event, model_dict: Optional[Dict[str, NumpyArray1D]] = 
         ball_circ=ball_circ,
         play_description=play_description,
     )
-    animate_partial = partial(
-        animate,
+    update_partial = partial(
+        update,
         event=event,
         info_text=info_text,
         player_text=player_text,
@@ -161,7 +161,7 @@ def animate_event(event: Event, model_dict: Optional[Dict[str, NumpyArray1D]] = 
     )
     ani = animation.FuncAnimation(  # noqa
         fig,
-        animate_partial,
+        update_partial,
         frames=n_frames,
         init_func=init_partial,
         blit=True,

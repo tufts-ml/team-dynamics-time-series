@@ -33,8 +33,7 @@ def draw_court(axis):
 def init(ax, info_text, player_text, player_circ, ball_circ, play_description: str):
     # Draw court & zoom out slightly to give light buffer
     draw_court([X_MIN, X_MAX, Y_MIN, Y_MAX])
-    for i in range(3):
-        info_text[i].set_text("")
+    info_text[0].set_text("")
     for i in range(10):
         player_text[i].set_text("")
         ax.add_patch(player_circ[i])
@@ -44,6 +43,7 @@ def init(ax, info_text, player_text, player_circ, ball_circ, play_description: s
     plt.xlim([X_MIN - dx, X_MAX + dx])
     plt.ylim([Y_MIN - dx, Y_MAX + dx])
     plt.title(play_description)
+    # return value tells the animator which objects on the plot to update after each frame
     return tuple(info_text) + tuple(player_text) + tuple(player_circ) + (ball_circ,)
 
 
@@ -72,16 +72,17 @@ def update(
     ball_circ.radius = 1 + event.moments[n].ball_z / 17 * 2
 
     ### 3. Print game clock info
-    info_text[0].set_text(f"Period: {event.moments[n].period}")
-    info_text[1].set_text(
-        f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f}"
+    info_str = (
+        f"Period: {event.moments[n].period} "
+        f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f} "
+        f"Shot clock: {event.moments[n].shot_clock:.02f} "
     )
-    info_text[2].set_text(f"Shot clock: {event.moments[n].shot_clock:.02f}")
 
     if model_dict is not None:
         for i, (k, v) in enumerate(model_dict.items()):
             # TODO: make this dict ordered
-            info_text[3 + i].set_text(f"{k}:{v[n]}")
+            info_str += f" {k}:{v[n]}"
+    info_text[0].set_text(info_str)
 
     plt.pause(0.2)  # Uncomment to watch movie as it's being made
     return tuple(info_text) + tuple(player_text) + tuple(player_circ) + (ball_circ,)
@@ -114,15 +115,7 @@ def animate_event(event: Event, model_dict: Optional[Dict[str, NumpyArray1D]] = 
     ax = plt.gca()
 
     # Animated elements
-    num_info = 3 + len(model_dict) if model_dict is not None else 3
-    info_text = [None] * num_info
-    info_text[0] = ax.text(0, -5, "")
-    info_text[1] = ax.text(10, -5, "")
-    info_text[2] = ax.text(40, -5, "")
-    if model_dict is not None:
-        for i in range(len(model_dict)):
-            x_loc = 40 + (i + 1) * 20
-            info_text[3 + i] = ax.text(x_loc, -5, "")
+    info_text = [ax.text(0, -5, "")]
     player_text = [None] * 10
     player_circ = [None] * 10
     R = 2.2

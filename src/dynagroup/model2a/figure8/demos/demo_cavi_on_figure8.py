@@ -97,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_retest_fig8_third_option_CSP_kmeans_init/"
+save_dir = "/Users/mwojno01/Desktop/TMP_retest_fig8_third_option_CSP_kmeans_init_2/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

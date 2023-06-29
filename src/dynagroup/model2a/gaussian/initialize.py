@@ -66,7 +66,7 @@ from dynagroup.vi.M_step_and_ELBO import (
 # TODO: Make Enum: "random", "fixed", "tpm_only", etc.
 
 
-def make_data_free_initialization_of_IP_JAX(DIMS) -> InitializationParameters_Gaussian_JAX:
+def make_data_free_preinitialization_of_IP_JAX(DIMS) -> InitializationParameters_Gaussian_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
     pi_entities = np.ones((DIMS.J, DIMS.K)) / DIMS.K
     mu_0s = jnp.zeros((DIMS.J, DIMS.K, DIMS.D))
@@ -74,7 +74,7 @@ def make_data_free_initialization_of_IP_JAX(DIMS) -> InitializationParameters_Ga
     return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, Sigma_0s)
 
 
-def make_tpm_only_initialization_of_STP_JAX(
+def make_tpm_only_preinitialization_of_STP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> SystemTransitionParameters_JAX:
     # TODO: Support fixed or random draws from prior.
@@ -87,7 +87,7 @@ def make_tpm_only_initialization_of_STP_JAX(
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
-def make_data_free_initialization_of_STP_JAX(
+def make_data_free_preinitialization_of_STP_JAX(
     DIMS: Dims,
     method_for_Upsilon: str,
     fixed_self_transition_prob: float,
@@ -115,7 +115,7 @@ def make_data_free_initialization_of_STP_JAX(
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
-def make_data_free_initialization_of_ETP_JAX(
+def make_data_free_preinitialization_of_ETP_JAX(
     DIMS: Dims,
     method_for_Psis: str,
     seed: int,
@@ -139,7 +139,7 @@ def make_data_free_initialization_of_ETP_JAX(
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 
 
-def make_tpm_only_initialization_of_ETP_JAX(
+def make_tpm_only_preinitialization_of_ETP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> EntityTransitionParameters_MetaSwitch_JAX:
     # TODO: Support fixed or random draws from prior.
@@ -157,7 +157,7 @@ class PreInitialization_Strategy_For_CSP(Enum):
     DERIVATIVE = 2
 
 
-def make_kmeans_initialization_of_CSP_JAX(
+def make_kmeans_preinitialization_of_CSP_JAX(
     DIMS: Dims,
     continuous_states: JaxNumpyArray3D,
     strategy: PreInitialization_Strategy_For_CSP,
@@ -259,7 +259,7 @@ def make_kmeans_initialization_of_CSP_JAX(
     return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
 
 
-def make_data_free_initialization_of_EP_JAX(
+def make_data_free_preinitialization_of_EP_JAX(
     DIMS: Dims,
 ) -> EmissionsParameters_JAX:
     J, D, N = DIMS.J, DIMS.D, DIMS.N
@@ -553,15 +553,15 @@ def smart_initialize_model_2a(
     ####
 
     # TODO: Support fixed or random draws from prior for As, Qs.
-    CSP_JAX = make_kmeans_initialization_of_CSP_JAX(
+    CSP_JAX = make_kmeans_preinitialization_of_CSP_JAX(
         DIMS, continuous_states, preinitialization_strategy_for_CSP, use_continuous_states
     )
     # TODO: Support fixed or random draws from prior.
-    ETP_JAX = make_tpm_only_initialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
+    ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
     # TODO: Support fixed or random draws from prior.
-    IP_JAX = make_data_free_initialization_of_IP_JAX(DIMS)
+    IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
     # EP_JAX is a placeholder; not used for Figure 8.
-    EP_JAX = make_data_free_initialization_of_EP_JAX(DIMS)
+    EP_JAX = make_data_free_preinitialization_of_EP_JAX(DIMS)
 
     ###
     # Fit Bottom-level HMM
@@ -583,10 +583,10 @@ def smart_initialize_model_2a(
     ###
 
     ### Initialization
-    ETP_JAX = make_data_free_initialization_of_ETP_JAX(
+    ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
         DIMS, method_for_Psis="rnorm", seed=seed
     )  # Psis is (J, L, K, D_t)
-    STP_JAX = make_data_free_initialization_of_STP_JAX(
+    STP_JAX = make_data_free_preinitialization_of_STP_JAX(
         DIMS,
         method_for_Upsilon="rnorm",
         fixed_self_transition_prob=0.95,

@@ -234,17 +234,24 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             ### find which samples to use
             samples_are_in_cluster_jk = kms[j].labels_ == k
             if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
-                use_samples_jk = samples_are_in_cluster_jk[1:] * use_continuous_states[1:, j]
+                use_outcomes_jk = (
+                    samples_are_in_cluster_jk[1:] * use_continuous_states[1:, j]
+                )  # shape (T-1,)
             elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
-                use_samples_jk = samples_are_in_cluster_jk * use_continuous_state_diffs[:, j]
+                use_outcomes_jk = (
+                    samples_are_in_cluster_jk * use_continuous_state_diffs[:, j]
+                )  # shape (T-1,)
             else:
                 raise ValueError(
                     f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
                 )
 
+            outcome_indices_jk = np.where(use_outcomes_jk)[0] + 1
+            predictor_indices_jk = outcome_indices_jk - 1
+
             ### run vector autoregression
-            predictors_jk = predictors_j[use_samples_jk]
-            outcomes_jk = outcomes_j[use_samples_jk]
+            outcomes_jk = outcomes_j[outcome_indices_jk]
+            predictors_jk = predictors_j[predictor_indices_jk]
             lr = LinearRegression(fit_intercept=True)
             lr.fit(predictors_jk, outcomes_jk)
             As[j, k] = lr.coef_

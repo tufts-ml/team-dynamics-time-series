@@ -7,7 +7,11 @@ from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.basketball.animate import animate_event
+from dynagroup.model2a.basketball.animate import (
+    animate_event,
+    animate_events_over_vector_field_for_one_player,
+)
+from dynagroup.model2a.basketball.court import X_MAX_COURT, Y_MAX_COURT
 from dynagroup.model2a.basketball.data.baller2vec_format import (
     coords_from_moments,
     get_event_in_baller2vec_format,
@@ -39,22 +43,23 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/TRY_bb_with_new_CSP_preinit/"
+save_dir = "/Users/mwojno01/Desktop/TRY_bb_with_newer_CSP_preinit/"
 
 # Data properties
 event_end_times = None
-
+animate_raw_data = False
 
 # Initialization
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
+animate_initialization = True
 
 
 # Model specification
 K = 5
-L = 4
+L = 5
 
 # For inference
 n_cavi_iterations = 10
@@ -70,8 +75,6 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # I/O
 ###
 
-
-animate = False
 event_idxs = [0, 1, 2, 3, 4]
 
 # get moments
@@ -83,7 +86,7 @@ event_start_stop_idxs = []
 num_moments_so_far = 0
 for event_idx in event_idxs:
     event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=5)
-    if animate:
+    if animate_raw_data:
         print(f"Now animating event idx {event_idx}, which has type {event.label}")
         animate_event(event)
     moments.extend(event.moments)
@@ -102,13 +105,11 @@ ensure_dir(save_dir)
 # Preprocess Data
 ###
 
-# From: https://github.com/linouk23/NBA-Player-Movements/blob/master/Constant.py
-X_MAX = 100
-Y_MAX = 50
-
+# TODO: Move this (and `unnorm` function from the `animate` module) to the `court` module, which should control
+# all operations that have to do with the size of the basketball court (including normalizing and unnormalizing)
 xs = copy.copy(xs_unnormalized)
-xs[:, :, 0] /= X_MAX
-xs[:, :, 1] /= Y_MAX
+xs[:, :, 0] /= X_MAX_COURT
+xs[:, :, 1] /= Y_MAX_COURT
 
 
 ###
@@ -150,8 +151,10 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
 )
 params_init = results_init.params
-
-# initialization_results
+most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
+    :, :, -1
+]  # TxJ
+CSP_init = params_init.CSP  # JxKxDxD
 
 # elbo_init = compute_elbo_from_initialization_results(
 #     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
@@ -162,17 +165,30 @@ params_init = results_init.params
 # Initialization Diagnostics
 ###
 
-### plot learned dynamical modes
+### Plot learned dynamical modes
 deterministic_trajectories = get_deterministic_trajectories(
     params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=xs[0]
 )
 plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
 
-### print regime occupancies
+### Print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
 
-### plot vector fields
+### Plot vector fields
 plot_vector_fields(results_init.params.CSP, J=5)
+
+### Animate some plays along with vector fields
+if animate_initialization:
+    J_FOCAL = 0
+    # TODO: Give jersey label of the focal player in the title of the animation.
+    animate_events_over_vector_field_for_one_player(
+        events,
+        event_start_stop_idxs,
+        most_likely_entity_states_after_init,
+        CSP_init,
+        J_FOCAL,
+    )
+
 
 ####
 # Inference

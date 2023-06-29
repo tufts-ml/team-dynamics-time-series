@@ -15,7 +15,10 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import Dims
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import run_CAVI_with_JAX
@@ -34,6 +37,8 @@ do_init_plots = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
+
 
 # Model specification
 K = 5
@@ -96,6 +101,7 @@ results_init = smart_initialize_model_2a(
     DATA.positions,
     DATA.event_end_times,
     model_basketball,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,

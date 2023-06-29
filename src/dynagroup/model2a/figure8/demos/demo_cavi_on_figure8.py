@@ -35,7 +35,10 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -79,6 +82,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
@@ -93,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_test_fig8_third_option_CSP_kmeans_init/"
+save_dir = "/Users/mwojno01/Desktop/TMP_retest_fig8_third_option_CSP_kmeans_init/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -177,6 +181,7 @@ results_init = smart_initialize_model_2a(
     sample.xs,
     sample.event_end_times,
     figure8_model_JAX,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,

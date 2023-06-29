@@ -1,4 +1,5 @@
 import warnings
+from enum import Enum
 from typing import Optional, Union
 
 import jax.numpy as jnp
@@ -151,158 +152,35 @@ def make_tpm_only_initialization_of_ETP_JAX(
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 
 
-# TODO: This works better for basketball
-#
-# def make_kmeans_initialization_of_CSP_JAX(
-#     DIMS: Dims,
-#     continuous_states: JaxNumpyArray3D,
-#     use_continuous_states: Optional[JaxNumpyArray2D] = None,
-#     verbose : bool = True,
-# ) -> ContinuousStateParameters_Gaussian_JAX:
-#     """
-#     We assign the continuous_states to K regimes by applying k-means to the velocities (discrete derivatives) of the continuous_states.
-#     We then initialize CSP parameters by running separate vector autoregressions within each cluster/regime:
-#         - We find regime-specific state matrix (CSP.As) and biases (CSP.bs) by applying a (multi-outcome) linear regression
-#             to predict the next continuous_state from the previous continuous_state.
-#         - We estimate the regime-specific covariance matrices (CSP.Qs) from the residuals of the above linear regresssion.
-
-#     Arguments:
-#         use_continuous_states: If None, we assume all states should be utilized in inference.
-#             Otherwise, this is a (T,J) boolean vector such that
-#             the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
-#             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
-#             that info to do the M-step.
-#     """
-#     if verbose:
-#         print("Now performing k-means pre-initialization of CSP parameters.")
-
-#     ### Up-front computations
-#     continuous_states = jnp.asarray(continuous_states)
-#     T, J, D = np.shape(continuous_states)
-#     K = DIMS.K
-
-#     if use_continuous_states is None:
-#         use_continuous_states = np.full((T, J), True)
-
-#     As = np.zeros((J, K, D, D))
-#     bs = np.zeros((J, K, D))
-#     Qs = np.tile(np.eye(D)[None, None, :, :], (J, K, 1, 1))
-
-#     ### Find cluster memberships based on velocities (discrete derivatives)
-#     continuous_state_diffs=continuous_states[1:, :, :]-continuous_states[:-1, :, :]
-#     use_continuous_state_diffs=use_continuous_states[1:, :]*use_continuous_states[:-1, :]
-
-#     kms=[None]*J
-#     for j in range(J):
-#         with warnings.catch_warnings():
-#             # sklearn gives the warning below, but I don't know how to execute on the advice, currently.
-#             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
-#             #   Set the value of `n_init` explicitly to suppress the warning
-#             warnings.simplefilter(action="ignore", category=FutureWarning)
-#             kms[j] = KMeans(K).fit(
-#                 continuous_state_diffs[:, j, :], sample_weight=use_continuous_state_diffs[:, j]
-#             )
-
-#     ### Initialize parameters by running separate vector autoregressions within each cluster.
-
-#     # For each state, initialize CSP via a (multivariate-outcome) linear regression
-#     # finding weights A,b by predicting the next continuous_state from the previous continuous_state.
-#     # We then estimate the regime-specific covariance matrices (Q’s) from the residuals.
-
-#     # TODO: Parallelize this for speed
-#     for j in range(J):
-#         predictors_j = continuous_states[:-1, j, :]
-#         outcomes_j = continuous_states[1:, j, :]
-#         for k in range(K):
-#             samples_are_in_cluster_jk= kms[j].labels_==k
-#             use_samples_jk=samples_are_in_cluster_jk * use_continuous_state_diffs[:,j]
-#             predictors_jk=predictors_j[use_samples_jk]
-#             outcomes_jk=outcomes_j[use_samples_jk]
-#             lr = LinearRegression(fit_intercept=True)
-#             lr.fit(predictors_jk,  outcomes_jk)
-#             As[j,k]=lr.coef_
-#             bs[j,k]=lr.intercept_
-#             expectations_jk = (As[j,k] @ predictors_jk.T).T + bs[j,k]
-#             residuals = outcomes_jk -  expectations_jk
-#             Qs[j,k]=np.cov(residuals, rowvar=False)
-
-#     As = jnp.asarray(As)
-#     bs = jnp.asarray(bs)
-#     Qs = jnp.asarray(Qs)
-#     return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
-
-
-# # THE ORIGINAL FIG8.
-# # It works for Fig8 but not basketball.
-# def make_kmeans_initialization_of_CSP_JAX(
-#     DIMS: Dims,
-#     continuous_states: JaxNumpyArray3D,
-#     use_continuous_states: Optional[JaxNumpyArray2D] = None,
-# ) -> ContinuousStateParameters_Gaussian_JAX:
-#     """
-#     We fit the bias terms (CSP.bs) using the cluster centers from a K-means algorithm.
-#     The state matrices (CSP.As) are initialized at 0.
-#     The state noise covariances (CSP.Qs) are initialized to identity martrices.
-
-#     Arguments:
-#         use_continuous_states: If None, we assume all states should be utilized in inference.
-#             Otherwise, this is a (T,J) boolean vector such that
-#             the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
-#             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
-#             that info to do the M-step.
-
-#     """
-#     continuous_states = jnp.asarray(continuous_states)
-#     T, J, D = np.shape(continuous_states)
-#     K = DIMS.K
-
-#     if use_continuous_states is None:
-#         use_continuous_states = np.full((T, J), True)
-
-#     As = jnp.zeros((J, K, D, D))
-#     Qs = jnp.tile(jnp.eye(D)[None, None, :, :], (J, K, 1, 1))
-#     bs = np.zeros((J, K, D))
-
-#     # We initialize bs using cluster centers of k-means
-#     for j in range(J):
-#         with warnings.catch_warnings():
-#             # sklearn gives the warning below, but I don't know how to execute on the advice, currently.
-#             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
-#             #   Set the value of `n_init` explicitly to suppress the warning
-#             warnings.simplefilter(action="ignore", category=FutureWarning)
-#             km = KMeans(K).fit(
-#                 continuous_states[:, j, :], sample_weight=use_continuous_states[:, j]
-#             )
-#             bs[j, :, :] = jnp.array(km.cluster_centers_)
-#     bs = jnp.asarray(bs)
-
-#     return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
-
-
-# A TEST
+class PreInitialization_Strategy_For_CSP(Enum):
+    LOCATION = 1
+    DERIVATIVE = 2
 
 
 def make_kmeans_initialization_of_CSP_JAX(
     DIMS: Dims,
     continuous_states: JaxNumpyArray3D,
+    strategy: PreInitialization_Strategy_For_CSP,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
-    We assign the continuous_states to K regimes by applying k-means to the velocities (discrete derivatives) of the continuous_states.
+    We assign the continuous_states to K regimes by applying k-means to either the locations (values)
+        or velocities (discrete derivatives) of the continuous_states.
     We then initialize CSP parameters by running separate vector autoregressions within each cluster/regime:
         - We find regime-specific state matrix (CSP.As) and biases (CSP.bs) by applying a (multi-outcome) linear regression
             to predict the next continuous_state from the previous continuous_state.
         - We estimate the regime-specific covariance matrices (CSP.Qs) from the residuals of the above linear regresssion.
 
     Arguments:
+        strategy: an Enum which determines whether we apply k-means to the locations (values)
+            or velocities (discrete derivatives) of the continuous_states.
         use_continuous_states: If None, we assume all states should be utilized in inference.
             Otherwise, this is a (T,J) boolean vector such that
             the (t,j)-th element  is 1 if continuous_states[t,j] should be utilized
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step.
     """
-
     if verbose:
         print("Now performing k-means pre-initialization of CSP parameters.")
 
@@ -318,7 +196,10 @@ def make_kmeans_initialization_of_CSP_JAX(
     bs = np.zeros((J, K, D))
     Qs = np.tile(np.eye(D)[None, None, :, :], (J, K, 1, 1))
 
-    ### Find cluster memberships based on locations
+    ### Find cluster memberships based on locations (values) or velocities (discrete derivatives) of continuous states
+    continuous_state_diffs = continuous_states[1:, :, :] - continuous_states[:-1, :, :]
+    use_continuous_state_diffs = use_continuous_states[1:, :] * use_continuous_states[:-1, :]
+
     kms = [None] * J
     for j in range(J):
         with warnings.catch_warnings():
@@ -326,9 +207,18 @@ def make_kmeans_initialization_of_CSP_JAX(
             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
             #   Set the value of `n_init` explicitly to suppress the warning
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            kms[j] = KMeans(K).fit(
-                continuous_states[:, j, :], sample_weight=use_continuous_states[:, j]
-            )
+            if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
+                kms[j] = KMeans(K).fit(
+                    continuous_states[:, j, :], sample_weight=use_continuous_states[:, j]
+                )
+            elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
+                kms[j] = KMeans(K).fit(
+                    continuous_state_diffs[:, j, :], sample_weight=use_continuous_state_diffs[:, j]
+                )
+            else:
+                raise ValueError(
+                    f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
+                )
 
     ### Initialize parameters by running separate vector autoregressions within each cluster.
 
@@ -341,8 +231,18 @@ def make_kmeans_initialization_of_CSP_JAX(
         predictors_j = continuous_states[:-1, j, :]
         outcomes_j = continuous_states[1:, j, :]
         for k in range(K):
+            ### find which samples to use
             samples_are_in_cluster_jk = kms[j].labels_ == k
-            use_samples_jk = samples_are_in_cluster_jk[1:] * use_continuous_states[1:, j]
+            if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
+                use_samples_jk = samples_are_in_cluster_jk[1:] * use_continuous_states[1:, j]
+            elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
+                use_samples_jk = samples_are_in_cluster_jk * use_continuous_state_diffs[:, j]
+            else:
+                raise ValueError(
+                    f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
+                )
+
+            ### run vector autoregression
             predictors_jk = predictors_j[use_samples_jk]
             outcomes_jk = outcomes_j[use_samples_jk]
             lr = LinearRegression(fit_intercept=True)
@@ -593,6 +493,7 @@ def smart_initialize_model_2a(
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
     event_end_times: Optional[NumpyArray1D],
     model: Model,
+    preinitialization_strategy_for_CSP: PreInitialization_Strategy_For_CSP,
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
     seed: int = 0,
@@ -652,7 +553,9 @@ def smart_initialize_model_2a(
     ####
 
     # TODO: Support fixed or random draws from prior for As, Qs.
-    CSP_JAX = make_kmeans_initialization_of_CSP_JAX(DIMS, continuous_states, use_continuous_states)
+    CSP_JAX = make_kmeans_initialization_of_CSP_JAX(
+        DIMS, continuous_states, preinitialization_strategy_for_CSP, use_continuous_states
+    )
     # TODO: Support fixed or random draws from prior.
     ETP_JAX = make_tpm_only_initialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
     # TODO: Support fixed or random draws from prior.

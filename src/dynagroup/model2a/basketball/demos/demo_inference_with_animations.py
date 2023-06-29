@@ -18,7 +18,10 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import Dims
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
@@ -36,7 +39,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_inference_with_animations/"
+save_dir = "/Users/mwojno01/Desktop/TRY_bb_with_new_CSP_preinit/"
 
 # Data properties
 event_end_times = None
@@ -46,6 +49,8 @@ event_end_times = None
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
+
 
 # Model specification
 K = 5
@@ -77,7 +82,7 @@ event_start_stop_idxs = []
 
 num_moments_so_far = 0
 for event_idx in event_idxs:
-    event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=1)
+    event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=5)
     if animate:
         print(f"Now animating event idx {event_idx}, which has type {event.label}")
         animate_event(event)
@@ -139,6 +144,7 @@ results_init = smart_initialize_model_2a(
     xs,
     event_end_times,
     model_basketball,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,

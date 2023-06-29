@@ -12,7 +12,10 @@ from dynagroup.model2a.figure8.generate import (
 )
 from dynagroup.model2a.figure8.mask import make_mask_of_which_continuous_states_to_use
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import dims_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -59,6 +62,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
@@ -171,6 +175,7 @@ results_init = smart_initialize_model_2a(
     xs_for_inference,
     event_end_times,
     figure8_model_JAX,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,

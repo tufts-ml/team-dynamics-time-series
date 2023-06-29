@@ -97,7 +97,9 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_retest_fig8_third_option_CSP_kmeans_init_2/"
+save_dir = (
+    "/Users/mwojno01/Desktop/TMP_retest_fig8_third_option_CSP_kmeans_post_bugfix_v2_remasked_2/"
+)
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -271,7 +273,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     num_M_step_iters,
     system_transition_prior,
     system_covariates,
-    jnp.asarray(use_continuous_states),
+    use_continuous_states,
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )

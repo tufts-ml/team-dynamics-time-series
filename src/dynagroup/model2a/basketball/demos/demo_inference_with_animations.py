@@ -6,6 +6,7 @@ import numpy as np
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
+from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import animate_event
 from dynagroup.model2a.basketball.data.baller2vec_format import (
     coords_from_moments,
@@ -35,7 +36,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_infernece_with_animations/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_inference_with_animations/"
 
 # Data properties
 event_end_times = None
@@ -64,6 +65,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # I/O
 ###
 
+
 animate = False
 event_idxs = [0, 1, 2, 3, 4]
 
@@ -75,7 +77,7 @@ event_start_stop_idxs = []
 
 num_moments_so_far = 0
 for event_idx in event_idxs:
-    event = get_event_in_baller2vec_format(event_idx)
+    event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=1)
     if animate:
         print(f"Now animating event idx {event_idx}, which has type {event.label}")
         animate_event(event)
@@ -88,6 +90,8 @@ for event_idx in event_idxs:
     events.extend([event])
 
 xs_unnormalized = coords_from_moments(moments)
+
+ensure_dir(save_dir)
 
 ###
 # Preprocess Data

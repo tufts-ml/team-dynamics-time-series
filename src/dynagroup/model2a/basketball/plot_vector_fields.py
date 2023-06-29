@@ -64,5 +64,6 @@ def plot_vector_fields(CSP: ContinuousStateParameters_Gaussian_JAX, J: Optional[
             axs[j, k].set_yticks([])
             axs[j, k].set_aspect("equal")
 
-    plt.tight_layout()
+    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)  # Adjust the spacing between subplots
     plt.show()

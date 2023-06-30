@@ -46,15 +46,16 @@ data_load_dir = "/Users/mwojno01/Desktop/"
 save_dir = "/Users/mwojno01/Desktop/TRY_bb_with_newer_CSP_preinit/"
 
 # Data properties
-event_end_times = None
 animate_raw_data = False
+event_end_times = None
+
 
 # Initialization
+animate_initialization = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
-animate_initialization = True
 
 
 # Model specification

@@ -59,7 +59,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 
 
 # Model specification
-K = 5
+K = 4
 L = 5
 
 # For inference
@@ -71,6 +71,10 @@ M_step_toggle_for_IP = "closed_form_gaussian"
 system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
+
+# For diagnostics
+animate_diagnostics = False
+
 
 ###
 # I/O
@@ -228,12 +232,18 @@ plot_vector_fields(params_learned.CSP, J=5)
 
 
 ### plot animation with system modes
-s_maxes = np.argmax(VES_summary.expected_regimes, 1)
-for event_idx, event in enumerate(events):
-    print(f"Now animating event idx {event_idx}, which has type {event.label}")
-    event_start_idx, event_stop_idx = (
-        event_start_stop_idxs[event_idx][0],
-        event_start_stop_idxs[event_idx][1],
+if animate_diagnostics:
+    J_FOCAL = 0
+    s_maxes = np.argmax(VES_summary.expected_regimes, 1)
+    most_likely_entity_states_after_CAVI = np.argmax(VEZ_summaries.expected_regimes, -1)
+    CSP_after_CAVI = params_learned.CSP  # JxKxDxD
+
+    # TODO: Give jersey label of the focal player in the title of the animation.
+    animate_events_over_vector_field_for_one_player(
+        events,
+        event_start_stop_idxs,
+        most_likely_entity_states_after_CAVI,
+        CSP_after_CAVI,
+        J_FOCAL,
+        s_maxes,
     )
-    model_dict_for_event = {"System state": s_maxes[event_start_idx:event_stop_idx]}
-    animate_event(event, model_dict_for_event)

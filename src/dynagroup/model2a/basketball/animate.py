@@ -285,7 +285,13 @@ def animate_events_over_vector_field_for_one_player(
     most_likely_entity_states: NumpyArray2D,
     CSP: ContinuousStateParameters_JAX,
     j_focal: int,
+    s_maxes: Optional[NumpyArray1D] = None,
 ) -> None:
+    """
+    Arguments:
+        s_maxes: An optional array giving the most likely system state for each timestep.
+            If provided, we create a model_dict object to pass to the `animate_event` function.
+    """
     for event_idx, event in enumerate(events):
         print(f"Now animating event idx {event_idx}, which has type {event.label}")
         event_start_idx, event_stop_idx = (
@@ -299,5 +305,8 @@ def animate_events_over_vector_field_for_one_player(
             "A_j": A_j_init,
             "b_j": b_j_init,
         }
-        model_dict_for_event = {}
+        if s_maxes is not None:
+            model_dict_for_event = {"System state": s_maxes[event_start_idx:event_stop_idx]}
+        else:
+            model_dict_for_event = None
         animate_event(event, model_dict_for_event, vector_field_dict_for_event)

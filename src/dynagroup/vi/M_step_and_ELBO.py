@@ -657,7 +657,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
                 Qs[j, k] = np.cov(residuals.T, aweights=weights)
             else:
                 print(
-                    f"State {k} for entity {j} has a summed observation weights of {sum_of_observation_weights:.02f} "
+                    f"\tState {k} for entity {j} has a summed observation weights of {sum_of_observation_weights:.02f} "
                     "which is insufficient for updating the CSP parameters."
                 )
     return ContinuousStateParameters_Gaussian_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))

@@ -167,7 +167,7 @@ def update(
         f"Period: {event.moments[n].period} "
         f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f} "
         f"Shot clock: {event.moments[n].shot_clock:.02f} "
-        f"n: {n}.  khat: {k_hat}"
+        f"n: {n}."
     )
 
     if model_dict is not None:

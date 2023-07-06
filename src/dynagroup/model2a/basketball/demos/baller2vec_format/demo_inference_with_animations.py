@@ -43,7 +43,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/TRY_bb_with_newer_CSP_preinit/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL/"
 
 # Data properties
 animate_raw_data = False
@@ -51,7 +51,7 @@ event_end_times = None
 
 
 # Initialization
-animate_initialization = False
+animate_initialization = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20

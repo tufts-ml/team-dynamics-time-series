@@ -1,3 +1,4 @@
+import warnings
 from typing import Callable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -27,10 +28,18 @@ def plot_fit_and_forecast_on_slice(
     find_t0_for_entity_sample: Callable,
     x_lim: Optional[Tuple] = None,
     y_lim: Optional[Tuple] = None,
-    filename_prefix: Optional[str] = None,
+    filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
 ) -> None:
     """
+
+    By fit and forecasting, we mean:
+        - fit: Compute the posterior mean over a certain segment of time.
+        - forecast: Forward sample from the model, given an initial trajectory and known
+            future system states. (This is useful for partial forecasting, assuming the model
+            was trained in such a way that the model learned system states without using info
+            from a heldout entity.)
+
     Arguments:
         continuous_states: jnp.array with shape (T, J, D)
         T_slice_max: The attempted number of timesteps in the slice that we work with for fitting and forecasting.
@@ -73,7 +82,7 @@ def plot_fit_and_forecast_on_slice(
         ###
         sample_entity = continuous_states[:, j]  # TxD
         DIMS = dims_from_params(params)
-        D, K = DIMS.D, DIMS.K
+        D = DIMS.D
         if DIMS.L > 1:
             tag = f"{filename_prefix}_HSDM_entity_{j}"
         elif DIMS.L == 1:
@@ -91,7 +100,7 @@ def plot_fit_and_forecast_on_slice(
         ###
         print("Plotting the truth (whole)")
         plt.close("all")
-        fig1 = plt.figure(figsize=(4, 6))
+        fig1 = plt.figure(figsize=figsize)
         im = plt.scatter(
             continuous_states[:, j, 0],
             continuous_states[:, j, 1],
@@ -99,12 +108,17 @@ def plot_fit_and_forecast_on_slice(
             cmap="cool",
             alpha=1.0,
         )
+        if y_lim:
+            plt.ylim(y_lim)
+        if x_lim:
+            plt.xlim(x_lim)
         fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
 
         ###
         # Function: compute fit via posterior means.
         ###
 
+        # Rk: It would also be possible to compute fit via sampling from `prob_entity_regimes_K`.
         A_j = params.CSP.As[j]
         b_j = params.CSP.bs[j]
 
@@ -112,10 +126,10 @@ def plot_fit_and_forecast_on_slice(
         x_means[0] = x_0
         times_of_interest = [t for t in range(t_0 + 1, t_end)]
         for i, time_of_interest in enumerate(times_of_interest):
-            for k in range(K):
-                x_means_KD = A_j @ x_means[i] + b_j
-                prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
-                x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
+            x_means_KD = A_j @ x_means[i] + b_j
+            prob_entity_regimes_K = VEZ_summaries.expected_regimes[time_of_interest, j]
+            x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
+            print(f"At time {i} the most likely regime is {np.argmax(prob_entity_regimes_K)}")
 
         fig = plt.figure(figsize=figsize)
         plt.scatter(
@@ -125,13 +139,33 @@ def plot_fit_and_forecast_on_slice(
             cmap="cool",
             alpha=1.0,
         )
-        fig.savefig(save_dir + f"{tag}_fit.pdf")
+        if y_lim:
+            plt.ylim(y_lim)
+        if x_lim:
+            plt.xlim(x_lim)
+        fig.savefig(save_dir + f"fit_via_posterior_means_{tag}.pdf")
 
         ###
         # Function: compute via simulation
         ###
 
+        warnings.warn(
+            f"The current implementation of (partial) forecasting assumes the interactions between entities "
+            "are determined top-down by knowing the system regome.  Is this true for the current model?"
+        )
         DIMS = dims_from_params(params)
+
+        # Rk: Our implementation of foreward sampling is a hack.  We really want to sample the j-th entity's
+        # trajectory given the system regimes.  But we don't have an API for that. So instead we just
+        # initialize all J entities with the x_0^(j) of interest, and pull out the j-th sampled trajectories.
+        # This implementaitonal strategy assumes that there is no recurrent feedback from the j'-th entities
+        # to the j-th enity other than via the system regime.  Is that true?
+
+        # Rk: The forecasting can be harder to get correct than the fitting because in forecasting we need
+        # to know IN ADVANCE the entity-level transitions (z_{t+1}^^j | z_t^^j, ...), whereas in fitting
+        # we already have good insight into these from the future data.
+        # A good model would be able to predict the above entity-level transitions in advance based
+        # on all the continuous states, x_t^^{1:J}.
         fixed_init_continuous_states = np.tile(x_0, (DIMS.J, 1))
         fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0], axis=1)
         fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0:t_end]
@@ -162,7 +196,7 @@ def plot_fit_and_forecast_on_slice(
                 plt.ylim(y_lim)
             if x_lim:
                 plt.xlim(x_lim)
-            fig1.savefig(save_dir + f"{tag}_sample_ahead_forecast_seed_{forecast_seed}.pdf")
+            fig1.savefig(save_dir + f"forecast_{tag}_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))
         cax = fig2.add_subplot()

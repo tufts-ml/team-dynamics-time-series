@@ -225,7 +225,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ###
 
 from dynagroup.diagnostics.fit_and_forecasting import (
-    evaluate_fit_and_partial_forecast_on_slice,
+    evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 
 
@@ -233,7 +233,7 @@ entity_idxs_for_forecasting = [0]
 
 find_t0_for_entity_sample = lambda x_vec: 280
 
-evaluate_fit_and_partial_forecast_on_slice(
+evaluate_posterior_mean_and_forward_simulation_on_slice(
     xs_for_inference,
     params_learned,
     VES_summary,

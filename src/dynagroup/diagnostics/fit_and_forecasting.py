@@ -12,10 +12,10 @@ from dynagroup.hmm_posterior import (
 from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D
+from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 
 
-def evaluate_fit_and_partial_forecast_on_slice(
+def evaluate_posterior_mean_and_forward_simulation_on_slice(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -26,6 +26,7 @@ def evaluate_fit_and_partial_forecast_on_slice(
     save_dir: str,
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
+    use_continuous_states: NumpyArray2D,
     x_lim: Optional[Tuple] = None,
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
@@ -33,9 +34,11 @@ def evaluate_fit_and_partial_forecast_on_slice(
 ) -> Tuple[NumpyArray1D, NumpyArray1D]:
     """
 
-    By fit and forecasting, we mean:
-        - fit: Compute the posterior mean over a certain segment of time.
-        - forecast: Forward sample from the model, given an initial trajectory and known
+    By posterior mean and forward simulation, we mean:
+        - posterior mean: Compute the posterior mean over a certain segment of time.
+            (This is useful for evaluating model fit, assuming that the model was trained in such as way that
+            the model saw observations for the period of time over which the posterior mean was computed.)
+        - forward simulation: Forward sample from the model, given an initial trajectory and known
             future system states. (This is useful for partial forecasting, assuming the model
             was trained in such a way that the model learned system states without using info
             from a heldout entity.)
@@ -47,9 +50,11 @@ def evaluate_fit_and_partial_forecast_on_slice(
         entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
             indices provided.
         find_t0_for_entity_sample: Function converting entity sample (in (T,D)) to initial time for forecasting
+        use_continuous_states: boolean array of shape (T,J). If true, the continuous states were observed
+            (not masked) during initialization and inference.
 
     Returns:
-        MSEs_fit, MSEs_forecast.  Each is an array of size (J,) that gives the performance for each of the
+        MSEs_posterior_mean, MSEs_forward_sim.  Each is an array of size (J,) that gives the performance for each of the
             J entities.
     """
 
@@ -78,29 +83,37 @@ def evaluate_fit_and_partial_forecast_on_slice(
         )
 
     ###
-    # Now do the rest of the stuff
+    # Now iterate over entities
     ###
-    MSEs_fit = np.zeros(J)
-    MSEs_forecast = np.zeros(J)
+    MSEs_posterior_mean = np.zeros(J)
+    MSEs_forward_sim = np.zeros(J)
 
     for j in entity_idxs:
         ###
-        # Derived info
+        # Find starting and ending point for entity
         ###
         sample_entity = continuous_states[:, j]  # TxD
-        DIMS = dims_from_params(params)
-        D = DIMS.D
-        if DIMS.L > 1:
-            tag = f"{filename_prefix}_HSDM_entity_{j}"
-        elif DIMS.L == 1:
-            tag = f"{filename_prefix}_flat_SDM_entity_{j}"
-
-        ###
-        # Find starting point for entity
-        ###
         x_0 = sample_entity[t_0]
         t_end = np.min((t_0 + T_slice_max, T))
         T_slice = t_end - t_0
+
+        ###
+        # Determine if the observations were masked
+        ###
+        if use_continuous_states is None:
+            had_masking = False
+        else:
+            had_masking = False in use_continuous_states[t_0:t_end, j]
+
+        ###
+        # Construct entity-specific filename tags
+        ###
+        DIMS = dims_from_params(params)
+        D = DIMS.D
+        if DIMS.L > 1:
+            tag = f"{filename_prefix}_HSDM_entity_{j}_was_masked_{had_masking}"
+        elif DIMS.L == 1:
+            tag = f"{filename_prefix}_flat_SDM_entity_{j}_was_masked_{had_masking}"
 
         ###
         # Plotting the truth for the whole entity.
@@ -122,7 +135,7 @@ def evaluate_fit_and_partial_forecast_on_slice(
         fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
 
         ###
-        # Function: compute fit via posterior means.
+        # Compute posterior means (useful for evaluting model fit)
         ###
 
         # Rk: It would also be possible to compute fit via sampling from `prob_entity_regimes_K`.
@@ -141,7 +154,7 @@ def evaluate_fit_and_partial_forecast_on_slice(
         # MSE
         ground_truth = continuous_states[t_0:t_end, j]
         MSE_fit = np.mean((ground_truth - x_means) ** 2)
-        MSEs_fit[j] = MSE_fit
+        MSEs_posterior_mean[j] = MSE_fit
 
         # plot
         fig = plt.figure(figsize=figsize)
@@ -169,12 +182,12 @@ def evaluate_fit_and_partial_forecast_on_slice(
         fig.savefig(save_dir + f"fit_via_posterior_means_{tag}.pdf")
 
         ###
-        # Function: compute via simulation
+        # Compute forward simulations (useful for evaluating partial forecasts)
         ###
 
         warnings.warn(
             f"The current implementation of (partial) forecasting assumes the interactions between entities "
-            "are determined top-down by knowing the system regome.  Is this true for the current model?"
+            "are determined top-down by knowing the system regime.  Is this true for the current model?"
         )
         DIMS = dims_from_params(params)
 
@@ -195,7 +208,7 @@ def evaluate_fit_and_partial_forecast_on_slice(
 
         for forecast_seed in forecast_seeds:
             print(
-                f"Plotting the partial forecast for entity {j} using forecast_seed {forecast_seed}."
+                f"Plotting the forward simulation for entity {j} using forecast_seed {forecast_seed}."
             )
             sample_ahead = sample_team_dynamics(
                 params,
@@ -209,8 +222,8 @@ def evaluate_fit_and_partial_forecast_on_slice(
 
             # MSE
             ground_truth = continuous_states[t_0:t_end, j]
-            MSE_forecast = np.mean((ground_truth - sample_ahead.xs[:, j]) ** 2)
-            MSEs_forecast[j] = MSE_forecast
+            MSE_forward_sim = np.mean((ground_truth - sample_ahead.xs[:, j]) ** 2)
+            MSEs_forward_sim[j] = MSE_forward_sim
 
             # plot
             fig1 = plt.figure(figsize=figsize)
@@ -233,7 +246,7 @@ def evaluate_fit_and_partial_forecast_on_slice(
                 plt.ylim(y_lim)
             if x_lim:
                 plt.xlim(x_lim)
-            plt.title(f"MSE: {MSE_forecast:.05f}")
+            plt.title(f"MSE: {MSE_forward_sim:.05f}. Had masking: {had_masking}")
             fig1.savefig(save_dir + f"forecast_{tag}_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))
@@ -242,4 +255,4 @@ def evaluate_fit_and_partial_forecast_on_slice(
         cbar.set_label("Timesteps", rotation=90)
         plt.tight_layout()
         fig2.savefig(save_dir + "colorbar_clip.pdf")
-    return MSEs_fit, MSEs_forecast
+    return MSEs_posterior_mean, MSEs_forward_sim

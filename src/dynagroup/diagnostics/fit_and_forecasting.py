@@ -15,7 +15,7 @@ from dynagroup.sampler import sample_team_dynamics
 from dynagroup.types import JaxNumpyArray3D
 
 
-def plot_fit_and_forecast_on_slice(
+def plot_fit_and_partial_forecast_on_slice(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,

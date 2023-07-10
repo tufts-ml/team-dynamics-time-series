@@ -3,7 +3,7 @@ import numpy as np
 
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
-    plot_fit_and_forecast_on_slice_for_figure_8,
+    plot_fit_and_partial_forecast_on_slice_for_figure_8,
 )
 from dynagroup.model2a.figure8.generate import (
     ALL_PARAMS,
@@ -213,7 +213,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasting...adjusted...
 ###
 entity_idxs_for_forecasting = [0]
-plot_fit_and_forecast_on_slice_for_figure_8(
+plot_fit_and_partial_forecast_on_slice_for_figure_8(
     xs_for_inference,
     params_learned,
     VES_summary,

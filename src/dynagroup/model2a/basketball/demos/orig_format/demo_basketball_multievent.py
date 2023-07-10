@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.diagnostics.fit_and_forecasting import (
-    evaluate_fit_and_partial_forecast_on_slice,
+    evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
@@ -63,6 +63,11 @@ alpha_system_prior, kappa_system_prior = 1.0, 50.0
 DATA = get_data_in_original_formatting()
 system_covariates = DATA.has_ball_players
 M_s = np.shape(system_covariates)[1]
+
+###
+# MASKING
+###
+use_continuous_states = None
 
 ###
 # Setup Model
@@ -146,7 +151,7 @@ if do_init_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     T_slice_max = event_end - T_start
 
-    evaluate_fit_and_partial_forecast_on_slice(
+    evaluate_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,
@@ -157,6 +162,7 @@ if do_init_plots:
         save_dir=save_dir,
         entity_idxs=None,
         find_t0_for_entity_sample=lambda x: T_start,
+        use_continuous_states=use_continuous_states,
         x_lim=(0, 2),
         y_lim=(0, 1),
         filename_prefix=f"AFTER_INITIALIZATION_",
@@ -211,7 +217,7 @@ if do_post_inference_plots:
         figsize=(8, 6),
     )
 
-    evaluate_fit_and_partial_forecast_on_slice(
+    evaluate_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,

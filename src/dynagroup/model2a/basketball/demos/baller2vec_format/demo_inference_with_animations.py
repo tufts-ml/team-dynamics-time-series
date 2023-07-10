@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.diagnostics.fit_and_forecasting import (
-    evaluate_fit_and_partial_forecast_on_slice,
+    evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
@@ -18,6 +18,9 @@ from dynagroup.model2a.basketball.court import X_MAX_COURT, Y_MAX_COURT
 from dynagroup.model2a.basketball.data.baller2vec_format import (
     coords_from_moments,
     get_event_in_baller2vec_format,
+)
+from dynagroup.model2a.basketball.mask import (
+    make_mask_of_which_continuous_states_to_use,
 )
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.basketball.plot_vector_fields import plot_vector_fields
@@ -42,7 +45,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_Fixes/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_with_proper_forecasting/"
 
 # Data properties
 animate_raw_data = False
@@ -61,6 +64,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 K = 4
 L = 5
 
+
 # Inference
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
@@ -71,9 +75,14 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
+# Forecasting
+entity_to_mask = 9
+forecast_horizon = 20
+
+
 # CAVI diagnostics
 animate_diagnostics = False
-forecast_seeds = [0]
+forecast_seeds = [0, 1, 2]
 forecasting_entity_idxs = [i for i in range(10)]
 
 
@@ -117,6 +126,15 @@ xs = copy.copy(xs_unnormalized)
 xs[:, :, 0] /= X_MAX_COURT
 xs[:, :, 1] /= Y_MAX_COURT
 
+###
+# MASKING
+###
+use_continuous_states = make_mask_of_which_continuous_states_to_use(
+    xs,
+    entity_to_mask,
+    forecast_horizon,
+)
+
 
 ###
 # Setup Model
@@ -155,6 +173,8 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
+    system_covariates,
+    use_continuous_states,
 )
 params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
@@ -210,6 +230,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     num_M_step_iters,
     system_transition_prior,
     system_covariates,
+    use_continuous_states,
 )
 
 
@@ -222,9 +243,9 @@ plot_vector_fields(params_learned.CSP, J=5)
 
 ### Plot fit and forecasting
 forecasting_max_T = np.shape(xs)[0]
-forecasting_find_t0_for_entity_sample = lambda x: forecasting_max_T - 20
+forecasting_find_t0_for_entity_sample = lambda x: forecasting_max_T - forecast_horizon
 
-MSEs_fit, MSEs_forecast = evaluate_fit_and_partial_forecast_on_slice(
+MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
     VES_summary,
@@ -235,12 +256,13 @@ MSEs_fit, MSEs_forecast = evaluate_fit_and_partial_forecast_on_slice(
     save_dir,
     forecasting_entity_idxs,
     forecasting_find_t0_for_entity_sample,
+    use_continuous_states,
     x_lim=(0, 1),
     y_lim=(0, 1),
     filename_prefix="",
     figsize=(8, 4),
 )
-MMSE_fit, MMSE_forecast = np.mean(MSEs_fit), np.mean(MSEs_forecast)
+MMSE_fit, MMSE_forecast = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
 print(
     f"The mean (across entities) MSEs for fit is {MMSE_fit:.03f} and forecasting is {MMSE_forecast:.03f}."
 )

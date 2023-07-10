@@ -1,11 +1,11 @@
 import jax.numpy as jnp
 import numpy as np
 
-from dynagroup.diagnostics.fit_and_forecasting import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice,
-)
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
+)
+from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
+    evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.diagnostics.team_slice import plot_team_slice
 from dynagroup.io import ensure_dir
@@ -158,7 +158,7 @@ if do_init_plots:
         results_init.EZ_summaries,
         T_slice_max,
         model_basketball,
-        forecast_seeds=[i + 1 for i in range(3)],
+        forward_simulation_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
         entity_idxs=None,
         find_t0_for_entity_sample=lambda x: T_start,
@@ -224,7 +224,7 @@ if do_post_inference_plots:
         results_init.EZ_summaries,
         T_slice_max,
         model_basketball,
-        forecast_seeds=[i + 1 for i in range(3)],
+        forward_simulation_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
         entity_idxs=None,
         find_t0_for_entity_sample=lambda x: T_start,

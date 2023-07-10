@@ -22,7 +22,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     T_slice_max: int,
     model: Model,
-    forecast_seeds: List[int],
+    forward_simulation_seeds: List[int],
     save_dir: str,
     entity_idxs: Optional[List[int]],
     find_t0_for_entity_sample: Callable,
@@ -85,8 +85,9 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
     ###
     # Now iterate over entities
     ###
+    S = len(forward_simulation_seeds)
     MSEs_posterior_mean = np.zeros(J)
-    MSEs_forward_sim = np.zeros(J)
+    MSEs_forward_sim = np.zeros(J, S)
 
     for j in entity_idxs:
         ###
@@ -206,15 +207,15 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
         fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0], axis=1)
         fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0:t_end]
 
-        for forecast_seed in forecast_seeds:
+        for forward_simulation_seed in forward_simulation_seeds:
             print(
-                f"Plotting the forward simulation for entity {j} using forecast_seed {forecast_seed}."
+                f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
             )
             sample_ahead = sample_team_dynamics(
                 params,
                 T_slice,
                 model,
-                seed=forecast_seed,
+                seed=forward_simulation_seed,
                 fixed_system_regimes=fixed_system_regimes,
                 fixed_init_entity_regimes=fixed_init_entity_regimes,
                 fixed_init_continuous_states=fixed_init_continuous_states,
@@ -223,7 +224,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
             # MSE
             ground_truth = continuous_states[t_0:t_end, j]
             MSE_forward_sim = np.mean((ground_truth - sample_ahead.xs[:, j]) ** 2)
-            MSEs_forward_sim[j] = MSE_forward_sim
+            MSEs_forward_sim[j, forward_simulation_seed] = MSE_forward_sim
 
             # plot
             fig1 = plt.figure(figsize=figsize)
@@ -247,7 +248,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
             if x_lim:
                 plt.xlim(x_lim)
             plt.title(f"MSE: {MSE_forward_sim:.05f}. Had masking: {had_masking}")
-            fig1.savefig(save_dir + f"forecast_{tag}_seed_{forecast_seed}.pdf")
+            fig1.savefig(save_dir + f"forward_simulation_{tag}_seed_{forward_simulation_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))
         cax = fig2.add_subplot()
@@ -255,4 +256,4 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
         cbar.set_label("Timesteps", rotation=90)
         plt.tight_layout()
         fig2.savefig(save_dir + "colorbar_clip.pdf")
-    return MSEs_posterior_mean, MSEs_forward_sim
+    return MSEs_posterior_mean, np.mean(MSEs_forward_sim, axis=1)

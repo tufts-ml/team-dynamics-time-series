@@ -3,6 +3,9 @@ import copy
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.diagnostics.fit_and_forecasting import (
+    evaluate_fit_and_partial_forecast_on_slice,
+)
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
@@ -18,10 +21,6 @@ from dynagroup.model2a.basketball.data.baller2vec_format import (
 )
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.basketball.plot_vector_fields import plot_vector_fields
-from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
-    get_deterministic_trajectories,
-    plot_deterministic_trajectories,
-)
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -43,7 +42,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_Fixes/"
 
 # Data properties
 animate_raw_data = False
@@ -51,7 +50,7 @@ event_end_times = None
 
 
 # Initialization
-animate_initialization = True
+animate_initialization = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -62,7 +61,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 K = 4
 L = 5
 
-# For inference
+# Inference
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -72,8 +71,10 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
-# For diagnostics
+# CAVI diagnostics
 animate_diagnostics = False
+forecast_seeds = [0]
+forecasting_entity_idxs = [i for i in range(10)]
 
 
 ###
@@ -170,17 +171,12 @@ CSP_init = params_init.CSP  # JxKxDxD
 # Initialization Diagnostics
 ###
 
-### Plot learned dynamical modes
-deterministic_trajectories = get_deterministic_trajectories(
-    params_init.CSP.As, params_init.CSP.bs, num_time_samples=100, x_init=xs[0]
-)
-plot_deterministic_trajectories(deterministic_trajectories, "Init", save_dir=save_dir)
-
 ### Print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
 
 ### Plot vector fields
 plot_vector_fields(results_init.params.CSP, J=5)
+
 
 ### Animate some plays along with vector fields
 if animate_initialization:
@@ -218,20 +214,38 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 
 
 ###
-# Inference Diagnostics
+# CAVI  Diagnostics
 ###
 
-### plot learned dynamical modes
-deterministic_trajectories = get_deterministic_trajectories(
-    params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100, x_init=xs[0]
-)
-plot_deterministic_trajectories(deterministic_trajectories, "Learned", save_dir=save_dir)
-
-### plot vector fields
+### Plot vector fields
 plot_vector_fields(params_learned.CSP, J=5)
 
+### Plot fit and forecasting
+forecasting_max_T = np.shape(xs)[0]
+forecasting_find_t0_for_entity_sample = lambda x: forecasting_max_T - 20
 
-### plot animation with system modes
+MSEs_fit, MSEs_forecast = evaluate_fit_and_partial_forecast_on_slice(
+    xs,
+    params_learned,
+    VES_summary,
+    VEZ_summaries,
+    forecasting_max_T,
+    model_basketball,
+    forecast_seeds,
+    save_dir,
+    forecasting_entity_idxs,
+    forecasting_find_t0_for_entity_sample,
+    x_lim=(0, 1),
+    y_lim=(0, 1),
+    filename_prefix="",
+    figsize=(8, 4),
+)
+MMSE_fit, MMSE_forecast = np.mean(MSEs_fit), np.mean(MSEs_forecast)
+print(
+    f"The mean (across entities) MSEs for fit is {MMSE_fit:.03f} and forecasting is {MMSE_forecast:.03f}."
+)
+
+### Plot animation with learned vector fields
 if animate_diagnostics:
     J_FOCAL = 0
     s_maxes = np.argmax(VES_summary.expected_regimes, 1)

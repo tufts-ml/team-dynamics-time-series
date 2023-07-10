@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.diagnostics.fit_and_forecasting import (
-    plot_fit_and_partial_forecast_on_slice,
+    evaluate_fit_and_partial_forecast_on_slice,
 )
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
@@ -146,7 +146,7 @@ if do_init_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     T_slice_max = event_end - T_start
 
-    plot_fit_and_partial_forecast_on_slice(
+    evaluate_fit_and_partial_forecast_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,
@@ -211,7 +211,7 @@ if do_post_inference_plots:
         figsize=(8, 6),
     )
 
-    plot_fit_and_partial_forecast_on_slice(
+    evaluate_fit_and_partial_forecast_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,

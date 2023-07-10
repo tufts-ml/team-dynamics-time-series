@@ -12,10 +12,10 @@ from dynagroup.hmm_posterior import (
 from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
-from dynagroup.types import JaxNumpyArray3D
+from dynagroup.types import JaxNumpyArray3D, NumpyArray1D
 
 
-def plot_fit_and_partial_forecast_on_slice(
+def evaluate_fit_and_partial_forecast_on_slice(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -30,7 +30,7 @@ def plot_fit_and_partial_forecast_on_slice(
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
-) -> None:
+) -> Tuple[NumpyArray1D, NumpyArray1D]:
     """
 
     By fit and forecasting, we mean:
@@ -47,6 +47,10 @@ def plot_fit_and_partial_forecast_on_slice(
         entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
             indices provided.
         find_t0_for_entity_sample: Function converting entity sample (in (T,D)) to initial time for forecasting
+
+    Returns:
+        MSEs_fit, MSEs_forecast.  Each is an array of size (J,) that gives the performance for each of the
+            J entities.
     """
 
     ###
@@ -76,6 +80,9 @@ def plot_fit_and_partial_forecast_on_slice(
     ###
     # Now do the rest of the stuff
     ###
+    MSEs_fit = np.zeros(J)
+    MSEs_forecast = np.zeros(J)
+
     for j in entity_idxs:
         ###
         # Derived info
@@ -131,6 +138,12 @@ def plot_fit_and_partial_forecast_on_slice(
             x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
             print(f"At time {i} the most likely regime is {np.argmax(prob_entity_regimes_K)}")
 
+        # MSE
+        ground_truth = continuous_states[t_0:t_end, j]
+        MSE_fit = np.mean((ground_truth - x_means) ** 2)
+        MSEs_fit[j] = MSE_fit
+
+        # plot
         fig = plt.figure(figsize=figsize)
         plt.scatter(
             x_means[:, 0],
@@ -139,10 +152,20 @@ def plot_fit_and_partial_forecast_on_slice(
             cmap="cool",
             alpha=1.0,
         )
+        plt.scatter(
+            ground_truth[:, 0],
+            ground_truth[:, 1],
+            c=[i for i in range(T_slice)],
+            cmap="cool",
+            marker="x",
+            alpha=0.25,
+        )
         if y_lim:
             plt.ylim(y_lim)
         if x_lim:
             plt.xlim(x_lim)
+
+        plt.title(f"MSE: {MSE_fit:.05f}")
         fig.savefig(save_dir + f"fit_via_posterior_means_{tag}.pdf")
 
         ###
@@ -184,6 +207,12 @@ def plot_fit_and_partial_forecast_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
+            # MSE
+            ground_truth = continuous_states[t_0:t_end, j]
+            MSE_forecast = np.mean((ground_truth - sample_ahead.xs[:, j]) ** 2)
+            MSEs_forecast[j] = MSE_forecast
+
+            # plot
             fig1 = plt.figure(figsize=figsize)
             im = plt.scatter(
                 sample_ahead.xs[:, j, 0],
@@ -192,10 +221,19 @@ def plot_fit_and_partial_forecast_on_slice(
                 cmap="cool",
                 alpha=1.0,
             )
+            plt.scatter(
+                ground_truth[:, 0],
+                ground_truth[:, 1],
+                c=[i for i in range(T_slice)],
+                cmap="cool",
+                marker="x",
+                alpha=0.25,
+            )
             if y_lim:
                 plt.ylim(y_lim)
             if x_lim:
                 plt.xlim(x_lim)
+            plt.title(f"MSE: {MSE_forecast:.05f}")
             fig1.savefig(save_dir + f"forecast_{tag}_seed_{forecast_seed}.pdf")
 
         fig2 = plt.figure(figsize=(2, 6))
@@ -204,3 +242,4 @@ def plot_fit_and_partial_forecast_on_slice(
         cbar.set_label("Timesteps", rotation=90)
         plt.tight_layout()
         fig2.savefig(save_dir + "colorbar_clip.pdf")
+    return MSEs_fit, MSEs_forecast

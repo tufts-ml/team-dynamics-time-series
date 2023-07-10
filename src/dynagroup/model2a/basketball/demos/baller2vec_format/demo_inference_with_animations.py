@@ -3,11 +3,11 @@ import copy
 import jax.numpy as jnp
 import numpy as np
 
-from dynagroup.diagnostics.fit_and_forecasting import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice,
-)
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
+)
+from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
+    evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
@@ -45,7 +45,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_with_proper_forecasting/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_with_proper_forward_sim/"
 
 # Data properties
 animate_raw_data = False
@@ -66,7 +66,7 @@ L = 5
 
 
 # Inference
-n_cavi_iterations = 10
+n_cavi_iterations = 5
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -82,8 +82,8 @@ forecast_horizon = 20
 
 # CAVI diagnostics
 animate_diagnostics = False
-forecast_seeds = [0, 1, 2]
-forecasting_entity_idxs = [i for i in range(10)]
+forward_simulation_seeds = [0, 1, 2]
+forward_simulation_entity_idxs = [i for i in range(10)]
 
 
 ###
@@ -241,30 +241,30 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Plot vector fields
 plot_vector_fields(params_learned.CSP, J=5)
 
-### Plot fit and forecasting
-forecasting_max_T = np.shape(xs)[0]
-forecasting_find_t0_for_entity_sample = lambda x: forecasting_max_T - forecast_horizon
+### Plot posterior mean and forward simulation
+forward_sim_max_T = np.shape(xs)[0]
+forward_sim_find_t0_for_entity_sample = lambda x: forward_sim_max_T - forecast_horizon
 
 MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
     VES_summary,
     VEZ_summaries,
-    forecasting_max_T,
+    forward_sim_max_T,
     model_basketball,
-    forecast_seeds,
+    forward_simulation_seeds,
     save_dir,
-    forecasting_entity_idxs,
-    forecasting_find_t0_for_entity_sample,
+    forward_simulation_entity_idxs,
+    forward_sim_find_t0_for_entity_sample,
     use_continuous_states,
     x_lim=(0, 1),
     y_lim=(0, 1),
     filename_prefix="",
     figsize=(8, 4),
 )
-MMSE_fit, MMSE_forecast = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
+MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
 print(
-    f"The mean (across entities) MSEs for fit is {MMSE_fit:.03f} and forecasting is {MMSE_forecast:.03f}."
+    f"The mean (across entities) MSEs for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
 )
 
 ### Plot animation with learned vector fields

@@ -224,7 +224,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasting...adjusted...
 ###
 
-from dynagroup.diagnostics.fit_and_forecasting import (
+from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
     evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 

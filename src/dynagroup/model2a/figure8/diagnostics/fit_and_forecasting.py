@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from dynagroup.diagnostics.fit_and_forecasting import (
+from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
     evaluate_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.hmm_posterior import (
@@ -46,7 +46,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     T_slice_max: int,
     model: Model,
-    forecast_seeds: List[int],
+    forward_simulation_seeds: List[int],
     save_dir: str,
     entity_idxs: Optional[List[int]] = None,
     filename_prefix: Optional[str] = None,
@@ -67,7 +67,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
         VEZ_summaries,
         T_slice_max,
         model,
-        forecast_seeds,
+        forward_simulation_seeds,
         save_dir,
         entity_idxs,
         find_t0_for_entity_sample,

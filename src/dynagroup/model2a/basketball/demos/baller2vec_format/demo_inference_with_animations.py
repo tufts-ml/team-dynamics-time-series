@@ -45,11 +45,13 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_NEWER_Basketball_mask_even_players_give_MSEs/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_BB_with_velocity_baseline_REDO_AGAIN/"
 
 # Data properties
 animate_raw_data = False
 event_end_times = None
+event_idxs = [0, 1, 2, 3, 4]
+
 
 # Model specification
 K = 4
@@ -76,7 +78,7 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasting
-entities_to_mask = [0, 2, 4, 6, 8]
+entities_to_mask = [1, 3, 5, 6, 9]
 forecast_horizon = 20
 
 # CAVI diagnostics
@@ -96,7 +98,7 @@ if model_adjustment == "one_system_regime":
 # I/O
 ###
 
-event_idxs = [0, 1, 2, 3, 4]
+ensure_dir(save_dir)
 
 # get moments
 events = []
@@ -109,7 +111,7 @@ for event_idx in event_idxs:
     event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=5)
     if animate_raw_data:
         print(f"Now animating event idx {event_idx}, which has type {event.label}")
-        animate_event(event)
+        animate_event(event, save_dir, "raw_data")
     moments.extend(event.moments)
     event_first_moment = num_moments_so_far
     num_moments = len(event.moments)
@@ -120,7 +122,6 @@ for event_idx in event_idxs:
 
 xs_unnormalized = coords_from_moments(moments)
 
-ensure_dir(save_dir)
 
 ###
 # Preprocess Data
@@ -208,6 +209,7 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
 (
     MSEs_via_posterior_mean_after_init,
     MSEs_via_forward_sims_after_init,
+    MSEs_via_velocity_baseline_after_init,
 ) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_init,
@@ -240,6 +242,8 @@ if animate_initialization:
         most_likely_entity_states_after_init,
         CSP_init,
         J_FOCAL,
+        save_dir,
+        "post_init",
     )
 
 
@@ -277,6 +281,7 @@ plot_vector_fields(params_learned.CSP, J=5)
 (
     MSEs_via_posterior_mean_after_CAVI,
     MSEs_via_forward_sims_after_CAVI,
+    MSEs_via_velocity_baseline_after_CAVI,
 ) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
@@ -311,5 +316,7 @@ if animate_diagnostics:
         most_likely_entity_states_after_CAVI,
         CSP_after_CAVI,
         J_FOCAL,
+        save_dir,
+        "post_CAVI",
         s_maxes,
     )

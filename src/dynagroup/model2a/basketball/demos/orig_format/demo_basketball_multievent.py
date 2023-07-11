@@ -5,7 +5,7 @@ from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
 from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice,
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.diagnostics.team_slice import plot_team_slice
 from dynagroup.io import ensure_dir
@@ -151,7 +151,7 @@ if do_init_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     forecast_horizon = event_end - T_start
 
-    MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,
@@ -167,11 +167,6 @@ if do_init_plots:
         y_lim=(0, 1),
         filename_prefix=f"AFTER_INITIALIZATION_",
         figsize=(8, 4),
-    )
-    MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
-    print(
-        f"The mean (across entities) MSEs after initialization "
-        f"for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
     )
 
 
@@ -222,7 +217,7 @@ if do_post_inference_plots:
         figsize=(8, 6),
     )
 
-    evaluate_posterior_mean_and_forward_simulation_on_slice(
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_learned,
         VES_summary,

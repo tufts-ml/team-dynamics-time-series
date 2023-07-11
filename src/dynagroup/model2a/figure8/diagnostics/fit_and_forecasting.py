@@ -4,7 +4,7 @@ from typing import List, Optional
 import numpy as np
 
 from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice,
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -39,7 +39,7 @@ def find_last_index_in_interval_where_array_value_is_close_to_desired_point(
 ###
 
 
-def evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -61,7 +61,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
         ending_index=len(continuous_states),
     )
 
-    return evaluate_posterior_mean_and_forward_simulation_on_slice(
+    return evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         continuous_states,
         params,
         VES_summary,

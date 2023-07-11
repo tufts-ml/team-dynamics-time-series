@@ -3,7 +3,7 @@ import numpy as np
 
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8,
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8,
 )
 from dynagroup.model2a.figure8.generate import (
     ALL_PARAMS,
@@ -213,7 +213,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasting...adjusted...
 ###
 entity_idxs_for_forecasting = [0]
-evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     xs_for_inference,
     params_learned,
     VES_summary,

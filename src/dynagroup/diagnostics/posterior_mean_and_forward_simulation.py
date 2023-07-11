@@ -50,7 +50,7 @@ def _get_filename_tag(
     return tag
 
 
-def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
+def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -70,6 +70,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     figsize: Optional[Tuple[int]] = (8, 4),
 ) -> Tuple[NumpyArray1D, NumpyArray2D]:
     """
+    A helper function for write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice
 
     By posterior mean and forward simulation, we mean:
         - posterior mean: Compute the posterior mean over a certain segment of time.
@@ -230,7 +231,10 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             filename_prefix,
             DIMS.L,
         )
-        fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}.pdf")
+        fig.savefig(
+            save_dir
+            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE{MSE_posterior_mean:.03f}.pdf"
+        )
 
         ###
         # Compute forward simulations (useful for evaluating partial forecasts)
@@ -316,7 +320,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             plt.title(f"MSE: {MSE_forward_sim:.05f}.")
             fig1.savefig(
                 save_dir
-                + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}.pdf"
+                + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
 
         fig2 = plt.figure(figsize=(2, 6))
@@ -347,7 +351,33 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
-) -> None:
+) -> Tuple[NumpyArray1D, NumpyArray2D]:
+    """
+    By posterior mean and forward simulation, we mean:
+        - posterior mean: Compute the posterior mean over a certain segment of time.
+            (This is useful for evaluating model fit, assuming that the model was trained in such as way that
+            the model saw observations for the period of time over which the posterior mean was computed.)
+        - forward simulation: Forward sample from the model, given an initial trajectory and known
+            future system states. (This is useful for partial forecasting, assuming the model
+            was trained in such a way that the model learned system states without using info
+            from a heldout entity.)
+
+    Arguments:
+        continuous_states: jnp.array with shape (T, J, D)
+        max_forward_sim_window: The attempted number of timesteps in the slice that we work with for forward simulating.
+            The actual window size could be less if there are not enough timesteps remaining in the sample.
+        entity_idxs:  If None, we plot results for all entities.  Else we just plot results for the entity
+            indices provided.
+        find_forward_sim_t0_for_entity_sample: Function converting entity sample (in (T,D)) to initial time for forecasting
+        use_continuous_states: boolean array of shape (T,J). If true, the continuous states were observed
+            (not masked) during initialization and inference.
+
+    Returns:
+        MSEs_posterior_mean: An array of size (J,) that describes the model performance for each of the
+            J entities.
+        MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
+            J entities for each of S simulations.
+    """
     # Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
     # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
     # q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
@@ -356,7 +386,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     (
         MSEs_posterior_mean,
         MSEs_forward_sims,
-    ) = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
+    ) = _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         continuous_states,
         params,
         VES_summary,
@@ -394,3 +424,4 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         }
     )
     df_eval.to_csv(os.path.join(save_dir, f"performance_MSEs_{filename_prefix}.csv"))
+    return MSEs_posterior_mean, MSEs_forward_sims

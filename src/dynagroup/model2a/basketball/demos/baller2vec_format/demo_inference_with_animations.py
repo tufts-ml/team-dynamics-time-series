@@ -45,12 +45,18 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_mask_even_players_give_MSEs/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_NEWER_Basketball_mask_even_players_give_MSEs/"
 
 # Data properties
 animate_raw_data = False
 event_end_times = None
 
+# Model specification
+K = 4
+L = 5
+
+# Model adjustments
+model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
 animate_initialization = False
@@ -58,12 +64,6 @@ seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
-
-
-# Model specification
-K = 4
-L = 5
-
 
 # Inference
 n_cavi_iterations = 5
@@ -79,11 +79,17 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 entities_to_mask = [0, 2, 4, 6, 8]
 forecast_horizon = 20
 
-
 # CAVI diagnostics
 animate_diagnostics = False
 forward_simulation_seeds = [0, 1, 2]
 forward_sim_and_posterior_mean_entity_idxs = [i for i in range(10)]
+
+###
+# MODEL ADJUSTMENTS
+###
+if model_adjustment == "one_system_regime":
+    L = 1
+    save_dir = save_dir.rstrip("/") + "_L=1/"
 
 
 ###
@@ -199,7 +205,10 @@ plot_vector_fields(results_init.params.CSP, J=5)
 
 ### Plot posterior means and forward simulations
 find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_horizon
-write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
+(
+    MSEs_via_posterior_mean_after_init,
+    MSEs_via_forward_sims_after_init,
+) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_init,
     results_init.ES_summary,
@@ -265,7 +274,10 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 plot_vector_fields(params_learned.CSP, J=5)
 
 ### Plot posterior mean and forward simulation
-write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
+(
+    MSEs_via_posterior_mean_after_CAVI,
+    MSEs_via_forward_sims_after_CAVI,
+) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
     VES_summary,

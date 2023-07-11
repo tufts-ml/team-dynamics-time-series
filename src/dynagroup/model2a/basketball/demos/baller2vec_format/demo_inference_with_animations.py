@@ -7,7 +7,7 @@ from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
 from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    evaluate_posterior_mean_and_forward_simulation_on_slice,
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
@@ -45,9 +45,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = (
-    "/Users/mwojno01/Desktop/DEVEL_Basketball_separate_forward_sim_and_posterior_mean_windows/"
-)
+save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_mask_even_players_give_MSEs/"
 
 # Data properties
 animate_raw_data = False
@@ -78,7 +76,7 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasting
-entity_to_mask = 9
+entities_to_mask = [0, 2, 4, 6, 8]
 forecast_horizon = 20
 
 
@@ -133,7 +131,7 @@ xs[:, :, 1] /= Y_MAX_COURT
 ###
 use_continuous_states = make_mask_of_which_continuous_states_to_use(
     xs,
-    entity_to_mask,
+    entities_to_mask,
     forecast_horizon,
 )
 
@@ -201,7 +199,7 @@ plot_vector_fields(results_init.params.CSP, J=5)
 
 ### Plot posterior means and forward simulations
 find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_horizon
-MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
+write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_init,
     results_init.ES_summary,
@@ -220,15 +218,7 @@ MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simu
     filename_prefix="AFTER_INITIALIZATION_",
     figsize=(8, 4),
 )
-# Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
-# Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
-# q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
-# long and regular time series, this probably wouldn't play a big role.
-MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
-print(
-    f"The mean (across entities) MSEs after initialization "
-    f"for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
-)
+
 
 ### Animate some plays along with vector fields
 if animate_initialization:
@@ -275,7 +265,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 plot_vector_fields(params_learned.CSP, J=5)
 
 ### Plot posterior mean and forward simulation
-MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
+write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
     VES_summary,
@@ -293,10 +283,6 @@ MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simu
     y_lim=(0, 1),
     filename_prefix="",
     figsize=(8, 4),
-)
-MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
-print(
-    f"The mean (across entities) MSEs for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
 )
 
 ### Plot animation with learned vector fields

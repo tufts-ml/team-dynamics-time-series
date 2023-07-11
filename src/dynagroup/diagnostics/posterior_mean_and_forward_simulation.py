@@ -1,8 +1,10 @@
+import os
 import warnings
 from typing import Callable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from dynagroup.eda.show_trajectory_slices import plot_trajectory_slice
 from dynagroup.hmm_posterior import (
@@ -48,7 +50,7 @@ def _get_filename_tag(
     return tag
 
 
-def evaluate_posterior_mean_and_forward_simulation_on_slice(
+def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     continuous_states: JaxNumpyArray3D,
     params: AllParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
@@ -66,7 +68,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
-) -> Tuple[NumpyArray1D, NumpyArray1D]:
+) -> Tuple[NumpyArray1D, NumpyArray2D]:
     """
 
     By posterior mean and forward simulation, we mean:
@@ -89,8 +91,10 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
             (not masked) during initialization and inference.
 
     Returns:
-        MSEs_posterior_mean, MSEs_forward_sim.  Each is an array of size (J,) that gives the performance for each of the
+        MSEs_posterior_mean: An array of size (J,) that describes the model performance for each of the
             J entities.
+        MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
+            J entities for each of S simulations.
     """
 
     ###
@@ -110,7 +114,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
     ###
     S = len(forward_simulation_seeds)
     MSEs_posterior_mean = np.zeros(J)
-    MSEs_forward_sim = np.zeros((J, S))
+    MSEs_forward_sims = np.zeros((J, S))
 
     for j in entity_idxs:
         ###
@@ -274,7 +278,7 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
             # MSE
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
             MSE_forward_sim = np.mean((ground_truth_forward_sim - sample_ahead.xs[:, j]) ** 2)
-            MSEs_forward_sim[j, s] = MSE_forward_sim
+            MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
             # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
             # q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
@@ -321,4 +325,72 @@ def evaluate_posterior_mean_and_forward_simulation_on_slice(
         cbar.set_label("Timesteps", rotation=90)
         plt.tight_layout()
         fig2.savefig(save_dir + "colorbar_clip.pdf")
-    return MSEs_posterior_mean, np.mean(MSEs_forward_sim, axis=1)
+    return MSEs_posterior_mean, MSEs_forward_sims
+
+
+def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
+    continuous_states: JaxNumpyArray3D,
+    params: AllParameters_JAX,
+    VES_summary: HMM_Posterior_Summary_JAX,
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    model: Model,
+    forward_simulation_seeds: List[int],
+    save_dir: str,
+    use_continuous_states: NumpyArray2D,
+    entity_idxs: Optional[List[int]],
+    find_forward_sim_t0_for_entity_sample: Callable,
+    max_forward_sim_window: int,
+    find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
+    max_posterior_mean_window: Optional[int] = None,
+    x_lim: Optional[Tuple] = None,
+    y_lim: Optional[Tuple] = None,
+    filename_prefix: Optional[str] = "",
+    figsize: Optional[Tuple[int]] = (8, 4),
+    verbose: Optional[bool] = True,
+) -> None:
+    # Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
+    # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
+    # q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
+    # long and regular time series, this probably wouldn't play a big role.
+
+    (
+        MSEs_posterior_mean,
+        MSEs_forward_sims,
+    ) = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
+        continuous_states,
+        params,
+        VES_summary,
+        VEZ_summaries,
+        model,
+        forward_simulation_seeds,
+        save_dir,
+        use_continuous_states,
+        entity_idxs,
+        find_forward_sim_t0_for_entity_sample,
+        max_forward_sim_window,
+        find_posterior_mean_t0_for_entity_sample,
+        max_posterior_mean_window,
+        x_lim,
+        y_lim,
+        filename_prefix,
+        figsize,
+    )
+
+    MMSE_posterior_mean = np.mean(MSEs_posterior_mean)
+    MMSE_forward_sim, mean_median_MSE_forward_sim = np.mean(MSEs_forward_sims), np.mean(
+        np.median(MSEs_forward_sims, 1)
+    )
+    if verbose:
+        print(
+            f"After initialization, the mean (across entities) MSE for posterior mean is {MMSE_posterior_mean:.03f}."
+            f"The mean (across entities and sims) MSE for forward sim is is {MMSE_posterior_mean:.03f}."
+            f"The mean (across entities) median (across simulations) MSEs for forward sim is {mean_median_MSE_forward_sim:.03f}."
+        )
+    df_eval = pd.DataFrame(
+        {
+            "Mean MSE for posterior mean": [MMSE_posterior_mean],
+            "Mean MSE for forward sim": [MMSE_forward_sim],
+            "Mean Median MSE for forward sim": [mean_median_MSE_forward_sim],
+        }
+    )
+    df_eval.to_csv(os.path.join(save_dir, f"performance_MSEs_{filename_prefix}.csv"))

@@ -231,7 +231,7 @@ from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
 
 entity_idxs_for_forecasting = [0]
 
-find_t0_for_entity_sample = lambda x_vec: 280
+find_forward_sim_t0_for_entity_sample = lambda x_vec: 280
 
 evaluate_posterior_mean_and_forward_simulation_on_slice(
     xs_for_inference,
@@ -243,7 +243,7 @@ evaluate_posterior_mean_and_forward_simulation_on_slice(
     seeds_for_forecasting,
     save_dir,
     entity_idxs_for_forecasting,
-    find_t0_for_entity_sample,
+    find_forward_sim_t0_for_entity_sample,
     y_lim=(-2.5, 2.5),
     filename_prefix=f"adjustment_{MODEL_ADJUSTMENT}_",
 )

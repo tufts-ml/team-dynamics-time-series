@@ -97,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_fig8_post_CSP_bugfix/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_fig8_after_fit_and_forecasting_update/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -247,6 +247,7 @@ if show_plots_after_init:
         model,
         seeds_for_forecasting,
         save_dir,
+        use_continuous_states,
         entity_idxs_for_forecasting,
         filename_prefix=f"AFTER_INITIALIZATION_adjustment_{model_adjustment}_",
     )
@@ -315,6 +316,7 @@ evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     model,
     seeds_for_forecasting,
     save_dir,
+    use_continuous_states,
     entity_idxs_for_forecasting,
     filename_prefix=f"adjustment_{model_adjustment}_",
 )

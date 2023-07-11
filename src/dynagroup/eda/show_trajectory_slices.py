@@ -41,6 +41,7 @@ def plot_trajectory_slice(
     save_dir: Optional[str] = None,
     show_plot: Optional[bool] = False,
     figsize: Optional[Tuple[int]] = (4, 6),
+    title_prefix: Optional[str] = "truth_clip",
 ) -> None:
     """
     Arguments:
@@ -67,6 +68,6 @@ def plot_trajectory_slice(
     if x_lim:
         plt.xlim(x_lim)
     if save_dir is not None:
-        fig.savefig(save_dir + f"truth_clip_entity_{entity_idx}.pdf")
+        fig.savefig(save_dir + title_prefix + f"_entity_{entity_idx}.pdf")
     if show_plot:
         plt.show()

@@ -222,6 +222,7 @@ evaluate_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     model,
     seeds_for_forecasting,
     save_dir,
+    use_continuous_states,
     entity_idxs_for_forecasting,
     filename_prefix=f"adjustment_{MODEL_ADJUSTMENT}_",
 )

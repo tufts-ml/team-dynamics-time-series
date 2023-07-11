@@ -151,7 +151,10 @@ if do_init_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     forecast_horizon = event_end - T_start
 
-    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
+    (
+        MSEs_via_posterior_mean_after_init,
+        MSEs_via_forward_sims_after_init,
+    ) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,
@@ -217,7 +220,10 @@ if do_post_inference_plots:
         figsize=(8, 6),
     )
 
-    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
+    (
+        MSEs_via_posterior_mean_after_CAVI,
+        MSEs_via_forward_sims_after_CAVI,
+    ) = write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_learned,
         VES_summary,

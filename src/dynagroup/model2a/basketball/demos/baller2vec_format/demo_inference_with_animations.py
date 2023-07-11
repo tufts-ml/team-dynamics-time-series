@@ -45,7 +45,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_BB_with_velocity_baseline_REDO_AGAIN/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_BB_with_velocity_baseline_WITH_std_and_nans/"
 
 # Data properties
 animate_raw_data = False

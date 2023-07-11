@@ -17,6 +17,21 @@ from dynagroup.sampler import sample_team_dynamics
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 
 
+def _had_masking_bool(
+    use_continuous_states: NumpyArray2D,
+    j: int,
+    t_0: int,
+    t_end: int,
+) -> bool:
+    ###
+    # Determine if the observations were masked
+    ###
+    if use_continuous_states is None:
+        return False
+    else:
+        return False in use_continuous_states[t_0:t_end, j]
+
+
 def _get_filename_tag(
     use_continuous_states: NumpyArray2D,
     j: int,
@@ -32,13 +47,8 @@ def _get_filename_tag(
         j: index of entity currently under investigation
         L: Number of system-level regimes
     """
-    ###
-    # Determine if the observations were masked
-    ###
-    if use_continuous_states is None:
-        had_masking = False
-    else:
-        had_masking = False in use_continuous_states[t_0:t_end, j]
+
+    had_masking = _had_masking_bool(use_continuous_states, j, t_0, t_end)
 
     ###
     # Construct entity-specific filename tags
@@ -96,8 +106,10 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over a time period requested for the posterior mean.
         MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
             J entities for each of S simulations over a time period requested for the forward sims.
+            The value is NaN if the entity was not masked.
         MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
             J entities over the same time period as requested for the forward sims.
+            The value is NaN if the entity was not masked.
     """
 
     ###
@@ -117,8 +129,8 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     ###
     S = len(forward_simulation_seeds)
     MSEs_posterior_mean = np.zeros(J)
-    MSEs_forward_sims = np.zeros((J, S))
-    MSEs_velocity_baseline = np.zeros(J)
+    MSEs_forward_sims = np.full((J, S), np.nan)  # value is NaN if entity was not masked
+    MSEs_velocity_baseline = np.full(J, np.nan)  # value is NaN if entity was not masked.
 
     for j in entity_idxs:
         ###
@@ -268,6 +280,10 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             t_0_forward_sim:t_end_forward_sim
         ]
 
+        had_masking = _had_masking_bool(
+            use_continuous_states, j, t_0_forward_sim, t_end_forward_sim
+        )
+
         for s, forward_simulation_seed in enumerate(forward_simulation_seeds):
             print(
                 f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
@@ -285,7 +301,8 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             # MSE
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
             MSE_forward_sim = np.mean((ground_truth_forward_sim - sample_ahead.xs[:, j]) ** 2)
-            MSEs_forward_sims[j, s] = MSE_forward_sim
+            if had_masking:
+                MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
             # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
             # q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
@@ -340,7 +357,8 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
         # MSE
         MSE_velocity_baseline = np.mean((ground_truth_forward_sim - velocity_baseline) ** 2)
-        MSEs_velocity_baseline[j] = MSE_velocity_baseline
+        if had_masking:
+            MSEs_velocity_baseline[j] = MSE_velocity_baseline
 
         # Plot
         fig = plt.figure(figsize=figsize)
@@ -432,8 +450,10 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
             J entities over a time period requested for the posterior mean.
         MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
             J entities for each of S simulations over a time period requested for the forward sims.
+            The value is NaN if the entity was not masked.
         MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
             J entities over the same time period as requested for the forward sims.
+            The value is NaN if the entity was not masked.
     """
     # Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
     # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
@@ -465,10 +485,10 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     )
 
     MMSE_posterior_mean = np.mean(MSEs_posterior_mean)
-    MMSE_forward_sim, mean_median_MSE_forward_sim = np.mean(MSEs_forward_sims), np.mean(
-        np.median(MSEs_forward_sims, 1)
+    MMSE_forward_sim, mean_median_MSE_forward_sim = np.nanmean(MSEs_forward_sims), np.nanmean(
+        np.nanmedian(MSEs_forward_sims, 1)
     )
-    MMSE_velocity_baseline = np.mean(MSEs_velocity_baseline)
+    MMSE_velocity_baseline = np.nanmean(MSEs_velocity_baseline)
     if verbose:
         print(
             f"After initialization, the mean (across entities) MSE for posterior mean is {MMSE_posterior_mean:.03f}."
@@ -479,9 +499,12 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     df_eval = pd.DataFrame(
         {
             "Mean MSE for posterior mean": [MMSE_posterior_mean],
+            "SD MSE for posterior mean": [np.std(MSEs_posterior_mean)],
             "Mean MSE for forward sim": [MMSE_forward_sim],
+            "SD MSE for forward sim": [np.nanstd(MSEs_forward_sims)],
             "Mean Median MSE for forward sim": [mean_median_MSE_forward_sim],
             "Mean MSE for velocity baseline": [MMSE_velocity_baseline],
+            "SD MSE for velocity baseline": [np.nanstd(MSEs_velocity_baseline)],
         }
     )
     df_eval.to_csv(os.path.join(save_dir, f"performance_MSEs_{filename_prefix}.csv"))

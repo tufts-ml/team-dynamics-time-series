@@ -45,7 +45,9 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_Basketball_with_proper_forward_sim/"
+save_dir = (
+    "/Users/mwojno01/Desktop/DEVEL_Basketball_separate_forward_sim_and_posterior_mean_windows/"
+)
 
 # Data properties
 animate_raw_data = False
@@ -83,7 +85,7 @@ forecast_horizon = 20
 # CAVI diagnostics
 animate_diagnostics = False
 forward_simulation_seeds = [0, 1, 2]
-forward_simulation_entity_idxs = [i for i in range(10)]
+forward_sim_and_posterior_mean_entity_idxs = [i for i in range(10)]
 
 
 ###
@@ -197,11 +199,42 @@ print_multi_level_regime_occupancies_after_init(results_init)
 ### Plot vector fields
 plot_vector_fields(results_init.params.CSP, J=5)
 
+### Plot posterior means and forward simulations
+find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_horizon
+MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
+    xs,
+    params_init,
+    results_init.ES_summary,
+    results_init.EZ_summaries,
+    model_basketball,
+    forward_simulation_seeds,
+    save_dir,
+    use_continuous_states,
+    forward_sim_and_posterior_mean_entity_idxs,
+    find_forward_sim_t0_for_entity_sample,
+    max_forward_sim_window=forecast_horizon,
+    find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,
+    max_posterior_mean_window=forecast_horizon,
+    x_lim=(0, 1),
+    y_lim=(0, 1),
+    filename_prefix="AFTER_INITIALIZATION_",
+    figsize=(8, 4),
+)
+# Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
+# Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
+# q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
+# long and regular time series, this probably wouldn't play a big role.
+MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
+print(
+    f"The mean (across entities) MSEs after initialization "
+    f"for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
+)
 
 ### Animate some plays along with vector fields
 if animate_initialization:
     J_FOCAL = 0
     # TODO: Give jersey label of the focal player in the title of the animation.
+    # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         events,
         event_start_stop_idxs,
@@ -242,21 +275,20 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 plot_vector_fields(params_learned.CSP, J=5)
 
 ### Plot posterior mean and forward simulation
-forward_sim_max_T = np.shape(xs)[0]
-forward_sim_find_t0_for_entity_sample = lambda x: forward_sim_max_T - forecast_horizon
-
 MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
     xs,
     params_learned,
     VES_summary,
     VEZ_summaries,
-    forward_sim_max_T,
     model_basketball,
     forward_simulation_seeds,
     save_dir,
-    forward_simulation_entity_idxs,
-    forward_sim_find_t0_for_entity_sample,
     use_continuous_states,
+    forward_sim_and_posterior_mean_entity_idxs,
+    find_forward_sim_t0_for_entity_sample,
+    max_forward_sim_window=forecast_horizon,
+    find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,
+    max_posterior_mean_window=forecast_horizon,
     x_lim=(0, 1),
     y_lim=(0, 1),
     filename_prefix="",

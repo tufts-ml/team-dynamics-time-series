@@ -149,24 +149,29 @@ if do_init_plots:
     event_duration = event_end - event_start
 
     T_start = int(event_start + pct_event_to_skip * (event_duration))
-    T_slice_max = event_end - T_start
+    forecast_horizon = event_end - T_start
 
-    evaluate_posterior_mean_and_forward_simulation_on_slice(
+    MSEs_posterior_mean, MSEs_forward_sim = evaluate_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
         params_init,
         results_init.ES_summary,
         results_init.EZ_summaries,
-        T_slice_max,
         model_basketball,
         forward_simulation_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
-        entity_idxs=None,
-        find_t0_for_entity_sample=lambda x: T_start,
         use_continuous_states=use_continuous_states,
+        forward_sim_and_posterior_mean_entity_idxs=None,
+        find_forward_sim_t0_for_entity_sample=lambda x: T_start,
+        max_forward_sim_window=forecast_horizon,
         x_lim=(0, 2),
         y_lim=(0, 1),
         filename_prefix=f"AFTER_INITIALIZATION_",
         figsize=(8, 4),
+    )
+    MMSE_posterior_mean, MMSE_forward_sim = np.mean(MSEs_posterior_mean), np.mean(MSEs_forward_sim)
+    print(
+        f"The mean (across entities) MSEs after initialization "
+        f"for posterior mean is {MMSE_posterior_mean:.03f} and forward sim is {MMSE_forward_sim:.03f}."
     )
 
 
@@ -203,12 +208,12 @@ if do_post_inference_plots:
     event_duration = event_end - event_start
 
     T_start = int(event_start + pct_event_to_skip * (event_duration))
-    T_slice_max = event_end - T_start
+    forecast_horizon = event_end - T_start
 
     plot_team_slice(
         DATA.positions,
         T_start,
-        T_slice_max,
+        forecast_horizon,
         s_hats,
         x_lim=(0, 2),
         y_lim=(0, 1),
@@ -219,15 +224,16 @@ if do_post_inference_plots:
 
     evaluate_posterior_mean_and_forward_simulation_on_slice(
         DATA.positions,
-        params_init,
-        results_init.ES_summary,
-        results_init.EZ_summaries,
-        T_slice_max,
+        params_learned,
+        VES_summary,
+        VEZ_summaries,
         model_basketball,
         forward_simulation_seeds=[i + 1 for i in range(3)],
         save_dir=save_dir,
+        use_continuous_states=use_continuous_states,
         entity_idxs=None,
-        find_t0_for_entity_sample=lambda x: T_start,
+        find_forward_sim_t0_for_entity_sample=lambda x: T_start,
+        max_forward_sim_window=forecast_horizon,
         x_lim=(0, 2),
         y_lim=(0, 1),
         filename_prefix=f"AFTER_CAVI_",

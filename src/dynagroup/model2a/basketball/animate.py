@@ -1,3 +1,4 @@
+# import os
 from functools import partial
 from typing import Dict, List, Optional, Tuple
 
@@ -83,6 +84,22 @@ def unnorm(coords: NumpyArray2D) -> NumpyArray2D:
     coords_unnorm[:, 0] = coords[:, 0] * X_MAX_COURT
     coords_unnorm[:, 1] = coords[:, 1] * Y_MAX_COURT
     return coords_unnorm
+
+
+# def gridify(vector : NumpyArray1D, n_reps: int) -> NumpyArray2D:
+#     """
+#     Repeats each element of vector `n_reps` times and makes it a row in a matrix.
+#     """
+#     return np.reshape(np.repeat(vector, n_reps), (n_reps, n_reps))
+
+
+# ###
+# # GRID CONSTANTS
+# ###
+
+
+# X_NORM_GRID = gridify(X_NORM, N_BINS_PER_AXIS)
+# Y_NORM_GRID = gridify(Y_NORM, N_BINS_PER_AXIS).T
 
 
 ###
@@ -182,6 +199,8 @@ def update(
 
 def animate_event(
     event: Event,
+    save_dir: str,
+    filename_postfix: Optional[str] = "",
     model_dict: Optional[Dict[str, NumpyArray1D]] = None,
     vector_field_dict: Optional[Dict] = None,
 ):
@@ -277,6 +296,10 @@ def animate_event(
         repeat=False,
     )
     plt.show()
+    # basename = play_description +"_" + filename_postfix + ".mp4"
+    # filepath = os.path.join(save_dir, basename)
+    # ani.save(filepath, dpi=100,fps=5)
+    # plt.close('all') #close the plot
 
 
 def animate_events_over_vector_field_for_one_player(
@@ -285,6 +308,8 @@ def animate_events_over_vector_field_for_one_player(
     most_likely_entity_states: NumpyArray2D,
     CSP: ContinuousStateParameters_JAX,
     j_focal: int,
+    save_dir: str,
+    filename_postfix: Optional[str] = "",
     s_maxes: Optional[NumpyArray1D] = None,
 ) -> None:
     """
@@ -309,4 +334,7 @@ def animate_events_over_vector_field_for_one_player(
             model_dict_for_event = {"System state": s_maxes[event_start_idx:event_stop_idx]}
         else:
             model_dict_for_event = None
-        animate_event(event, model_dict_for_event, vector_field_dict_for_event)
+        filename_postfix += f"_focal_player_{j_focal}"
+        animate_event(
+            event, save_dir, filename_postfix, model_dict_for_event, vector_field_dict_for_event
+        )

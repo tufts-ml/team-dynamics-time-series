@@ -68,7 +68,7 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
-) -> Tuple[NumpyArray1D, NumpyArray2D]:
+) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     A helper function for write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice
 
@@ -93,9 +93,11 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
     Returns:
         MSEs_posterior_mean: An array of size (J,) that describes the model performance for each of the
-            J entities.
+            J entities over a time period requested for the posterior mean.
         MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
-            J entities for each of S simulations.
+            J entities for each of S simulations over a time period requested for the forward sims.
+        MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
+            J entities over the same time period as requested for the forward sims.
     """
 
     ###
@@ -116,6 +118,7 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     S = len(forward_simulation_seeds)
     MSEs_posterior_mean = np.zeros(J)
     MSEs_forward_sims = np.zeros((J, S))
+    MSEs_velocity_baseline = np.zeros(J)
 
     for j in entity_idxs:
         ###
@@ -233,7 +236,7 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         )
         fig.savefig(
             save_dir
-            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE{MSE_posterior_mean:.03f}.pdf"
+            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf"
         )
 
         ###
@@ -323,13 +326,65 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
 
-        fig2 = plt.figure(figsize=(2, 6))
-        cax = fig2.add_subplot()
-        cbar = fig1.colorbar(im, cax=cax)
-        cbar.set_label("Timesteps", rotation=90)
-        plt.tight_layout()
-        fig2.savefig(save_dir + "colorbar_clip.pdf")
-    return MSEs_posterior_mean, MSEs_forward_sims
+        ###
+        # Compute velocity baseline
+        ###
+        # RK: We reuse the forward sim params for the velocity baseline
+        discrete_derivative = (
+            continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
+        )
+        velocity_baseline = np.zeros((T_slice_forward_sim, 2))
+        velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
+        for t in range(1, T_slice_forward_sim):
+            velocity_baseline[t] = velocity_baseline[t - 1] + discrete_derivative
+
+        # MSE
+        MSE_velocity_baseline = np.mean((ground_truth_forward_sim - velocity_baseline) ** 2)
+        MSEs_velocity_baseline[j] = MSE_velocity_baseline
+
+        # Plot
+        fig = plt.figure(figsize=figsize)
+        plt.scatter(
+            velocity_baseline[:, 0],
+            velocity_baseline[:, 1],
+            c=[i for i in range(T_slice_forward_sim)],
+            cmap="cool",
+            alpha=1.0,
+        )
+        plt.scatter(
+            ground_truth_forward_sim[:, 0],
+            ground_truth_forward_sim[:, 1],
+            c=[i for i in range(T_slice_forward_sim)],
+            cmap="cool",
+            marker="x",
+            alpha=0.25,
+        )
+        if y_lim:
+            plt.ylim(y_lim)
+        if x_lim:
+            plt.xlim(x_lim)
+
+        plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
+        tag_velocity_baseline = _get_filename_tag(
+            use_continuous_states,
+            j,
+            t_0_forward_sim,
+            t_end_forward_sim,
+            filename_prefix,
+            DIMS.L,
+        )
+        fig.savefig(
+            save_dir
+            + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+        )
+
+    fig2 = plt.figure(figsize=(2, 6))
+    cax = fig2.add_subplot()
+    cbar = fig1.colorbar(im, cax=cax)
+    cbar.set_label("Timesteps", rotation=90)
+    plt.tight_layout()
+    fig2.savefig(save_dir + "colorbar_clip.pdf")
+    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline
 
 
 def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
@@ -351,7 +406,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
-) -> Tuple[NumpyArray1D, NumpyArray2D]:
+) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     By posterior mean and forward simulation, we mean:
         - posterior mean: Compute the posterior mean over a certain segment of time.
@@ -374,9 +429,11 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
 
     Returns:
         MSEs_posterior_mean: An array of size (J,) that describes the model performance for each of the
-            J entities.
+            J entities over a time period requested for the posterior mean.
         MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
-            J entities for each of S simulations.
+            J entities for each of S simulations over a time period requested for the forward sims.
+        MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
+            J entities over the same time period as requested for the forward sims.
     """
     # Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
     # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
@@ -386,6 +443,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     (
         MSEs_posterior_mean,
         MSEs_forward_sims,
+        MSEs_velocity_baseline,
     ) = _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         continuous_states,
         params,
@@ -410,18 +468,21 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     MMSE_forward_sim, mean_median_MSE_forward_sim = np.mean(MSEs_forward_sims), np.mean(
         np.median(MSEs_forward_sims, 1)
     )
+    MMSE_velocity_baseline = np.mean(MSEs_velocity_baseline)
     if verbose:
         print(
             f"After initialization, the mean (across entities) MSE for posterior mean is {MMSE_posterior_mean:.03f}."
-            f"The mean (across entities and sims) MSE for forward sim is is {MMSE_posterior_mean:.03f}."
-            f"The mean (across entities) median (across simulations) MSEs for forward sim is {mean_median_MSE_forward_sim:.03f}."
+            f"\nThe mean (across entities and sims) MSE for forward sim is is {MMSE_posterior_mean:.03f}."
+            f"\nThe mean (across entities) median (across simulations) MSEs for forward sim is {mean_median_MSE_forward_sim:.03f}."
+            f"\nThe mean (across entities and sims) MSE for velocity baseline is {MMSE_velocity_baseline:.03f}."
         )
     df_eval = pd.DataFrame(
         {
             "Mean MSE for posterior mean": [MMSE_posterior_mean],
             "Mean MSE for forward sim": [MMSE_forward_sim],
             "Mean Median MSE for forward sim": [mean_median_MSE_forward_sim],
+            "Mean MSE for velocity baseline": [MMSE_velocity_baseline],
         }
     )
     df_eval.to_csv(os.path.join(save_dir, f"performance_MSEs_{filename_prefix}.csv"))
-    return MSEs_posterior_mean, MSEs_forward_sims
+    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline

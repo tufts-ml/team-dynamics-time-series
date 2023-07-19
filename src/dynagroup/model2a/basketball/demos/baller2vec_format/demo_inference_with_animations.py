@@ -45,7 +45,9 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_BB_with_velocity_baseline_WITH_std_and_nans/"
+save_dir = (
+    "/Users/mwojno01/Desktop/BB_Draft_Results_HSRDM_vs_velocity_baseline_forecast_odd_players_only/"
+)
 
 # Data properties
 animate_raw_data = False
@@ -78,7 +80,7 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasting
-entities_to_mask = [1, 3, 5, 6, 9]
+entities_to_mask = [1, 3, 5, 7, 9]
 forecast_horizon = 20
 
 # CAVI diagnostics
@@ -298,7 +300,7 @@ plot_vector_fields(params_learned.CSP, J=5)
     max_posterior_mean_window=forecast_horizon,
     x_lim=(0, 1),
     y_lim=(0, 1),
-    filename_prefix="",
+    filename_prefix="AFTER_CAVI_",
     figsize=(8, 4),
 )
 

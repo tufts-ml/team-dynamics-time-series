@@ -27,7 +27,7 @@ def get_data_in_original_formatting() -> Data:
 
     # covariates are (T_grand,M). The first two columns give the (x,y) positions of the ball. The third column
     # gives its radius (when in the air, the radius gets larger.)
-    DATA_LOAD_DIR = "/Users/mwojno01/Repos/dynagroup/data/basketball/"
+    DATA_LOAD_DIR = "/Users/mwojno01/Repos/dynagroup/data/basketball/orig_format/"
     POST_HALFTIME_TIMESTEP = 13841  # Visually extracted from filenames, below.
     positions_raw = np.load(
         DATA_LOAD_DIR

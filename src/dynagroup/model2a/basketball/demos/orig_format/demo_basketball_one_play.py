@@ -25,7 +25,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 Apply the group dynamics model to one play.
 Per the NBA-Player-Movements-MTW repo, this play is event 1 from 0021500492.json
 It can be visualized by running 
-python3 main.py --path=/Users/mwojno01/Repos/dynagroup/data/basketball/0021500492.json --event=
+python3 main.py --path=/Users/mwojno01/Repos/dynagroup/data/basketball/orig_format/0021500492.json --event=
 It has multiple turnovers.
 """
 

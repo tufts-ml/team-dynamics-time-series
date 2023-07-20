@@ -208,10 +208,14 @@ def get_event_in_baller2vec_format(event_idx: int, sampling_rate_Hz=5) -> Event:
     """
 
     ### Configs
-    path_to_game_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_X.npy"
-    path_to_event_label_data = "/Users/mwojno01/Repos/baller2vec_forked/data/games/0021500492_y.npy"
+    path_to_game_data = (
+        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_X.npy"
+    )
+    path_to_event_label_data = (
+        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_y.npy"
+    )
     path_to_baller2vec_config = (
-        "/Users/mwojno01/Repos/baller2vec_forked/data/baller2vec_config.pydict"
+        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/baller2vec_config.pydict"
     )
 
     ### Load the data

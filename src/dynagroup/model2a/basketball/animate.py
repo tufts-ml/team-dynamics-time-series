@@ -14,7 +14,7 @@ from dynagroup.model2a.basketball.court import (
     Y_MAX_COURT,
     Y_MIN_COURT,
 )
-from dynagroup.model2a.basketball.data.baller2vec_format import Event
+from dynagroup.model2a.basketball.data.baller2vec.main import Event
 from dynagroup.params import ContinuousStateParameters_JAX
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.util import compute_cartesian_product_of_two_1d_arrays

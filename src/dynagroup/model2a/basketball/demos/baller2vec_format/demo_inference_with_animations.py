@@ -11,13 +11,11 @@ from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
 )
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
-    animate_event,
     animate_events_over_vector_field_for_one_player,
 )
 from dynagroup.model2a.basketball.court import X_MAX_COURT, Y_MAX_COURT
-from dynagroup.model2a.basketball.data.baller2vec_format import (
-    coords_from_moments,
-    get_event_in_baller2vec_format,
+from dynagroup.model2a.basketball.data.baller2vec.main import (
+    get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.mask import (
     make_mask_of_which_continuous_states_to_use,
@@ -45,15 +43,12 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = (
-    "/Users/mwojno01/Desktop/BB_Draft_Results_HSRDM_vs_velocity_baseline_forecast_odd_players_only/"
-)
+save_dir = "/Users/mwojno01/Desktop/DEVEL_20_plays/"
 
 # Data properties
 animate_raw_data = False
 event_end_times = None
-event_idxs = [0, 1, 2, 3, 4]
-
+event_idxs = [i for i in range(20)]
 
 # Model specification
 K = 4
@@ -102,27 +97,11 @@ if model_adjustment == "one_system_regime":
 
 ensure_dir(save_dir)
 
-# get moments
-events = []
-moments = []
-event_start_stop_idxs = []
-
-
-num_moments_so_far = 0
-for event_idx in event_idxs:
-    event = get_event_in_baller2vec_format(event_idx, sampling_rate_Hz=5)
-    if animate_raw_data:
-        print(f"Now animating event idx {event_idx}, which has type {event.label}")
-        animate_event(event, save_dir, "raw_data")
-    moments.extend(event.moments)
-    event_first_moment = num_moments_so_far
-    num_moments = len(event.moments)
-    num_moments_so_far += num_moments
-    event_last_moment = num_moments_so_far
-    event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
-    events.extend([event])
-
-xs_unnormalized = coords_from_moments(moments)
+basketball_data = get_basketball_data_for_TOR_vs_CHA(
+    event_idxs,
+    sampling_rate_Hz=5,
+    filter_out_plays_where_TOR_hoop_side_is_1=True,
+)
 
 
 ###
@@ -131,7 +110,7 @@ xs_unnormalized = coords_from_moments(moments)
 
 # TODO: Move this (and `unnorm` function from the `animate` module) to the `court` module, which should control
 # all operations that have to do with the size of the basketball court (including normalizing and unnormalizing)
-xs = copy.copy(xs_unnormalized)
+xs = copy.copy(basketball_data.coords_unnormalized)
 xs[:, :, 0] /= X_MAX_COURT
 xs[:, :, 1] /= Y_MAX_COURT
 
@@ -239,8 +218,8 @@ if animate_initialization:
     # TODO: Give jersey label of the focal player in the title of the animation.
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
-        events,
-        event_start_stop_idxs,
+        basketball_data.events,
+        basketball_data.event_start_stop_idxs,
         most_likely_entity_states_after_init,
         CSP_init,
         J_FOCAL,
@@ -313,8 +292,8 @@ if animate_diagnostics:
 
     # TODO: Give jersey label of the focal player in the title of the animation.
     animate_events_over_vector_field_for_one_player(
-        events,
-        event_start_stop_idxs,
+        basketball_data.events,
+        basketball_data.event_start_stop_idxs,
         most_likely_entity_states_after_CAVI,
         CSP_after_CAVI,
         J_FOCAL,

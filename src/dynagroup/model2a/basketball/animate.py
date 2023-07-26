@@ -13,6 +13,7 @@ from dynagroup.model2a.basketball.court import (
     X_MIN_COURT,
     Y_MAX_COURT,
     Y_MIN_COURT,
+    unnormalize_coords,
 )
 from dynagroup.model2a.basketball.data.baller2vec.main import Event
 from dynagroup.params import ContinuousStateParameters_JAX
@@ -72,25 +73,6 @@ def draw_court(axis):
     # fig = plt.figure(figsize=(15,7.5))
     img = mpimg.imread("image/nba_court_T.png")
     plt.imshow(img, extent=axis, zorder=0)
-
-
-def unnorm(coords: NumpyArray2D) -> NumpyArray2D:
-    """
-    Take normalized basketball coordinates on the unit square [0,1] x [0,1]
-    and "unnormalize" them so that we're back in the original rectangle
-        [X_MIN_COURT, X_MAX_COURT] x [Y_MIN_COURT, Y_MAX_COURT] = [0,100] x [0,50]
-    """
-    coords_unnorm = np.zeros_like(coords)
-    coords_unnorm[:, 0] = coords[:, 0] * X_MAX_COURT
-    coords_unnorm[:, 1] = coords[:, 1] * Y_MAX_COURT
-    return coords_unnorm
-
-
-# def gridify(vector : NumpyArray1D, n_reps: int) -> NumpyArray2D:
-#     """
-#     Repeats each element of vector `n_reps` times and makes it a row in a matrix.
-#     """
-#     return np.reshape(np.repeat(vector, n_reps), (n_reps, n_reps))
 
 
 # ###
@@ -173,8 +155,8 @@ def update(
         A_j = vector_field_dict["A_j"][k_hat]
         b_j = vector_field_dict["b_j"][k_hat]
         dxydt_norm = XY_NORM.dot(A_j.T) + b_j - XY_NORM
-        xy = unnorm(XY_NORM)
-        dxydt = unnorm(dxydt_norm)
+        xy = unnormalize_coords(XY_NORM)
+        dxydt = unnormalize_coords(dxydt_norm)
         quiver_handle = ax.quiver(
             xy[:, 0], xy[:, 1], dxydt[:, 0], dxydt[:, 1], color=COLORS[k_hat % len(COLORS)]
         )

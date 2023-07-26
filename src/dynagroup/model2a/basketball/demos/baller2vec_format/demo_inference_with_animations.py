@@ -1,5 +1,3 @@
-import copy
-
 import jax.numpy as jnp
 import numpy as np
 
@@ -13,7 +11,7 @@ from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
 )
-from dynagroup.model2a.basketball.court import X_MAX_COURT, Y_MAX_COURT
+from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.main import (
     get_basketball_data_for_TOR_vs_CHA,
 )
@@ -43,12 +41,12 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_20_plays/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__REDO_after_moving_around_norm_coords_helper/"
 
 # Data properties
 animate_raw_data = False
 event_end_times = None
-event_idxs = [i for i in range(20)]
+event_idxs = [i for i in range(25)]
 
 # Model specification
 K = 4
@@ -75,7 +73,7 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasting
-entities_to_mask = [1, 3, 5, 7, 9]
+entities_to_mask = [0, 1, 2, 3, 4]
 forecast_horizon = 20
 
 # CAVI diagnostics
@@ -108,11 +106,7 @@ basketball_data = get_basketball_data_for_TOR_vs_CHA(
 # Preprocess Data
 ###
 
-# TODO: Move this (and `unnorm` function from the `animate` module) to the `court` module, which should control
-# all operations that have to do with the size of the basketball court (including normalizing and unnormalizing)
-xs = copy.copy(basketball_data.coords_unnormalized)
-xs[:, :, 0] /= X_MAX_COURT
-xs[:, :, 1] /= Y_MAX_COURT
+xs = normalize_coords(basketball_data.coords_unnormalized)
 
 ###
 # MASKING

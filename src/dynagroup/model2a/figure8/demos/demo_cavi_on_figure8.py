@@ -16,7 +16,7 @@ from dynagroup.model2a.figure8.diagnostics.entity_transitions import (
     investigate_entity_transition_probs_in_different_contexts,
 )
 from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
-    plot_fit_and_forecast_on_slice_for_figure_8,
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8,
 )
 from dynagroup.model2a.figure8.diagnostics.next_step import (
     compute_next_step_predictive_means,
@@ -35,7 +35,10 @@ from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
 )
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import dims_from_params, numpy_params_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -79,6 +82,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
@@ -93,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/TMP_rerun_fig8_to_make_plot/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_fig8_after_fit_and_forecasting_update/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -177,6 +181,7 @@ results_init = smart_initialize_model_2a(
     sample.xs,
     sample.event_end_times,
     figure8_model_JAX,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
@@ -233,7 +238,7 @@ if show_plots_after_init:
         title_prefix="forecasted (via init params)",
     )
 
-    plot_fit_and_forecast_on_slice_for_figure_8(
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
         sample.xs,
         params_init,
         results_init.ES_summary,
@@ -242,6 +247,7 @@ if show_plots_after_init:
         model,
         seeds_for_forecasting,
         save_dir,
+        use_continuous_states,
         entity_idxs_for_forecasting,
         filename_prefix=f"AFTER_INITIALIZATION_adjustment_{model_adjustment}_",
     )
@@ -266,7 +272,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     num_M_step_iters,
     system_transition_prior,
     system_covariates,
-    jnp.asarray(use_continuous_states),
+    use_continuous_states,
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )
@@ -301,7 +307,7 @@ for j in range(DIMS.J):
 
 ### Plot forecasting test
 
-plot_fit_and_forecast_on_slice_for_figure_8(
+evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     sample.xs,
     params_learned,
     VES_summary,
@@ -310,6 +316,7 @@ plot_fit_and_forecast_on_slice_for_figure_8(
     model,
     seeds_for_forecasting,
     save_dir,
+    use_continuous_states,
     entity_idxs_for_forecasting,
     filename_prefix=f"adjustment_{model_adjustment}_",
 )

@@ -13,9 +13,9 @@ from dynagroup.initialize import (
 )
 from dynagroup.model import Model
 from dynagroup.model2a.gaussian.initialize import (
-    make_data_free_initialization_of_EP_JAX,
-    make_data_free_initialization_of_ETP_JAX,
-    make_data_free_initialization_of_STP_JAX,
+    make_data_free_preinitialization_of_EP_JAX,
+    make_data_free_preinitialization_of_ETP_JAX,
+    make_data_free_preinitialization_of_STP_JAX,
 )
 from dynagroup.params import (
     ContinuousStateParameters_VonMises_JAX,
@@ -36,7 +36,7 @@ from dynagroup.von_mises.inference.arhmm import run_EM_for_von_mises_arhmm
 ###
 
 
-def make_data_free_initialization_of_IP_JAX(
+def make_data_free_preinitialization_of_IP_JAX(
     DIMS,
 ) -> InitializationParameters_VonMises_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
@@ -179,13 +179,13 @@ def fit_ARHMM_to_top_half_of_model(
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
     ### Initialization
-    ETP_JAX = make_data_free_initialization_of_ETP_JAX(
+    ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
         DIMS=DIMS,
         method_for_Psis="zeros",
         seed=seed,
     )  # Ps is (J, L, K, K)
 
-    STP_JAX = make_data_free_initialization_of_STP_JAX(
+    STP_JAX = make_data_free_preinitialization_of_STP_JAX(
         DIMS,
         method_for_Upsilon="rnorm",
         fixed_self_transition_prob=0.95,
@@ -305,7 +305,7 @@ def smart_initialize_model_2a_for_circles(
     ###
     # Run top half of model
     ###
-    IP_JAX = make_data_free_initialization_of_IP_JAX(DIMS)
+    IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
 
     num_M_step_iterations_for_ETP_gradient_descent = 10
     num_M_step_iterations_for_STP_gradient_descent = 10
@@ -328,6 +328,6 @@ def smart_initialize_model_2a_for_circles(
     ###
 
     # EP_JAX is a placeholder; not used for circle data (or any variant of Model 2a).
-    EP_JAX = make_data_free_initialization_of_EP_JAX(DIMS)
+    EP_JAX = make_data_free_preinitialization_of_EP_JAX(DIMS)
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw)

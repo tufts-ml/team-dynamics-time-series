@@ -9,7 +9,10 @@ from dynagroup.model2a.figure8.generate import (
 )
 from dynagroup.model2a.figure8.mask import make_mask_of_which_continuous_states_to_use
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
-from dynagroup.model2a.gaussian.initialize import smart_initialize_model_2a
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
 from dynagroup.params import dims_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
@@ -57,6 +60,7 @@ show_plots_after_init = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
@@ -182,6 +186,7 @@ results_init = smart_initialize_model_2a(
     xs_for_inference,
     event_end_times,
     figure8_model_JAX,
+    preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
@@ -219,14 +224,16 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasting...adjusted...
 ###
 
-from dynagroup.diagnostics.fit_and_forecasting import plot_fit_and_forecast_on_slice
+from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
+)
 
 
 entity_idxs_for_forecasting = [0]
 
-find_t0_for_entity_sample = lambda x_vec: 280
+find_forward_sim_t0_for_entity_sample = lambda x_vec: 280
 
-plot_fit_and_forecast_on_slice(
+evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     xs_for_inference,
     params_learned,
     VES_summary,
@@ -236,7 +243,7 @@ plot_fit_and_forecast_on_slice(
     seeds_for_forecasting,
     save_dir,
     entity_idxs_for_forecasting,
-    find_t0_for_entity_sample,
+    find_forward_sim_t0_for_entity_sample,
     y_lim=(-2.5, 2.5),
     filename_prefix=f"adjustment_{MODEL_ADJUSTMENT}_",
 )

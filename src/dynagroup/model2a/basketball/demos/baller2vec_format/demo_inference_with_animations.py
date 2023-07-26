@@ -41,7 +41,9 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__REDO_withunnormalized_MSEs/"
+save_dir = (
+    "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__DOUBLE_REDO_with_unnormalized_MSEs/"
+)
 
 # Data properties
 animate_raw_data = False

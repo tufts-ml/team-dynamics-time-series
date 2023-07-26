@@ -439,7 +439,7 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         )
         fig.savefig(
             save_dir
-            + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+            + f"forecast_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
         )
 
     fig2 = plt.figure(figsize=(2, 6))
@@ -534,7 +534,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     if verbose:
         print(
             f"After initialization, the mean (across entities) MSE for posterior mean is {MMSE_posterior_mean:.03f}."
-            f"\nThe mean (across entities and sims) MSE for forward sim is is {MMSE_posterior_mean:.03f}."
+            f"\nThe mean (across entities and sims) MSE for forward sim is is {MMSE_forward_sim:.03f}."
             f"\nThe mean (across entities) median (across simulations) MSEs for forward sim is {mean_median_MSE_forward_sim:.03f}."
             f"\nThe mean (across entities and sims) MSE for velocity baseline is {MMSE_velocity_baseline:.03f}."
         )

@@ -166,8 +166,6 @@ if do_init_plots:
         forward_sim_and_posterior_mean_entity_idxs=None,
         find_forward_sim_t0_for_entity_sample=lambda x: T_start,
         max_forward_sim_window=forecast_horizon,
-        x_lim=(0, 2),
-        y_lim=(0, 1),
         filename_prefix=f"AFTER_INITIALIZATION_",
         figsize=(8, 4),
     )
@@ -235,8 +233,6 @@ if do_post_inference_plots:
         entity_idxs=None,
         find_forward_sim_t0_for_entity_sample=lambda x: T_start,
         max_forward_sim_window=forecast_horizon,
-        x_lim=(0, 2),
-        y_lim=(0, 1),
         filename_prefix=f"AFTER_CAVI_",
         figsize=(8, 4),
     )

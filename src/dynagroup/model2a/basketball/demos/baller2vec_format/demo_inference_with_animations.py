@@ -41,7 +41,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__REDO_after_moving_around_norm_coords_helper/"
+save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__REDO_withunnormalized_MSEs/"
 
 # Data properties
 animate_raw_data = False
@@ -199,8 +199,6 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
     max_forward_sim_window=forecast_horizon,
     find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,
     max_posterior_mean_window=forecast_horizon,
-    x_lim=(0, 1),
-    y_lim=(0, 1),
     filename_prefix="AFTER_INITIALIZATION_",
     figsize=(8, 4),
 )
@@ -271,8 +269,6 @@ plot_vector_fields(params_learned.CSP, J=5)
     max_forward_sim_window=forecast_horizon,
     find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,
     max_posterior_mean_window=forecast_horizon,
-    x_lim=(0, 1),
-    y_lim=(0, 1),
     filename_prefix="AFTER_CAVI_",
     figsize=(8, 4),
 )

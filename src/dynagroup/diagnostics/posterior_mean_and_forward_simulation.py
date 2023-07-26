@@ -2,6 +2,7 @@ import os
 import warnings
 from typing import Callable, List, Optional, Tuple
 
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -12,11 +13,32 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
 )
 from dynagroup.model import Model
+from dynagroup.model2a.basketball.court import (
+    X_MAX_COURT,
+    X_MIN_COURT,
+    Y_MAX_COURT,
+    Y_MIN_COURT,
+    unnormalize_coords,
+)
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 
 
+###
+# CONSTANTS
+###
+
+# TODO: Move this to `court` file.  It's reused both here and in animate.
+# TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
+# so that I don't have to unnormalize all the time?!
+COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
+COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+
+
+###
+# FUNCTIONS
+###
 def _had_masking_bool(
     use_continuous_states: NumpyArray2D,
     j: int,
@@ -74,8 +96,6 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     max_forward_sim_window: int,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
-    x_lim: Optional[Tuple] = None,
-    y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
 ) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
@@ -111,6 +131,11 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
+    ###
+    # Constants
+    ###
+    X_LIM_COURT = (X_MIN_COURT, X_MAX_COURT)
+    Y_LIM_COURT = (Y_MIN_COURT, Y_MAX_COURT)
 
     ###
     # Upfront info
@@ -136,20 +161,22 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         ###
         # Plotting the truth for the whole entity.
         ###
+
         print("Plotting the truth (whole)")
         plt.close("all")
         fig1 = plt.figure(figsize=figsize)
+        plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
+        continuous_states_j_unnorm = unnormalize_coords(continuous_states[:, j])
         im = plt.scatter(
-            continuous_states[:, j, 0],
-            continuous_states[:, j, 1],
+            continuous_states_j_unnorm[:, 0],
+            continuous_states_j_unnorm[:, 1],
             c=[i for i in range(T)],
             cmap="cool",
             alpha=1.0,
+            zorder=1,  # Set zorder higher to draw the scatter plot over the image
         )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
+        plt.ylim(Y_LIM_COURT)
+        plt.xlim(X_LIM_COURT)
         fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
 
         ###
@@ -170,24 +197,24 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # Plot true trajectory slices
         ###
         plot_trajectory_slice(
-            continuous_states[:, j],
+            unnormalize_coords(continuous_states[:, j]),
             t_0_forward_sim,
             max_forward_sim_window,
             j,
-            x_lim,
-            y_lim,
+            X_LIM_COURT,
+            Y_LIM_COURT,
             save_dir,
             figsize=figsize,
             title_prefix="truth_for_forward_sim_clip",
         )
 
         plot_trajectory_slice(
-            continuous_states[:, j],
+            unnormalize_coords(continuous_states[:, j]),
             t_0_posterior_mean,
             max_posterior_mean_window,
             j,
-            x_lim,
-            y_lim,
+            X_LIM_COURT,
+            Y_LIM_COURT,
             save_dir,
             figsize=figsize,
             title_prefix="truth_for_posterior_mean_clip",
@@ -210,33 +237,37 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             x_means[i + 1] = np.einsum("kd, k -> d", x_means_KD, prob_entity_regimes_K)
             print(f"At time {i} the most likely regime is {np.argmax(prob_entity_regimes_K)}")
 
-        # MSE
+        # Unnorm
+        x_means_unnorm = unnormalize_coords(x_means)
         ground_truth_posterior_mean = continuous_states[t_0_posterior_mean:t_end_posterior_mean, j]
-        MSE_posterior_mean = np.mean((ground_truth_posterior_mean - x_means) ** 2)
+        ground_truth_posterior_mean_unnorm = unnormalize_coords(ground_truth_posterior_mean)
+
+        # MSE
+        MSE_posterior_mean = np.mean((ground_truth_posterior_mean_unnorm - x_means_unnorm) ** 2)
         MSEs_posterior_mean[j] = MSE_posterior_mean
 
         # plot
         fig = plt.figure(figsize=figsize)
+        plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
         plt.scatter(
-            x_means[:, 0],
-            x_means[:, 1],
+            x_means_unnorm[:, 0],
+            x_means_unnorm[:, 1],
             c=[i for i in range(T_slice_posterior_mean)],
             cmap="cool",
             alpha=1.0,
+            zorder=2,
         )
         plt.scatter(
-            ground_truth_posterior_mean[:, 0],
-            ground_truth_posterior_mean[:, 1],
+            ground_truth_posterior_mean_unnorm[:, 0],
+            ground_truth_posterior_mean_unnorm[:, 1],
             c=[i for i in range(T_slice_posterior_mean)],
             cmap="cool",
             marker="x",
             alpha=0.25,
+            zorder=1,
         )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
-
+        plt.ylim(Y_LIM_COURT)
+        plt.xlim(X_LIM_COURT)
         plt.title(f"MSE: {MSE_posterior_mean:.05f}")
         tag_posterior_mean = _get_filename_tag(
             use_continuous_states,
@@ -298,9 +329,15 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
-            # MSE
+            # Unnorm
+            sample_ahead_xs_j_unnorm = unnormalize_coords(sample_ahead.xs[:, j])
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
-            MSE_forward_sim = np.mean((ground_truth_forward_sim - sample_ahead.xs[:, j]) ** 2)
+            ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
+
+            # MSE
+            MSE_forward_sim = np.mean(
+                (ground_truth_forward_sim_unnorm - sample_ahead_xs_j_unnorm) ** 2
+            )
             if had_masking:
                 MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
@@ -310,25 +347,27 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
             # plot
             fig1 = plt.figure(figsize=figsize)
+            plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
+
             im = plt.scatter(
-                sample_ahead.xs[:, j, 0],
-                sample_ahead.xs[:, j, 1],
+                sample_ahead_xs_j_unnorm[:, 0],
+                sample_ahead_xs_j_unnorm[:, 1],
                 c=[i for i in range(t_0_forward_sim, t_end_forward_sim)],
                 cmap="cool",
                 alpha=1.0,
+                zorder=2,
             )
             plt.scatter(
-                ground_truth_forward_sim[:, 0],
-                ground_truth_forward_sim[:, 1],
+                ground_truth_forward_sim_unnorm[:, 0],
+                ground_truth_forward_sim_unnorm[:, 1],
                 c=[i for i in range(T_slice_forward_sim)],
                 cmap="cool",
                 marker="x",
                 alpha=0.25,
+                zorder=1,
             )
-            if y_lim:
-                plt.ylim(y_lim)
-            if x_lim:
-                plt.xlim(x_lim)
+            plt.ylim(Y_LIM_COURT)
+            plt.xlim(X_LIM_COURT)
             tag_forward_sim = _get_filename_tag(
                 use_continuous_states,
                 j,
@@ -355,32 +394,39 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         for t in range(1, T_slice_forward_sim):
             velocity_baseline[t] = velocity_baseline[t - 1] + discrete_derivative
 
+        # Unnorm
+        velocity_baseline_unnorm = unnormalize_coords(velocity_baseline)
+        ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
+
         # MSE
-        MSE_velocity_baseline = np.mean((ground_truth_forward_sim - velocity_baseline) ** 2)
+        MSE_velocity_baseline = np.mean(
+            (ground_truth_forward_sim_unnorm - velocity_baseline_unnorm) ** 2
+        )
         if had_masking:
             MSEs_velocity_baseline[j] = MSE_velocity_baseline
 
         # Plot
         fig = plt.figure(figsize=figsize)
+        plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
         plt.scatter(
-            velocity_baseline[:, 0],
-            velocity_baseline[:, 1],
+            velocity_baseline_unnorm[:, 0],
+            velocity_baseline_unnorm[:, 1],
             c=[i for i in range(T_slice_forward_sim)],
             cmap="cool",
             alpha=1.0,
+            zorder=1,
         )
         plt.scatter(
-            ground_truth_forward_sim[:, 0],
-            ground_truth_forward_sim[:, 1],
+            ground_truth_forward_sim_unnorm[:, 0],
+            ground_truth_forward_sim_unnorm[:, 1],
             c=[i for i in range(T_slice_forward_sim)],
             cmap="cool",
             marker="x",
             alpha=0.25,
+            zorder=2,
         )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
+        plt.ylim(Y_LIM_COURT)
+        plt.xlim(X_LIM_COURT)
 
         plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
         tag_velocity_baseline = _get_filename_tag(
@@ -419,8 +465,6 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     max_forward_sim_window: int,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
-    x_lim: Optional[Tuple] = None,
-    y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
@@ -478,8 +522,6 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         max_forward_sim_window,
         find_posterior_mean_t0_for_entity_sample,
         max_posterior_mean_window,
-        x_lim,
-        y_lim,
         filename_prefix,
         figsize,
     )

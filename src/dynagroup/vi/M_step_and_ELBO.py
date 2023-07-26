@@ -610,7 +610,6 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step.
     """
-
     # Upfront
     T, J, K = np.shape(VEZ_expected_regimes)
     if use_continuous_states is None:
@@ -634,22 +633,33 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     bs = np.zeros((J, K, D))
     Qs = np.zeros((J, K, D, D))
 
+    MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 3.0
     for j in range(J):
         xs = np.asarray(continuous_states_to_use[:, j, :])
         for k in range(K):
             weights = np.asarray(
                 VEZ_expected_regimes_to_use[:, j, k] * use_continuous_states_to_use[:, j]
-            )  # TxJxK
-            responses = xs[1:]
-            predictors = add_constant(xs[:-1], prepend=False)
-            wls_model = WLS(responses, predictors, hasconst=True, weights=weights[1:])
-            results = wls_model.fit()
-            # WLS returns parameters where the d-th column gives the weights for predicting d-th element of response vector.
-            # So we need to transpose to get a state transition matrix
-            As[j, k] = results.params[:-1].T
-            bs[j, k] = results.params[-1]
-            residuals = results.resid * weights[1:][:, None]
-            Qs[j, k] = np.cov(residuals.T)
+            )[
+                1:
+            ]  # (T-1)xJxK
+            sum_of_observation_weights = np.sum(weights)
+            if sum_of_observation_weights >= MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS:
+                responses = xs[1:]
+                predictors = add_constant(xs[:-1], prepend=False)
+                wls_model = WLS(responses, predictors, hasconst=True, weights=weights)
+                results = wls_model.fit()
+                # WLS returns parameters where the d-th column gives the weights for predicting d-th element of response vector.
+                # So we need to transpose to get a state transition matrix
+                As[j, k] = results.params[:-1].T
+                bs[j, k] = results.params[-1]
+                residuals = results.resid
+                # CONFIRM: I need a weighted estimate of covarince if I already used weights to create the wls model.
+                Qs[j, k] = np.cov(residuals.T, aweights=weights)
+            else:
+                print(
+                    f"\tState {k} for entity {j} has a summed observation weights of {sum_of_observation_weights:.02f} "
+                    "which is insufficient for updating the CSP parameters."
+                )
     return ContinuousStateParameters_Gaussian_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))
 
 

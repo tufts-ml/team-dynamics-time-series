@@ -113,6 +113,9 @@ def run_CAVI_with_JAX(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
     else:
+        # TODO: Raise error if use_continuous_states has False followed by True for any entity j;
+        # in the current implementation, inference will not be done correctly, because the VEZ step will not correctly
+        # remove the missing data -- so the inference after the missing data will be artificially good.
         warnings.warn(
             f"Selecting only some continuous states for usage correctly alters inference -- the M-step and VES "
             f"steps are changes so as to remove the influence of unused states.  However, the "

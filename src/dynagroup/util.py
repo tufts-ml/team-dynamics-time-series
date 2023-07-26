@@ -233,3 +233,17 @@ def convert_list_of_regime_id_and_num_timesteps_to_regime_sequence(
         segment = [k] * T_slice
         regime_sequence.extend(segment)
     return regime_sequence
+
+
+###
+# Cartesian product
+###
+
+
+def compute_cartesian_product_of_two_1d_arrays(x_vals: NumpyArray1D, y_vals: NumpyArray1D):
+    # `x_for_grid` has shape (len(x), len(x)), but all rows are identical.
+    # `y_for_grid` has shape (len(y), len(y)), but all columns are identical.
+    x_for_grid, y_for_grid = np.meshgrid(x_vals, y_vals)
+    return np.column_stack(
+        (x_for_grid.ravel(), y_for_grid.ravel())
+    )  # has shape (len(x)*len(y), D=2)

@@ -28,6 +28,7 @@ from dynagroup.initialize import (
 )
 from dynagroup.model import Model
 from dynagroup.params import (
+    AllParameters_JAX,
     ContinuousStateParameters_Gaussian_JAX,
     Dims,
     EmissionsParameters_JAX,
@@ -292,6 +293,8 @@ def fit_ARHMM_to_bottom_half_of_model(
     model: Model,
     num_EM_iterations: int,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
+    params_frozen: Optional[AllParameters_JAX] = None,
+    verbose: bool = True,
 ) -> ResultsFromBottomHalfInit:
     """
     We assume the transitions are governed by an ordinary tpm.
@@ -303,7 +306,7 @@ def fit_ARHMM_to_bottom_half_of_model(
             the (t,j)-th element is True if continuous_states[t,j] should be utilized
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
-            We leave the VEZ steps as is, though.  Note that This means that the ELBO
+            We leave the VEZ steps as is, though.  Note that This means that the ELBO is wrong.
     """
     ### TODO: We assume that (0,j) was always observed! If not, raise a ValueError.
 
@@ -314,9 +317,10 @@ def fit_ARHMM_to_bottom_half_of_model(
 
     print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
     for i in range(num_EM_iterations):
-        print(
-            f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a."
-        )
+        if verbose:
+            print(
+                f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a."
+            )
 
         ###
         # Get ingredients for the E-step
@@ -372,23 +376,29 @@ def fit_ARHMM_to_bottom_half_of_model(
         # M-step (for ETP, represented as a transition probability matrix)
         ###
 
-        # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
-        # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
-        # work when we have J tpms, and then
-        tpms = compute_closed_form_M_step_on_posterior_summaries(
-            EZ_summaries,
-            use_continuous_states,
-            event_end_times,
-        )
-        Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
-        ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
+        if params_frozen:
+            ETP_JAX = params_frozen.ETP
+            CSP_JAX = params_frozen.CSP
+        else:
+            # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
+            # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
+            # work when we have J tpms, and then
+            tpms = compute_closed_form_M_step_on_posterior_summaries(
+                EZ_summaries,
+                use_continuous_states,
+                event_end_times,
+            )
+            Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
+            ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(
+                ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new
+            )
 
-        ###
-        # M-step (for CSP)
-        ###
-        CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
-            EZ_summaries.expected_regimes, continuous_states, event_end_times
-        )
+            ###
+            # M-step (for CSP)
+            ###
+            CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
+                EZ_summaries.expected_regimes, continuous_states, event_end_times
+            )
 
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
 
@@ -410,6 +420,7 @@ def fit_ARHMM_to_top_half_of_model(
     num_EM_iterations: int,
     num_M_step_iterations_for_ETP_gradient_descent: int,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
+    params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
 ) -> ResultsFromTopHalfInit:
     """
@@ -432,11 +443,14 @@ def fit_ARHMM_to_top_half_of_model(
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
     for iteration in range(num_EM_iterations):
-        print(
-            f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
-        )
+        if verbose:
+            print(
+                f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
+            )
 
-        ###  E-step
+        ###
+        # E-step
+        ###
         # TODO: Handle system covariates properly in this function.
         ES_summary = run_VES_step_JAX(
             STP_JAX,
@@ -452,40 +466,48 @@ def fit_ARHMM_to_top_half_of_model(
 
         record_of_most_likely_states[:, iteration] = np.argmax(ES_summary.expected_regimes, axis=1)
 
-        ### M-step (ETP)
-        ETP_JAX = run_M_step_for_ETP_via_gradient_descent(
-            ETP_JAX,
-            ES_summary,
-            EZ_summaries,
-            continuous_states,
-            iteration,
-            num_M_step_iterations_for_ETP_gradient_descent,
-            model,
-            event_end_times,
-            use_continuous_states,
-            verbose,
-        )
+        ###
+        # M-step
+        ###
 
-        # TODO: Incorporate the system transition prior.  Can I can do this is closed form?
-        system_transition_prior = None
-
-        ### M-step (STP)
-        if only_one_event(event_end_times, T):
-            # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
-            # But I might want to double check that.
-            STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
+        if params_frozen:
+            ETP_JAX = params_frozen.ETP
+            STP_JAX = params_frozen.STP
         else:
-            NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT = 5
-            STP_JAX = run_M_step_for_STP_via_gradient_descent(
-                STP_JAX,
+            ### M-step (ETP)
+            ETP_JAX = run_M_step_for_ETP_via_gradient_descent(
+                ETP_JAX,
                 ES_summary,
-                system_transition_prior,
+                EZ_summaries,
+                continuous_states,
                 iteration,
-                NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT,
+                num_M_step_iterations_for_ETP_gradient_descent,
                 model,
                 event_end_times,
-                system_covariates,
+                use_continuous_states,
+                verbose,
             )
+
+            # TODO: Incorporate the system transition prior.  Can I can do this is closed form?
+            system_transition_prior = None
+
+            ### M-step (STP)
+            if only_one_event(event_end_times, T):
+                # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
+                # But I might want to double check that.
+                STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
+            else:
+                NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT = 5
+                STP_JAX = run_M_step_for_STP_via_gradient_descent(
+                    STP_JAX,
+                    ES_summary,
+                    system_transition_prior,
+                    iteration,
+                    NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT,
+                    model,
+                    event_end_times,
+                    system_covariates,
+                )
 
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
@@ -506,6 +528,7 @@ def smart_initialize_model_2a(
     seed: int = 0,
     system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
+    params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
 ) -> InitializationResults:
     """
@@ -526,6 +549,9 @@ def smart_initialize_model_2a(
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
             We leave the VEZ steps as is, though.
+
+        params_frozen: Typically this will be None.  However, non-None values can be useful
+            for test set inference, when we need to run the E-step on the (context) portion of new data.
 
     Remarks:
         1) Note that the regime labeling (for entities and system) can differ from the truth, and also even
@@ -559,16 +585,23 @@ def smart_initialize_model_2a(
     # Initialize Params
     ####
 
-    # TODO: Support fixed or random draws from prior for As, Qs.
-    CSP_JAX = make_kmeans_preinitialization_of_CSP_JAX(
-        DIMS, continuous_states, preinitialization_strategy_for_CSP, use_continuous_states
-    )
-    # TODO: Support fixed or random draws from prior.
-    ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
-    # TODO: Support fixed or random draws from prior.
-    IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
-    # EP_JAX is a placeholder; not used for Figure 8.
-    EP_JAX = make_data_free_preinitialization_of_EP_JAX(DIMS)
+    if params_frozen:
+        CSP_JAX = params_frozen.CSP
+        ETP_JAX = params_frozen.ETP
+        IP_JAX = params_frozen.IP
+        EP_JAX = params_frozen.EP
+
+    else:
+        # TODO: Support fixed or random draws from prior for As, Qs.
+        CSP_JAX = make_kmeans_preinitialization_of_CSP_JAX(
+            DIMS, continuous_states, preinitialization_strategy_for_CSP, use_continuous_states
+        )
+        # TODO: Support fixed or random draws from prior.
+        ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
+        # TODO: Support fixed or random draws from prior.
+        IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
+        # EP_JAX is a placeholder; not used for Figure 8.
+        EP_JAX = make_data_free_preinitialization_of_EP_JAX(DIMS)
 
     ###
     # Fit Bottom-level HMM
@@ -582,6 +615,8 @@ def smart_initialize_model_2a(
         model,
         num_em_iterations_for_bottom_half,
         use_continuous_states,
+        params_frozen,
+        verbose,
     )
     # zhats = np.argmax(results_bottom.EZ_summaries.expected_regimes, axis=2) # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
 
@@ -589,17 +624,22 @@ def smart_initialize_model_2a(
     # Top-level HMM
     ###
 
-    ### Initialization
-    ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
-        DIMS, method_for_Psis="rnorm", seed=seed
-    )  # Psis is (J, L, K, D_t)
-    STP_JAX = make_data_free_preinitialization_of_STP_JAX(
-        DIMS,
-        method_for_Upsilon="rnorm",
-        fixed_self_transition_prob=0.95,
-        seed=seed,
-    )
-    # TODO: Is there a better way to init the recurrence matrices and covariances matrices in STP_JAX and ETP_JAX than randomly?
+    if params_frozen:
+        ETP_JAX = params_frozen.ETP
+        STP_JAX = params_frozen.STP
+
+    else:
+        ### Initialization
+        ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
+            DIMS, method_for_Psis="rnorm", seed=seed
+        )  # Psis is (J, L, K, D_t)
+        STP_JAX = make_data_free_preinitialization_of_STP_JAX(
+            DIMS,
+            method_for_Upsilon="rnorm",
+            fixed_self_transition_prob=0.95,
+            seed=seed,
+        )
+        # TODO: Is there a better way to init the recurrence matrices and covariances matrices in STP_JAX and ETP_JAX than randomly?
 
     ### run HMM
     num_M_step_iterations_for_ETP_gradient_descent = 5
@@ -619,18 +659,22 @@ def smart_initialize_model_2a(
         num_em_iterations_for_top_half,
         num_M_step_iterations_for_ETP_gradient_descent,
         use_continuous_states,
+        params_frozen,
         verbose=verbose,
     )
 
     ### Update Initialization Params
-    IP_JAX = run_M_step_for_IP(
-        IP_JAX,
-        M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN,
-        results_top.ES_summary,
-        results_bottom.EZ_summaries,
-        continuous_states,
-        event_end_times,
-    )
+    if params_frozen:
+        IP_JAX = params_frozen.IP
+    else:
+        IP_JAX = run_M_step_for_IP(
+            IP_JAX,
+            M_Step_Toggle_Value.CLOSED_FORM_GAUSSIAN,
+            results_top.ES_summary,
+            results_bottom.EZ_summaries,
+            continuous_states,
+            event_end_times,
+        )
 
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
-    return initialization_results_from_raw_initialization_results(results_raw)
+    return initialization_results_from_raw_initialization_results(results_raw, params_frozen)

@@ -191,10 +191,13 @@ def sample_team_dynamics(
         ###
 
         if fixed_system_regimes is None:
+            system_covariates_at_this_timestep = (
+                system_covariates[t] if system_covariates is not None else None
+            )
             log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
                 AP.STP,
                 T_minus_1=1,
-                system_covariates=system_covariates[t],
+                system_covariates=system_covariates_at_this_timestep,
             )
 
             # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]

@@ -102,6 +102,7 @@ def sample_team_dynamics(
     model: Model,
     seed: int = 0,
     fixed_system_regimes: Optional[NumpyArray1D] = None,
+    fixed_init_system_regime: Optional[int] = None,
     fixed_init_entity_regimes: Optional[NumpyArray1D] = None,
     fixed_init_continuous_states: Optional[NumpyArray2D] = None,
     system_covariates: Optional[np.array] = None,
@@ -110,11 +111,14 @@ def sample_team_dynamics(
     Assumes we have a state space model on the bottom of the switches.
 
     Arguments:
-        fixed_system_regimes:  has shape (T,)
+        fixed_system_regimes: Optional, has shape (T,)
             Each entry is in {1,...,L}.
-        fixed_init_entity_regimes: has shape (J,).
+            If not None, `fixed_init_system_regime` must be None
+        fixed_init_system_regime: Optional, has type int
+            If not None, `fixed_system_regimes` must be None,
+        fixed_init_entity_regimes: Optional,  has shape (J,).
             Each entry is in {1,...,K}.
-        fixed_init_continuous_states: has shape (J,D)
+        fixed_init_continuous_states: Optional, has shape (J,D)
             Each entry is in R^D
 
 
@@ -125,20 +129,31 @@ def sample_team_dynamics(
         D: dimensionality of latent continuous state, x
         N : dimensionality of observation, y
     """
+    ### Up-front material
+    if (fixed_init_system_regime is not None) and (fixed_system_regimes is not None):
+        raise ValueError(
+            f"At most ONE of `fixed_init_system_regime` and `fixed_system_regimes` can be non-None. "
+            f"You have set them BOTH to non-None, and so I don't know what to use for the system "
+            f"regime at the initial timestep, s[0]."
+        )
 
     np.random.seed(seed)
 
-    # pre-allocate
+    ### Pre-allocation
     dims = dims_from_params(AP)
 
-    s = np.zeros(T, dtype=int) if fixed_system_regimes is None else fixed_system_regimes
+    s = np.zeros(T, dtype=int)
     z_probs = np.zeros((T, dims.J, dims.K))
     zs = np.zeros((T, dims.J), dtype=int)
     xs = np.zeros((T, dims.J, dims.D))
     ys = np.full((T, dims.J, dims.N), np.nan)
 
-    ### initialize
-    if fixed_system_regimes is None:
+    ### Initialize
+    if fixed_init_system_regime is not None:
+        s[0] = fixed_init_system_regime
+    elif fixed_system_regimes is not None:
+        s = fixed_system_regimes
+    else:
         s[0] = npr.choice(range(dims.L), p=AP.IP.pi_system)
 
     if fixed_init_entity_regimes is None:
@@ -165,7 +180,7 @@ def sample_team_dynamics(
         if emissions_exist:
             ys[0, j] = mvn(C @ xs[0, j] + d, R)
 
-    ### generate
+    ### Generate
     for t in range(1, T):
         # `dummy_time_index` allows us to use the model factors but apply them to the case
         # where we're looking at a single time observation at a time

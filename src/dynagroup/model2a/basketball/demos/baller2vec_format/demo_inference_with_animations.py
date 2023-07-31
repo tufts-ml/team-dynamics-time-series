@@ -101,7 +101,6 @@ basketball_data = get_basketball_data_for_TOR_vs_CHA(
     filter_out_plays_where_TOR_hoop_side_is_1=True,
 )
 
-
 ###
 # Preprocess Data
 ###

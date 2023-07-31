@@ -131,6 +131,9 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
+
+    # TODO: Rewrite this function so it builds off `forecasts` module.
+
     ###
     # Constants
     ###

@@ -12,7 +12,7 @@ from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
 )
 from dynagroup.model2a.basketball.court import normalize_coords
-from dynagroup.model2a.basketball.data.baller2vec.main import (
+from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.mask import (

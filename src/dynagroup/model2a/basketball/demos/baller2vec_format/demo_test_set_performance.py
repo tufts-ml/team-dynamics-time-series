@@ -3,7 +3,7 @@ import numpy as np
 
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.court import normalize_coords
-from dynagroup.model2a.basketball.data.baller2vec.main import (
+from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.model import model_basketball

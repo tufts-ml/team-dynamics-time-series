@@ -27,7 +27,7 @@ from dynagroup.model2a.basketball.data.baller2vec.positions import (
 def get_basketball_data_for_TOR_vs_CHA(
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
-    filter_out_plays_where_TOR_hoop_side_is_1: bool = True,
+    filter_out_plays_where_TOR_hoop_side_is_1: bool = False,
 ) -> BasketballGame:
     """
     Currently data is hardcoded to be from a single basketball game, TOR vs CHA.
@@ -53,12 +53,6 @@ def get_basketball_data_for_TOR_vs_CHA(
         unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)
     """
-
-    if not filter_out_plays_where_TOR_hoop_side_is_1:
-        raise NotImplementedError(
-            f"I need to implement some rotation strategy to align the switches "
-            f"of hoop sides at half-time."
-        )
 
     ### Specify hard-coded constants
     TOR_STARTER_NAMES_2_ENTITY_IDXS = {
@@ -212,19 +206,22 @@ def get_basketball_data_for_TOR_vs_CHA(
 
             NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
             if event_with_player_reindexing.moments[idx].player_hoop_sides != NORMALIZED_HOOP_SIDES:
-                coords_unnormalized = np.vstack(
-                    (
-                        event_with_player_reindexing.moments[idx].player_xs,
-                        event_with_player_reindexing.moments[idx].player_ys,
-                    )
-                ).T
-                coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
-                event_with_player_reindexing.moments[idx].player_xs = coords_unnormalized_flipped[
-                    :, 0
-                ]
-                event_with_player_reindexing.moments[idx].player_ys = coords_unnormalized_flipped[
-                    :, 1
-                ]
+                if filter_out_plays_where_TOR_hoop_side_is_1:
+                    continue
+                else:
+                    coords_unnormalized = np.vstack(
+                        (
+                            event_with_player_reindexing.moments[idx].player_xs,
+                            event_with_player_reindexing.moments[idx].player_ys,
+                        )
+                    ).T
+                    coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
+                    event_with_player_reindexing.moments[
+                        idx
+                    ].player_xs = coords_unnormalized_flipped[:, 0]
+                    event_with_player_reindexing.moments[
+                        idx
+                    ].player_ys = coords_unnormalized_flipped[:, 1]
 
             ### Now we extend our accumulating lists of moments, events, event_start_stop_idxs.
             moments.extend(event.moments)

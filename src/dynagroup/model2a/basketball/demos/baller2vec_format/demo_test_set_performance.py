@@ -14,7 +14,7 @@ from dynagroup.model2a.gaussian.initialize import (
 from dynagroup.params import Dims
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
-from dynagroup.vi.forecast import get_forecasting_MSEs_on_test_set
+from dynagroup.vi.vi_forecast import get_forecasting_MSEs_on_test_set
 
 
 """

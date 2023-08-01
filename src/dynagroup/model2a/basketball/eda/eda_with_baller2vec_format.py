@@ -5,13 +5,13 @@ from dynagroup.model2a.basketball.data.baller2vec.core import (
 
 
 PATH_TO_GAME_DATA = (
-    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_X.npy",
+    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_X.npy",
 )
 PATH_TO_EVENT_LABEL_DATA = (
-    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_y.npy",
+    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_y.npy",
 )
 PATH_TO_BALLER2VEC_CONFIG = (
-    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/baller2vec_config.pydict",
+    "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict",
 )
 
 event_idxs = [0, 1, 2, 3, 4]

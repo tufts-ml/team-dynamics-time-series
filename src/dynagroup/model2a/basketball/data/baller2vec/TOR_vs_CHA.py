@@ -64,15 +64,9 @@ def get_basketball_data_for_TOR_vs_CHA(
     }
     TOR_STARTERS = set(TOR_STARTER_NAMES_2_ENTITY_IDXS.keys())
 
-    PATH_TO_GAME_DATA = (
-        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_X.npy"
-    )
-    PATH_TO_EVENT_LABEL_DATA = (
-        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_y.npy"
-    )
-    PATH_TO_BALLER2VEC_CONFIG = (
-        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/baller2vec_config.pydict"
-    )
+    PATH_TO_GAME_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_X.npy"
+    PATH_TO_EVENT_LABEL_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_y.npy"
+    PATH_TO_BALLER2VEC_CONFIG = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict"
 
     ### Load the data
     game_data = np.load(PATH_TO_GAME_DATA)

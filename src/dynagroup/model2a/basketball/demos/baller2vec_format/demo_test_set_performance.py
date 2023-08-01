@@ -38,6 +38,7 @@ event_idxs_test = [i + 25 for i in range(5)]
 event_end_times_train = None
 event_end_times_test = None
 
+
 # Model specification
 K = 4
 L = 5
@@ -177,6 +178,9 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ###
 # Forecasting
 ###
+
+### Warning: TODO:  We want the test set API to perform one forecast per play;
+# right now it's just making a forecast at the end of ALL the plays.
 
 forecasting_MSEs = get_forecasting_MSEs_on_test_set(
     xs_test,

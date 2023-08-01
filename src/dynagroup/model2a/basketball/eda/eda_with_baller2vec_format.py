@@ -10,7 +10,7 @@ PATH_TO_GAME_DATA = (
 PATH_TO_EVENT_LABEL_DATA = (
     "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_y.npy",
 )
-PATH_TO_BALLER2VEC_CONFIG = (
+PATH_TO_BALLER2VEC_INFO = (
     "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict",
 )
 
@@ -20,7 +20,7 @@ for event_idx in event_idxs:
         event_idx,
         PATH_TO_GAME_DATA,
         PATH_TO_EVENT_LABEL_DATA,
-        PATH_TO_BALLER2VEC_CONFIG,
+        PATH_TO_BALLER2VEC_INFO,
         sampling_rate_Hz=5,
     )
     print(f"Now animating event idx {event_idx}, which has type {event.label}")

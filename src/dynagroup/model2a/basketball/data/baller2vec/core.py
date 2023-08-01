@@ -105,7 +105,7 @@ def moment_from_game_slice(slice: NumpyArray1D) -> Moment:
 def player_names_from_player_ids(PLAYER_DATA: Dict[int, Dict], player_ids: List[int]) -> List[str]:
     """
     Arguments:
-        PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_config_path function here,
+        PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_info_path function here,
             traces back to the pydict config constructed by the `generate_game_numpy_arrays_simplified` module
             from the baller2vec repo.
     """
@@ -136,7 +136,7 @@ def grab_event(
             `generate_game_numpy_arrays_simplified` module from the baller2vec repo.
         EVENT_LABEL_DATA: an np.array of shape (T,) with dtype="int" classifying the event,
             with interpretation given by EVENT_LABEL_DICT
-        PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_config_path function here,
+        PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_info_path function here,
             traces back to the pydict config constructed by the `generate_game_numpy_arrays_simplified` module
             from the baller2vec repo.
         event_idx: Which event (or play) we'd like to extract.
@@ -190,12 +190,12 @@ def grab_event(
     )
 
 
-def load_player_data_from_pydict_config_path(path_to_config):
+def load_player_data_from_pydict_info_path(path_to_config):
     baller2vec_config = pickle.load(open(path_to_config, "rb"))
     return baller2vec_config["player_idx2props"]
 
 
-def load_event_label_decoder_from_pydict_config_path(path_to_config):
+def load_event_label_decoder_from_pydict_info_path(path_to_config):
     baller2vec_config = pickle.load(open(path_to_config, "rb"))
     return baller2vec_config["event2event_idx"]
 

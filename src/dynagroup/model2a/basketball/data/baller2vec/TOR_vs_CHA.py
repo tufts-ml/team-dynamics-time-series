@@ -15,8 +15,8 @@ from dynagroup.model2a.basketball.data.baller2vec.core import (
     coords_from_moments,
     get_event_in_baller2vec_format,
     get_num_events_in_game,
-    load_event_label_decoder_from_pydict_config_path,
-    load_player_data_from_pydict_config_path,
+    load_event_label_decoder_from_pydict_info_path,
+    load_player_data_from_pydict_info_path,
 )
 from dynagroup.model2a.basketball.data.baller2vec.positions import (
     get_player_name_2_position,
@@ -66,13 +66,13 @@ def get_basketball_data_for_TOR_vs_CHA(
 
     PATH_TO_GAME_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_X.npy"
     PATH_TO_EVENT_LABEL_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_y.npy"
-    PATH_TO_BALLER2VEC_CONFIG = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict"
+    PATH_TO_BALLER2VEC_INFO = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict"
 
     ### Load the data
     game_data = np.load(PATH_TO_GAME_DATA)
     event_label_data = np.load(PATH_TO_EVENT_LABEL_DATA)
-    event_label_dict = load_event_label_decoder_from_pydict_config_path(PATH_TO_BALLER2VEC_CONFIG)
-    player_data = load_player_data_from_pydict_config_path(PATH_TO_BALLER2VEC_CONFIG)
+    event_label_dict = load_event_label_decoder_from_pydict_info_path(PATH_TO_BALLER2VEC_INFO)
+    player_data = load_player_data_from_pydict_info_path(PATH_TO_BALLER2VEC_INFO)
 
     ### Identify positions of all players in game
     PLAYER_NAME_2_POSITION = {

@@ -133,7 +133,7 @@ def get_player_name_2_position(player_data: Dict[int, Dict]) -> Dict[str, str]:
     """
     Arguments:
         player_data: Dict[int, Dict]. The return value of
-            load_player_data_from_pydict_config_path
+            load_player_data_from_pydict_info_path
 
     Returns:
         dict mapping player name to position

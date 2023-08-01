@@ -11,6 +11,7 @@ pp.install_extras()
 
 import numpy as np
 
+from dynagroup.model2a.basketball.court import flip_coords_unnormalized
 from dynagroup.model2a.basketball.data.baller2vec.positions import (
     get_player_name_2_position,
     make_opponent_names_2_entity_idxs,
@@ -311,6 +312,15 @@ def get_basketball_data_for_TOR_vs_CHA(
         to position idxs.  The TOR starters are given indices [0,1,2,3,4], and the
         opponents are given indices [5,6,7,8,9] by mapping their positions to an index.
         3. The baller2vec `Event`s are extracted and reindexed according to the design above.
+        4. We normalize the court so that the focal team (TOR) always has its basket on the left.
+            (By "its basket", we mean that hoop_sides=0 in the baller2vec Event representation.
+            To ascertain confidently whether this refers to the focal team's offensive or defensive
+            hoop would require digging through the docs of both baller2vec and the original dataset.)
+
+            NOTE: I assume that the center of the [0,100]x[0,50] court is [50,25].  But some code in
+            the baller2vec repo suggests that the center on the x-axis might be 47 rather than 50
+            (e.g. see https://github.com/airalcorn2/baller2vec/blob/master/settings.py#L17).
+            Check into this.
 
     Returns:
         unnormalized coordinates for basketball players,
@@ -464,10 +474,30 @@ def get_basketball_data_for_TOR_vs_CHA(
                     event.moments[idx].player_hoop_sides[i] for i in permutation_indices
                 ]
 
-            ### TODO Account for switch at halftime.
-            NORMALIZED_HOOP_SIZES = [0] * 5 + [1] * 5  # focal team has hoop on left.
-            if event_with_player_reindexing.moments[idx].player_hoop_sides != NORMALIZED_HOOP_SIZES:
-                continue
+            ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
+            # flip the court 180 degrees around the center of the court (i.e. negate
+            # both x and y coords w.r.t center of court). This controls for the effect of hoop
+            # switches at half time on the court dynamics, in terms of both offense vs defense
+            # direction, as well as in terms of player handedness.
+
+            # NOTE: The center might be shifted slighly to the left of how I'm doing this.
+            # See the note in the function docstring.
+
+            NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
+            if event_with_player_reindexing.moments[idx].player_hoop_sides != NORMALIZED_HOOP_SIDES:
+                coords_unnormalized = np.vstack(
+                    (
+                        event_with_player_reindexing.moments[idx].player_xs,
+                        event_with_player_reindexing.moments[idx].player_ys,
+                    )
+                ).T
+                coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
+                event_with_player_reindexing.moments[idx].player_xs = coords_unnormalized_flipped[
+                    :, 0
+                ]
+                event_with_player_reindexing.moments[idx].player_ys = coords_unnormalized_flipped[
+                    :, 1
+                ]
 
             ### Now we extend our accumulating lists of moments, events, event_start_stop_idxs.
             moments.extend(event.moments)
@@ -477,7 +507,6 @@ def get_basketball_data_for_TOR_vs_CHA(
             event_last_moment = num_moments_so_far
             event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
             events.extend([event])
-
         except:
             warnings.warn(f"Could not process event idx {event_idx}")
             continue

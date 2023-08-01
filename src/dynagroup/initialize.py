@@ -90,9 +90,13 @@ class RawInitializationResults:
 
 def initialization_results_from_raw_initialization_results(
     raw_initialization_results: RawInitializationResults,
+    params_frozen: Optional[AllParameters_JAX] = None,
 ):
     RI = raw_initialization_results
-    params = AllParameters_JAX(RI.top.STP, RI.top.ETP, RI.bottom.CSP, RI.EP, RI.IP)
+    if params_frozen:
+        params = params_frozen
+    else:
+        params = AllParameters_JAX(RI.top.STP, RI.top.ETP, RI.bottom.CSP, RI.EP, RI.IP)
     return InitializationResults(
         params,
         RI.top.ES_summary,

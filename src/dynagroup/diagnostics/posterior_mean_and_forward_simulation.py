@@ -131,6 +131,9 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
+
+    # TODO: Rewrite this function so it builds off `forecasts` module.
+
     ###
     # Constants
     ###
@@ -315,6 +318,9 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             use_continuous_states, j, t_0_forward_sim, t_end_forward_sim
         )
 
+        warnings.warn(
+            "Forward simulations assume that there are NO system covariates. Is this correct?"
+        )
         for s, forward_simulation_seed in enumerate(forward_simulation_seeds):
             print(
                 f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
@@ -327,6 +333,7 @@ def _evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 fixed_system_regimes=fixed_system_regimes,
                 fixed_init_entity_regimes=fixed_init_entity_regimes,
                 fixed_init_continuous_states=fixed_init_continuous_states,
+                system_covariates=None,
             )
 
             # Unnorm

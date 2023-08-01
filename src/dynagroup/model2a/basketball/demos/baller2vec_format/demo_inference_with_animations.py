@@ -41,9 +41,7 @@ Do the inferred system states track changes in plays?
 
 # Directories
 data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = (
-    "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__DOUBLE_REDO_with_unnormalized_MSEs/"
-)
+save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__DOUBLE_REDO_with_unnormalized_MSEs_RERUN/"
 
 # Data properties
 animate_raw_data = False
@@ -102,7 +100,6 @@ basketball_data = get_basketball_data_for_TOR_vs_CHA(
     sampling_rate_Hz=5,
     filter_out_plays_where_TOR_hoop_side_is_1=True,
 )
-
 
 ###
 # Preprocess Data

@@ -206,7 +206,7 @@ def get_num_events_in_game(
     """
     Arguments:
         game_data: A numpy array obtained from loading a "game data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_X.npy",
+             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_X.npy",
             that was produced by the baller2vec_forked preprocessing.  These files have size
             (T,D=54)
     """
@@ -227,16 +227,16 @@ def get_event_in_baller2vec_format(
             we don't know the maximum number of events in the file, but we at least print it out
             while running this function.
         game_data: Array of shape (T,D=54) obtained from loading a "game data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_X.npy",
+             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_X.npy",
             that was produced by the baller2vec_forked preprocessing.
         event_label_data: Array of shape (T,) obtained from loading an "event label data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/0021500492_y.npy",
+             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/0021500492_y.npy",
             that was produced by the baller2vec_forked preprocessing.
         event_label_dict: Dict obtained by loading a [MISNAMED] "baller2vec_config" file, e.g.
-             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/baller2vec_config.pydict",
+             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict",
             that was produces as the OUTPUT of baller2vec_forked preprocessing
         player_data: Dict obtained by loading a [MISNAMED] "baller2vec_config" file, e.g.
-             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/baller2vec_config.pydict",
+             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/TOR_vs_CHA/baller2vec_config.pydict",
             that was produces as the OUTPUT of baller2vec_forked preprocessing
     """
 

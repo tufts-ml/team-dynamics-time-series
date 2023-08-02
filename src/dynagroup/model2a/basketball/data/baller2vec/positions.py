@@ -189,7 +189,8 @@ import numpy as np
 
 
 def make_position_group_to_player_names(
-    opponent_names_2_positions: Dict[str, str]
+    opponent_names_2_positions: Dict[str, str],
+    override_lineups_with_insufficient_position_group_assignments: bool = True,
 ) -> Dict[str, List[str]]:
     """
     Assign players to position groups (forward, guard, center)
@@ -197,6 +198,12 @@ def make_position_group_to_player_names(
     So we start with the rarest position group, and assign players to that rare group,
     starting with players who have the least classifications, until we have enough
     players to fill out the specs (1 center, 2 forwards, 2 guards)
+
+    Note:
+        Sometimes the set of players doesn't have enough of one position group.  E.g.
+        there may be 2 centers but only 1 forward. In this case we randomly select one
+        center and label them as a forward, but only if `override_lineups_with_insufficient_position_group_assignments`
+        is True
 
     Arguments:
         Example:
@@ -215,6 +222,7 @@ def make_position_group_to_player_names(
                 'guard': ['Kemba Walker', 'Nicolas Batum'],
                 'center': ['Marvin Williams']
             }
+
     """
     ### Find whether each player coiuld be a forward, center, or guard.
     ### Often there are multiple categorizations
@@ -239,6 +247,22 @@ def make_position_group_to_player_names(
     # ])
 
     position_group_totals = np.sum(matrix_bool__players_by_position_group_memberships, 0)
+
+    ### Patch up errant position group totals. We need position group totals to be at least [2,1,2].
+    # If we don't have this, then find a column (position group) with excess members
+    # and choose the first row (player) with True to have true for the deficient group.
+    position_groups_have_enough_members = position_group_totals >= np.array([2, 1, 2])
+    position_groups_have_excess_members = position_group_totals > np.array([2, 1, 2])
+    for pg in range(3):
+        if not position_groups_have_enough_members[pg]:
+            position_group_with_excess_members = np.where(position_groups_have_excess_members)[0][0]
+            for p in range(5):
+                if matrix_bool__players_by_position_group_memberships[
+                    p, position_group_with_excess_members
+                ]:
+                    matrix_bool__players_by_position_group_memberships[p, pg] = True
+                    break
+
     position_groups_low_to_high = np.argsort(
         position_group_totals
     )  # order position group from least common to most common
@@ -275,8 +299,11 @@ def make_position_group_to_player_names(
 
 def get_opponent_player_names_ordered_by_position(
     opponent_names_2_positions: Dict[str, str],
+    override_lineups_with_insufficient_position_group_assignments: bool = True,
 ) -> List[str]:
-    position_group_to_player_names = make_position_group_to_player_names(opponent_names_2_positions)
+    position_group_to_player_names = make_position_group_to_player_names(
+        opponent_names_2_positions, override_lineups_with_insufficient_position_group_assignments
+    )
 
     # Arguments: position_group_to_player_names, opponent_names_2_positions,
     player_names_in_order = []
@@ -302,7 +329,9 @@ def get_opponent_player_names_ordered_by_position(
 
 
 def make_opponent_names_2_entity_idxs(
-    opponent_names_2_positions: Dict[str, str], index_from_5_to_9: bool = True
+    opponent_names_2_positions: Dict[str, str],
+    override_lineups_with_insufficient_position_group_assignments: bool = True,
+    index_from_5_to_9: bool = True,
 ) -> Dict[str, int]:
     """
     OVERVIEW:
@@ -347,6 +376,7 @@ def make_opponent_names_2_entity_idxs(
 
     opponent_names_ordered = get_opponent_player_names_ordered_by_position(
         opponent_names_2_positions,
+        override_lineups_with_insufficient_position_group_assignments,
     )
     opponent_names_2_entity_idxs = {name: idx for (idx, name) in enumerate(opponent_names_ordered)}
 

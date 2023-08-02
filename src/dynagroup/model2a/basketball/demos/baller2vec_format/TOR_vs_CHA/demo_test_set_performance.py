@@ -85,13 +85,11 @@ ensure_dir(save_dir)
 basketball_data_train = get_basketball_data_for_TOR_vs_CHA(
     event_idxs_train,
     sampling_rate_Hz=5,
-    filter_out_plays_where_TOR_hoop_side_is_1=True,
 )
 
 basketball_data_test = get_basketball_data_for_TOR_vs_CHA(
     event_idxs_test,
     sampling_rate_Hz=5,
-    filter_out_plays_where_TOR_hoop_side_is_1=True,
 )
 
 

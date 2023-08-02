@@ -235,30 +235,32 @@ def get_basketball_game(
                     event.moments[idx].player_hoop_sides[i] for i in permutation_indices
                 ]
 
-            ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
-            # flip the court 180 degrees around the center of the court (i.e. negate
-            # both x and y coords w.r.t center of court). This controls for the effect of hoop
-            # switches at half time on the court dynamics, in terms of both offense vs defense
-            # direction, as well as in terms of player handedness.
+                ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
+                # flip the court 180 degrees around the center of the court (i.e. negate
+                # both x and y coords w.r.t center of court). This controls for the effect of hoop
+                # switches at half time on the court dynamics, in terms of both offense vs defense
+                # direction, as well as in terms of player handedness.
 
-            # NOTE: The center might be shifted slighly to the left of how I'm doing this.
-            # See the note in the function docstring.
-
-            NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
-            if event_with_player_reindexing.moments[idx].player_hoop_sides != NORMALIZED_HOOP_SIDES:
-                coords_unnormalized = np.vstack(
-                    (
-                        event_with_player_reindexing.moments[idx].player_xs,
-                        event_with_player_reindexing.moments[idx].player_ys,
-                    )
-                ).T
-                coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
-                event_with_player_reindexing.moments[idx].player_xs = coords_unnormalized_flipped[
-                    :, 0
-                ]
-                event_with_player_reindexing.moments[idx].player_ys = coords_unnormalized_flipped[
-                    :, 1
-                ]
+                # NOTE: The center might be shifted slighly to the left of how I'm doing this.
+                # See the note in the function docstring.
+                NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
+                if (
+                    event_with_player_reindexing.moments[idx].player_hoop_sides
+                    != NORMALIZED_HOOP_SIDES
+                ):
+                    coords_unnormalized = np.vstack(
+                        (
+                            event_with_player_reindexing.moments[idx].player_xs,
+                            event_with_player_reindexing.moments[idx].player_ys,
+                        )
+                    ).T
+                    coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
+                    event_with_player_reindexing.moments[
+                        idx
+                    ].player_xs = coords_unnormalized_flipped[:, 0]
+                    event_with_player_reindexing.moments[
+                        idx
+                    ].player_ys = coords_unnormalized_flipped[:, 1]
 
             ### Now we extend our accumulating lists of moments, events, event_start_stop_idxs.
             moments.extend(event.moments)

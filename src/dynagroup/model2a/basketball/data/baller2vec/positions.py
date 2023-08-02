@@ -16,6 +16,7 @@ so that we can have index consistency even after player substitutions.
 
 FORWARD_POSITIONS_ORDERED = [
     "Small forward / shooting guard",
+    "Small forward / point guard",
     "Small forward",
     "Small forward / power forward",
     "Power forward / small forward",
@@ -30,6 +31,7 @@ GUARD_POSITIONS_ORDERED = [
     "Small forward / shooting guard",
     "Shooting guard / small forward",
     "Shooting guard",
+    "Shooting guard / point guard",
     "Point guard / shooting guard",
     "Point guard",
     "Combo guard",

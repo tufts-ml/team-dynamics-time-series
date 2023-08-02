@@ -32,6 +32,7 @@ GUARD_POSITIONS_ORDERED = [
     "Shooting guard",
     "Point guard / shooting guard",
     "Point guard",
+    "Combo guard",
 ]
 
 CENTER_POSITIONS_ORDERED = [
@@ -255,11 +256,13 @@ def make_position_group_to_player_names(
     position_groups_have_excess_members = position_group_totals > np.array([2, 1, 2])
     for pg in range(3):
         if not position_groups_have_enough_members[pg]:
-            position_group_with_excess_members = np.where(position_groups_have_excess_members)[0][0]
+            position_group_with_excess_members = np.argmax(position_groups_have_excess_members)
             for p in range(5):
-                if matrix_bool__players_by_position_group_memberships[
-                    p, position_group_with_excess_members
-                ]:
+                if (
+                    matrix_bool__players_by_position_group_memberships[
+                        p, position_group_with_excess_members
+                    ]
+                ) and not (matrix_bool__players_by_position_group_memberships[p, pg]):
                     matrix_bool__players_by_position_group_memberships[p, pg] = True
                     break
 

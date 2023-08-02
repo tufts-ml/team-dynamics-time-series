@@ -1,12 +1,170 @@
+import jax.numpy as jnp
+import numpy as np
+
+from dynagroup.io import ensure_dir
+from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.CLE_starters_dataset import (
     get_basketball_games_for_CLE_dataset,
 )
+from dynagroup.model2a.basketball.data.baller2vec.data_splits import (
+    get_flattened_events_from_games,
+    get_flattened_unnormalized_coords_from_games,
+)
+from dynagroup.model2a.basketball.data.baller2vec.event_end_times import (
+    find_event_end_times,
+)
+from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.gaussian.initialize import (
+    PreInitialization_Strategy_For_CSP,
+    smart_initialize_model_2a,
+)
+from dynagroup.params import Dims
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
+from dynagroup.vi.vi_forecast import get_forecasting_MSEs_on_test_set
+
+
+"""
+Module purpose: "Demo" (later, run) our training and forecasting pipeline
+for the "CLE Starters Dataset".  Note that we reinitialize the model whenever 
+the coordinates have changed a huge amount over timesteps, as can happen over halftime,
+over excluded plays (because the lineup is not of interest), or across games.
+"""
+
+###
+# Configs
+###
+
+# Data split
+n_train_games = 1
+n_val_games = 2
+n_test_games = 2
+
+# Directories
+save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_games/"
+
+# Model specification
+K = 4
+L = 5
+
+# Model adjustments
+model_adjustment = None  # Options: None, "one_system_regime"
+
+# Initialization
+seed_for_initialization = 1
+num_em_iterations_for_bottom_half_init = 5
+num_em_iterations_for_top_half_init = 20
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
+
+# Inference
+n_cavi_iterations = 5
+M_step_toggle_for_STP = "closed_form_tpm"
+M_step_toggle_for_ETP = "gradient_descent"
+M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
+M_step_toggle_for_IP = "closed_form_gaussian"
+system_covariates = None
+num_M_step_iters = 50
+alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 
 ###
 # I/O
 ###
 
+ensure_dir(save_dir)
+
 games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=5)
 plays_per_game = [len(game.events) for game in games]
 print(f"The plays per game are {plays_per_game}.")
+
+
+###
+# Data splitting and preprocessing
+###
+
+### Training
+games_train = games[:n_train_games]
+
+# Events
+events_train = get_flattened_events_from_games(games_train)
+event_end_times_train = find_event_end_times(events_train)
+
+
+# Coords
+coords_unnormalized_train = get_flattened_unnormalized_coords_from_games(games_train)
+xs_train = normalize_coords(coords_unnormalized_train)
+
+# Info
+print(
+    f"The number of breaks in the training data is {len(event_end_times_train)}, out of {len(xs_train)} timesteps."
+)
+
+
+###
+# MASKING
+###
+use_continuous_states = None
+
+
+###
+# Setup Model
+###
+
+#### Setup Dims
+
+J = np.shape(xs_train)[1]
+D, D_t = 2, 2
+N = 0
+M_s, M_e = 0, 0  # for now!
+DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
+
+### Setup Prior
+system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+
+print("Running smart initialization.")
+
+### TODO: Make smart initialization better. E.g.
+# 1) Run init x times, pick the one with the best ELBO.
+# 2) Find a way to do smarter init for the recurrence parameters
+# 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
+
+results_init = smart_initialize_model_2a(
+    DIMS,
+    xs_train,
+    event_end_times_train,
+    model_basketball,
+    preinitialization_strategy_for_CSP,
+    num_em_iterations_for_bottom_half_init,
+    num_em_iterations_for_top_half_init,
+    seed_for_initialization,
+    system_covariates,
+    use_continuous_states,
+)
+params_init = results_init.params
+most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
+    :, :, -1
+]  # TxJ
+CSP_init = params_init.CSP  # JxKxDxD
+
+
+####
+# Inference
+####
+
+VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+    jnp.asarray(xs_train),
+    n_cavi_iterations,
+    results_init,
+    model_basketball,
+    event_end_times_train,
+    M_step_toggles_from_strings(
+        M_step_toggle_for_STP,
+        M_step_toggle_for_ETP,
+        M_step_toggle_for_continuous_state_parameters,
+        M_step_toggle_for_IP,
+    ),
+    num_M_step_iters,
+    system_transition_prior,
+    system_covariates,
+    use_continuous_states,
+)

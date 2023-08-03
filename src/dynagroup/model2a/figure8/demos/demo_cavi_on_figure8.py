@@ -179,7 +179,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     sample.xs,
-    sample.event_end_times,
+    sample.event_boundaries,
     figure8_model_JAX,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -208,7 +208,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     sample.xs,
     model,
-    sample.event_end_times,
+    sample.event_boundaries,
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
@@ -262,7 +262,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model,
-    sample.event_end_times,
+    sample.event_boundaries,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

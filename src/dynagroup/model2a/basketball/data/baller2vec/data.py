@@ -12,7 +12,11 @@ pp.install_extras()
 import numpy as np
 
 from dynagroup.model2a.basketball.court import flip_coords_unnormalized
-from dynagroup.model2a.basketball.data.baller2vec.core import (
+from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
+    get_start_stop_idxs_from_provided_events,
+    get_stop_idxs_for_inferred_events_from_provided_events,
+)
+from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     Event,
     coords_from_moments,
     get_event_in_baller2vec_format,
@@ -38,7 +42,7 @@ class BasketballData:
     Attributes:
         event_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
             giving the location where an event starts and stops.
-        coords_unnormalized:  unnormalized coordinates for basketball players,
+        coords_normalized:  unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)
     """
 
@@ -47,30 +51,13 @@ class BasketballData:
     # represent that?
 
     events: List[Event]
-    event_start_stop_idxs: List[Tuple[int]]
     coords_unnormalized: NumpyArray3D
+    provided_event_start_stop_idxs: List[Tuple[int]]
+    inferred_event_stop_idxs: List[int]
 
 
 ###
-# Helpers
-###
-
-
-def get_event_start_stop_idxs_from_events(events: List[Event]) -> List[Tuple[int]]:
-    event_start_stop_idxs = []
-    num_moments_so_far = 0
-
-    for event in events:
-        event_first_moment = num_moments_so_far
-        num_moments = len(event.moments)
-        num_moments_so_far += num_moments
-        event_last_moment = num_moments_so_far
-        event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
-    return event_start_stop_idxs
-
-
-###
-# Main
+# Single game (from disk)
 ###
 
 
@@ -322,6 +309,52 @@ def load_basketball_data_from_single_game_file(
     if len(events) == 0:
         raise ValueError("This game had ZERO events retained. Check into this.")
     unnormalized_coords = coords_from_moments(moments)
-    event_start_stop_idxs = get_event_start_stop_idxs_from_events(events)
+    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events)
+    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(events)
 
-    return BasketballData(events, event_start_stop_idxs, unnormalized_coords)
+    return BasketballData(
+        events, unnormalized_coords, provided_event_start_stop_idxs, inferred_event_stop_idxs
+    )
+
+
+###
+# Multiple games (in memory)
+###
+
+
+def get_flattened_events_from_games(games: List[BasketballData]) -> List[Event]:
+    """
+    Concatentate all the events from a set of games
+    """
+    events_all = []
+    for game in games:
+        events_all.extend(game.events)
+    return events_all
+
+
+def get_flattened_unnormalized_coords_from_games(games: List[BasketballData]) -> NumpyArray3D:
+    """
+    Concatentate all the unnormalized coords from a set of games
+    """
+
+    # concatentate the coords_unnormalized
+    coords_unnormalized_as_tuple = ()
+    for game in games:
+        coords_unnormalized_as_tuple = coords_unnormalized_as_tuple + (game.coords_unnormalized,)
+    coords_unnormalized = np.vstack(
+        coords_unnormalized_as_tuple
+    )  # T=total number of training samples about 4.5 hours..
+    return coords_unnormalized
+
+
+def make_basketball_data_from_games(games: List[BasketballData]):
+    events = get_flattened_events_from_games(games)
+    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events)
+    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(events)
+    coords_unnormalized = get_flattened_unnormalized_coords_from_games(games)
+    print(
+        f"From {len(coords_unnormalized)} timesteps, there are {len(provided_event_start_stop_idxs)} provided events and {len(inferred_event_stop_idxs)} inferred events."
+    )
+    return BasketballData(
+        events, coords_unnormalized, provided_event_start_stop_idxs, inferred_event_stop_idxs
+    )

@@ -106,7 +106,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     DATA.positions,
-    DATA.event_end_times,
+    DATA.event_boundaries,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -144,8 +144,8 @@ if do_init_plots:
     event_idx = 4
     pct_event_to_skip = 0.0
 
-    event_start = DATA.event_end_times[event_idx] + 1
-    event_end = DATA.event_end_times[event_idx + 1]
+    event_start = DATA.event_boundaries[event_idx] + 1
+    event_end = DATA.event_boundaries[event_idx + 1]
     event_duration = event_end - event_start
 
     T_start = int(event_start + pct_event_to_skip * (event_duration))
@@ -180,7 +180,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    DATA.event_end_times,
+    DATA.event_boundaries,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -199,8 +199,8 @@ if do_post_inference_plots:
     event_idx = 4
     pct_event_to_skip = 0.50
 
-    event_start = DATA.event_end_times[event_idx] + 1
-    event_end = DATA.event_end_times[event_idx + 1]
+    event_start = DATA.event_boundaries[event_idx] + 1
+    event_end = DATA.event_boundaries[event_idx + 1]
     event_duration = event_end - event_start
 
     T_start = int(event_start + pct_event_to_skip * (event_duration))

@@ -3,7 +3,7 @@ from datetime import datetime, time
 
 import numpy as np
 import pandas as pd
-from pandas.core.frame import DataFrame
+from pandas.moments_and_events.frame import DataFrame
 
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.von_mises.util import degrees_to_radians

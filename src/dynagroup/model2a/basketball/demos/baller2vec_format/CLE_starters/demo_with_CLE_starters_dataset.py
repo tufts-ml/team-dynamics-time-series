@@ -2,6 +2,9 @@ import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.io import ensure_dir
+from dynagroup.model2a.basketball.animate import (
+    animate_events_over_vector_field_for_one_player,
+)
 from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.CLE_starters_dataset import (
     get_basketball_games_for_CLE_dataset,
@@ -56,6 +59,7 @@ L = 5
 model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
+animate_initialization = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -147,6 +151,26 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 ]  # TxJ
 
 
+###
+# Animation Diagnostics
+###
+
+### Animate some plays along with vector fields
+if animate_initialization:
+    J_FOCAL = 0
+    n_events_to_animate = 2
+    # TODO: Give jersey label of the focal player in the title of the animation.
+    # TODO: Should we by default have the animation match the forecasting entity?
+    animate_events_over_vector_field_for_one_player(
+        data_train.events[:n_events_to_animate],
+        data_train.provided_event_start_stop_idxs[:n_events_to_animate],
+        most_likely_entity_states_after_init,
+        params_init.CSP,
+        J_FOCAL,
+        save_dir,
+        "post_init",
+    )
+
 ####
 # Inference
 ####
@@ -209,26 +233,3 @@ for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_chunk):
     print(
         f"For chunk {i}, forward sim: {mean_median_forward_sim:.02f}, mean_fixed_velocity: {mean_fixed_velocity:.02f}"
     )
-
-###
-# Animation Diagnostics
-###
-
-# WIP
-
-# from dynagroup.model2a.basketball.animate import (
-#     animate_events_over_vector_field_for_one_player,
-# )
-
-# J_FOCAL = 0
-# # TODO: Give jersey label of the focal player in the title of the animation.
-# # TODO: Should we by default have the animation match the forecasting entity?
-# animate_events_over_vector_field_for_one_player(
-#     events_train,
-#     event_end_times_train,
-#     most_likely_entity_states_after_init,
-#     params_learned.CSP ,
-#     J_FOCAL,
-#     save_dir,
-#     "post_init",
-# )

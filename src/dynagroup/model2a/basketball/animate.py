@@ -154,7 +154,7 @@ def update(
         k_hat = int(vector_field_dict["k_j_sequence"][n])
         A_j = vector_field_dict["A_j"][k_hat]
         b_j = vector_field_dict["b_j"][k_hat]
-        dxydt_norm = XY_NORM.dot(A_j.T) + b_j - XY_NORM
+        dxydt_norm = np.array(XY_NORM.dot(A_j.T) + b_j - XY_NORM)
         xy = unnormalize_coords(XY_NORM)
         dxydt = unnormalize_coords(dxydt_norm)
         quiver_handle = ax.quiver(

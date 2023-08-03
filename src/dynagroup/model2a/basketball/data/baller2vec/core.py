@@ -267,19 +267,6 @@ def get_event_in_baller2vec_format(
 ###
 
 
-@dataclass
-class BasketballGame:
-    """
-    Attributes:
-        unnormalized_coords:  unnormalized coordinates for basketball players,
-            array of shape (T_slice, J=10, D=2)
-    """
-
-    events: List[Event]
-    event_start_stop_idxs: List[int]
-    coords_unnormalized: NumpyArray3D
-
-
 def coords_from_moments(moments: List[Moment]) -> Coords:
     T = len(moments)
     J = 10

@@ -2,7 +2,8 @@ from typing import List
 
 import numpy as np
 
-from dynagroup.model2a.basketball.data.baller2vec.core import BasketballGame, Event
+from dynagroup.model2a.basketball.data.baller2vec.core import Event
+from dynagroup.model2a.basketball.data.baller2vec.game import BasketballGame
 from dynagroup.types import NumpyArray3D
 
 

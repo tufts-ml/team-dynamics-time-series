@@ -228,3 +228,26 @@ for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_chunk):
     print(
         f"For chunk {i}, forward sim: {mean_median_forward_sim:.02f}, mean_fixed_velocity: {mean_fixed_velocity:.02f}"
     )
+
+###
+# Animation Diagnostics
+###
+
+# WIP
+
+# from dynagroup.model2a.basketball.animate import (
+#     animate_events_over_vector_field_for_one_player,
+# )
+
+# J_FOCAL = 0
+# # TODO: Give jersey label of the focal player in the title of the animation.
+# # TODO: Should we by default have the animation match the forecasting entity?
+# animate_events_over_vector_field_for_one_player(
+#     events_train,
+#     event_end_times_train,
+#     most_likely_entity_states_after_init,
+#     params_learned.CSP ,
+#     J_FOCAL,
+#     save_dir,
+#     "post_init",
+# )

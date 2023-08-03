@@ -1,7 +1,8 @@
 import copy
 import warnings
+from dataclasses import dataclass
 from time import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import prettyprinter as pp
 
@@ -12,7 +13,7 @@ import numpy as np
 
 from dynagroup.model2a.basketball.court import flip_coords_unnormalized
 from dynagroup.model2a.basketball.data.baller2vec.core import (
-    BasketballGame,
+    Event,
     coords_from_moments,
     get_event_in_baller2vec_format,
     get_num_events_in_game,
@@ -23,6 +24,22 @@ from dynagroup.model2a.basketball.data.baller2vec.positions import (
     get_player_name_2_position,
     make_opponent_names_2_entity_idxs,
 )
+from dynagroup.types import NumpyArray3D
+
+
+@dataclass
+class BasketballGame:
+    """
+    Attributes:
+        event_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
+            giving the location where an event starts and stops.
+        coords_unnormalized:  unnormalized coordinates for basketball players,
+            array of shape (T_slice, J=10, D=2)
+    """
+
+    events: List[Event]
+    event_start_stop_idxs: List[Tuple[int]]
+    coords_unnormalized: NumpyArray3D
 
 
 def get_basketball_game(

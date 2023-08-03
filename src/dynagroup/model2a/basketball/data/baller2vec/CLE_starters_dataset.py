@@ -7,8 +7,10 @@ import prettyprinter as pp
 
 pp.install_extras()
 
-from dynagroup.model2a.basketball.data.baller2vec.core import BasketballGame
-from dynagroup.model2a.basketball.data.baller2vec.get_game import get_basketball_game
+from dynagroup.model2a.basketball.data.baller2vec.game import (
+    BasketballGame,
+    get_basketball_game,
+)
 
 
 """

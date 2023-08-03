@@ -165,8 +165,8 @@ def grab_event(
     player_names = player_names_from_player_ids(player_data, moments[0].player_ids)
 
     ### Get start and end times
-    start_game_secs_elapsed = moments[0].game_time_elapsed_secs
-    end_game_secs_elapsed = moments[-1].game_time_elapsed_secs
+    start_game_secs_elapsed = moments[0].data_time_elapsed_secs
+    end_game_secs_elapsed = moments[-1].data_time_elapsed_secs
 
     if verbose:
         time_of_play = end_game_secs_elapsed - start_game_secs_elapsed

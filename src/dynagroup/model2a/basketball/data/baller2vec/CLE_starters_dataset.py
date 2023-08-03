@@ -7,9 +7,9 @@ import prettyprinter as pp
 
 pp.install_extras()
 
-from dynagroup.model2a.basketball.data.baller2vec.game import (
-    BasketballGame,
-    get_basketball_game,
+from dynagroup.model2a.basketball.data.baller2vec.data import (
+    BasketballData,
+    load_basketball_data_from_single_game_file,
 )
 
 
@@ -27,7 +27,7 @@ def get_basketball_games_for_CLE_dataset(
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
     verbose: bool = True,
-) -> List[BasketballGame]:
+) -> List[BasketballData]:
     PATH_TO_BALLER2VEC_INFO = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/CLE_starters/info/baller2vec_info.pydict"
 
     GAME_AND_EVENT_LABEL_DATA_DIR = (
@@ -66,7 +66,7 @@ def get_basketball_game_with_CLE_starters(
     path_to_baller2vec_info: str,
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
-) -> BasketballGame:
+) -> BasketballData:
     """
     We only keep events with the starters for a given game.
 
@@ -427,7 +427,7 @@ def get_basketball_game_with_CLE_starters(
         "Bojan Bogdanovic": "Small forward",
     }
 
-    return get_basketball_game(
+    return load_basketball_data_from_single_game_file(
         path_to_game_data,
         path_to_event_label_data,
         path_to_baller2vec_info,

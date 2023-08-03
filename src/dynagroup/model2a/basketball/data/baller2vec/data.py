@@ -27,8 +27,13 @@ from dynagroup.model2a.basketball.data.baller2vec.positions import (
 from dynagroup.types import NumpyArray3D
 
 
+###
+# STRUCTS
+###
+
+
 @dataclass
-class BasketballGame:
+class BasketballData:
     """
     Attributes:
         event_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
@@ -37,12 +42,39 @@ class BasketballGame:
             array of shape (T_slice, J=10, D=2)
     """
 
+    # Rk: This is kind of a weird and redundant class since ` event_start_stop_idxs` and `coords_unnormalized`
+    # can both be derived from `events`.  Can I figure out what downstream tasks need from `events` and just
+    # represent that?
+
     events: List[Event]
     event_start_stop_idxs: List[Tuple[int]]
     coords_unnormalized: NumpyArray3D
 
 
-def get_basketball_game(
+###
+# Helpers
+###
+
+
+def get_event_start_stop_idxs_from_events(events: List[Event]) -> List[Tuple[int]]:
+    event_start_stop_idxs = []
+    num_moments_so_far = 0
+
+    for event in events:
+        event_first_moment = num_moments_so_far
+        num_moments = len(event.moments)
+        num_moments_so_far += num_moments
+        event_last_moment = num_moments_so_far
+        event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
+    return event_start_stop_idxs
+
+
+###
+# Main
+###
+
+
+def load_basketball_data_from_single_game_file(
     path_to_game_data: str,
     path_to_event_label_data: str,
     path_to_baller2vec_info: str,
@@ -50,7 +82,7 @@ def get_basketball_game(
     player_names_in_dataset_2_positions: Optional[Dict[str, str]] = None,
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
-) -> BasketballGame:
+) -> BasketballData:
     """
     We only keep events with the starters for a given game.
 
@@ -175,13 +207,11 @@ def get_basketball_game(
         for starter in focal_team_starters_for_this_game
     }
 
-    ### Organize the events into a BasketballGame object.
+    ### Organize the events into a BasketballData object.
     events = []
     moments = []
-    event_start_stop_idxs = []
     n_events_without_focal_team_starters = 0
 
-    num_moments_so_far = 0
     for event_idx in event_idxs:
         try:
             event = get_event_in_baller2vec_format(
@@ -279,13 +309,8 @@ def get_basketball_game(
                         idx
                     ].player_ys = coords_unnormalized_flipped[:, 1]
 
-            ### Now we extend our accumulating lists of moments, events, event_start_stop_idxs.
+            ### Now we extend our accumulating lists of moments and events.
             moments.extend(event.moments)
-            event_first_moment = num_moments_so_far
-            num_moments = len(event.moments)
-            num_moments_so_far += num_moments
-            event_last_moment = num_moments_so_far
-            event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
             events.extend([event])
         except:
             warnings.warn(f"Could not process event idx {event_idx}")
@@ -297,5 +322,6 @@ def get_basketball_game(
     if len(events) == 0:
         raise ValueError("This game had ZERO events retained. Check into this.")
     unnormalized_coords = coords_from_moments(moments)
+    event_start_stop_idxs = get_event_start_stop_idxs_from_events(events)
 
-    return BasketballGame(events, event_start_stop_idxs, unnormalized_coords)
+    return BasketballData(events, event_start_stop_idxs, unnormalized_coords)

@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from dynagroup.model2a.basketball.data.baller2vec.core import Event
-from dynagroup.model2a.basketball.data.baller2vec.game import BasketballGame
+from dynagroup.model2a.basketball.data.baller2vec.data import BasketballData
 from dynagroup.types import NumpyArray3D
 
 
@@ -14,7 +14,7 @@ Module Purpose:
 """
 
 
-def get_flattened_events_from_games(games: List[BasketballGame]) -> List[Event]:
+def get_flattened_events_from_games(games: List[BasketballData]) -> List[Event]:
     """
     Concatentate all the events from a set of games
     """
@@ -24,7 +24,7 @@ def get_flattened_events_from_games(games: List[BasketballGame]) -> List[Event]:
     return events_all
 
 
-def get_flattened_unnormalized_coords_from_games(games: List[BasketballGame]) -> NumpyArray3D:
+def get_flattened_unnormalized_coords_from_games(games: List[BasketballData]) -> NumpyArray3D:
     """
     Concatentate all the unnormalized coords from a set of games
     """

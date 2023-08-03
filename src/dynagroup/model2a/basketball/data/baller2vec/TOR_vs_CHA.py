@@ -5,16 +5,16 @@ import prettyprinter as pp
 
 pp.install_extras()
 
-from dynagroup.model2a.basketball.data.baller2vec.game import (
-    BasketballGame,
-    get_basketball_game,
+from dynagroup.model2a.basketball.data.baller2vec.data import (
+    BasketballData,
+    load_basketball_data_from_single_game_file,
 )
 
 
 def get_basketball_data_for_TOR_vs_CHA(
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
-) -> BasketballGame:
+) -> BasketballData:
     """
     Currently data is hardcoded to be from a single basketball game, TOR vs CHA.
     We only keep events with all 5 TOR starters.
@@ -85,7 +85,7 @@ def get_basketball_data_for_TOR_vs_CHA(
         "Delon Wright": "Point guard / shooting guard",
         "Nicolas Batum": "Power forward / small forward",
     }
-    return get_basketball_game(
+    return load_basketball_data_from_single_game_file(
         PATH_TO_GAME_DATA,
         PATH_TO_EVENT_LABEL_DATA,
         PATH_TO_BALLER2VEC_INFO,

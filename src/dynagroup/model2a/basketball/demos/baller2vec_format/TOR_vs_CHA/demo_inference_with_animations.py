@@ -209,7 +209,7 @@ if animate_initialization:
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         basketball_data.events,
-        basketball_data.event_start_stop_idxs,
+        basketball_data.provided_event_start_stop_idxs,
         most_likely_entity_states_after_init,
         CSP_init,
         J_FOCAL,
@@ -281,7 +281,7 @@ if animate_diagnostics:
     # TODO: Give jersey label of the focal player in the title of the animation.
     animate_events_over_vector_field_for_one_player(
         basketball_data.events,
-        basketball_data.event_start_stop_idxs,
+        basketball_data.provided_event_start_stop_idxs,
         most_likely_entity_states_after_CAVI,
         CSP_after_CAVI,
         J_FOCAL,

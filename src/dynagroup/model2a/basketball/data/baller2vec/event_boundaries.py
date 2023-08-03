@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 
-from dynagroup.model2a.basketball.data.baller2vec.core import Event
+from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
 
 
-def find_event_end_times(events: List[Event]) -> List[int]:
+def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) -> List[int]:
     """
     Try to figure out where the breaks are in our dataset over timesteps
     by finding huge shifts in coordinates.
@@ -45,3 +45,16 @@ def find_event_end_times(events: List[Event]) -> List[int]:
     last_timestep = TT + 1
     event_end_times.append(last_timestep)
     return event_end_times
+
+
+def get_start_stop_idxs_from_provided_events(events: List[Event]) -> List[Tuple[int]]:
+    event_start_stop_idxs = []
+    num_moments_so_far = 0
+
+    for event in events:
+        event_first_moment = num_moments_so_far
+        num_moments = len(event.moments)
+        num_moments_so_far += num_moments
+        event_last_moment = num_moments_so_far
+        event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
+    return event_start_stop_idxs

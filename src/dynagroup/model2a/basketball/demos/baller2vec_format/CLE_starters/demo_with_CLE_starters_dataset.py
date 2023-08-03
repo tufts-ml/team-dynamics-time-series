@@ -6,12 +6,8 @@ from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.CLE_starters_dataset import (
     get_basketball_games_for_CLE_dataset,
 )
-from dynagroup.model2a.basketball.data.baller2vec.data_splits import (
-    get_flattened_events_from_games,
-    get_flattened_unnormalized_coords_from_games,
-)
-from dynagroup.model2a.basketball.data.baller2vec.event_end_times import (
-    find_event_end_times,
+from dynagroup.model2a.basketball.data.baller2vec.data import (
+    make_basketball_data_from_games,
 )
 from dynagroup.model2a.basketball.forecasts import (
     chunkify_xs_into_events_which_have_sufficient_length,
@@ -41,7 +37,7 @@ over excluded plays (because the lineup is not of interest), or across games.
 
 
 # Data split
-n_train_games = 25
+n_train_games = 5
 n_val_games = 2
 n_test_games = 2
 
@@ -96,35 +92,20 @@ print(f"The plays per game are {plays_per_game}.")
 # Data splitting and preprocessing
 ###
 
-# TODO: Make a function with a higher level of abstraction.
 
 games_train = games[:n_train_games]
 games_test = games[-n_test_games:]
 
-# Events
-events_train = get_flattened_events_from_games(games_train)
-event_end_times_train = find_event_end_times(events_train)
+data_train = make_basketball_data_from_games(games_train)
+data_test = make_basketball_data_from_games(games_test)
 
-events_test = get_flattened_events_from_games(games_test)
-event_end_times_test = find_event_end_times(events_test)
-
-# Coords
-coords_unnormalized_train = get_flattened_unnormalized_coords_from_games(games_train)
-xs_train = normalize_coords(coords_unnormalized_train)
-
-coords_unnormalized_test = get_flattened_unnormalized_coords_from_games(games_test)
-xs_test = normalize_coords(coords_unnormalized_test)
-
-# Info
-print(f"The training set has {len(event_end_times_train)} breaks out of {len(xs_train)} timesteps.")
-print(f"The test set has {len(event_end_times_test)} breaks out of {len(xs_test)} timesteps.")
-
+xs_train = normalize_coords(data_train.coords_unnormalized)
+xs_test = normalize_coords(data_test.coords_unnormalized)
 
 ###
 # MASKING
 ###
 use_continuous_states = None
-
 
 ###
 # Setup Model
@@ -151,7 +132,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs_train,
-    event_end_times_train,
+    data_train.inferred_event_stop_idxs,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -175,7 +156,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    event_end_times_train,
+    data_train.inferred_event_stop_idxs,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -197,7 +178,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # The return value is a List whose elements have type `dynagroup.forecasts.Forecast_MSEs`
 
 x_chunks_test = chunkify_xs_into_events_which_have_sufficient_length(
-    event_end_times_test, xs_test, T_test_event_min
+    data_test.inferred_event_stop_idxs, xs_test, T_test_event_min
 )
 T_contexts = generate_random_context_times_for_x_chunks(
     x_chunks_test,

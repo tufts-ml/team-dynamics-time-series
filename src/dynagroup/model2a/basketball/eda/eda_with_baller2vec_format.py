@@ -1,5 +1,5 @@
 from dynagroup.model2a.basketball.animate import animate_event
-from dynagroup.model2a.basketball.data.baller2vec.core import (
+from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     get_event_in_baller2vec_format,
 )
 

@@ -54,7 +54,7 @@ class Forecast_MSEs:
             If True, we use raw (unnormalized) basketball coords in [0,100]x[0,50] rather than [0,1]x[0,1]
     """
 
-    forward_simulation: NumpyArray2D
+    forward_simulations: NumpyArray2D
     fixed_velocity: NumpyArray1D
     raw_coords: bool
 

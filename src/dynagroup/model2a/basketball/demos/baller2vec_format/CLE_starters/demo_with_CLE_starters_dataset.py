@@ -79,7 +79,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 T_test_event_min = 50
 T_context_min = 10
 T_forecast = 20
-n_forecasts = 3
+n_forecasts = 10
 
 ###
 # I/O
@@ -95,6 +95,8 @@ print(f"The plays per game are {plays_per_game}.")
 ###
 # Data splitting and preprocessing
 ###
+
+# TODO: Make a function with a higher level of abstraction.
 
 games_train = games[:n_train_games]
 games_test = games[-n_test_games:]
@@ -162,7 +164,6 @@ params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
     :, :, -1
 ]  # TxJ
-CSP_init = params_init.CSP  # JxKxDxD
 
 
 ####
@@ -192,6 +193,9 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasts
 ###
 
+# TODO: Move this into a function in the basketball.forecasts.py module.
+# The return value is a List whose elements have type `dynagroup.forecasts.Forecast_MSEs`
+
 x_chunks_test = chunkify_xs_into_events_which_have_sufficient_length(
     event_end_times_test, xs_test, T_test_event_min
 )
@@ -200,3 +204,27 @@ T_contexts = generate_random_context_times_for_x_chunks(
     T_context_min,
     T_forecast,
 )
+
+forecasting_MSEs_by_chunk = [None] * len(x_chunks_test)
+for i, (x_chunk_test, T_context) in enumerate(zip(x_chunks_test, T_contexts)):
+    print(f"--- --- Now making forecasts on chunk {i+1}/{len(x_chunks_test)}. --- ---")
+    forecasting_MSEs_by_chunk[i] = get_forecasting_MSEs_on_test_set(
+        x_chunk_test,
+        params_learned,
+        model_basketball,
+        T_context,
+        T_forecast,
+        n_cavi_iterations,
+        n_forecasts,
+        system_covariates,
+    )
+
+
+for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_chunk):
+    mean_median_forward_sim = np.mean(
+        np.median(forecasting_MSEs.forward_simulation, 0)[0]
+    )  # median over S, mean over J
+    mean_fixed_velocity = np.mean(forecasting_MSEs.fixed_velocity[0])  # mean over J
+    print(
+        f"For chunk {i}, forward sim: {mean_median_forward_sim:.02f}, mean_fixed_velocity: {mean_fixed_velocity:.02f}"
+    )

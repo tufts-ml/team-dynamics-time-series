@@ -112,7 +112,7 @@ def get_forecasting_MSEs_on_test_set(
             model,
             event_end_times,
         )
-
+    print("")
     ###
     # Forecasting
     ###

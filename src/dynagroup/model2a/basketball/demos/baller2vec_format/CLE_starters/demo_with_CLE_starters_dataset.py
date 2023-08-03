@@ -13,6 +13,10 @@ from dynagroup.model2a.basketball.data.baller2vec.data_splits import (
 from dynagroup.model2a.basketball.data.baller2vec.event_end_times import (
     find_event_end_times,
 )
+from dynagroup.model2a.basketball.forecasts import (
+    chunkify_xs_into_events_which_have_sufficient_length,
+    generate_random_context_times_for_x_chunks,
+)
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
@@ -35,10 +39,15 @@ over excluded plays (because the lineup is not of interest), or across games.
 # Configs
 ###
 
+
 # Data split
-n_train_games = 1
+n_train_games = 25
 n_val_games = 2
 n_test_games = 2
+
+# Sampling rate
+sampling_rate_Hz = 5
+
 
 # Directories
 save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_games/"
@@ -66,6 +75,11 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
+# Forecasts
+T_test_event_min = 50
+T_context_min = 10
+T_forecast = 20
+n_forecasts = 3
 
 ###
 # I/O
@@ -73,7 +87,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 ensure_dir(save_dir)
 
-games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=5)
+games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=sampling_rate_Hz)
 plays_per_game = [len(game.events) for game in games]
 print(f"The plays per game are {plays_per_game}.")
 
@@ -82,22 +96,26 @@ print(f"The plays per game are {plays_per_game}.")
 # Data splitting and preprocessing
 ###
 
-### Training
 games_train = games[:n_train_games]
+games_test = games[-n_test_games:]
 
 # Events
 events_train = get_flattened_events_from_games(games_train)
 event_end_times_train = find_event_end_times(events_train)
 
+events_test = get_flattened_events_from_games(games_test)
+event_end_times_test = find_event_end_times(events_test)
 
 # Coords
 coords_unnormalized_train = get_flattened_unnormalized_coords_from_games(games_train)
 xs_train = normalize_coords(coords_unnormalized_train)
 
+coords_unnormalized_test = get_flattened_unnormalized_coords_from_games(games_test)
+xs_test = normalize_coords(coords_unnormalized_test)
+
 # Info
-print(
-    f"The number of breaks in the training data is {len(event_end_times_train)}, out of {len(xs_train)} timesteps."
-)
+print(f"The training set has {len(event_end_times_train)} breaks out of {len(xs_train)} timesteps.")
+print(f"The test set has {len(event_end_times_test)} breaks out of {len(xs_test)} timesteps.")
 
 
 ###
@@ -167,4 +185,18 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     system_transition_prior,
     system_covariates,
     use_continuous_states,
+)
+
+
+###
+# Forecasts
+###
+
+x_chunks_test = chunkify_xs_into_events_which_have_sufficient_length(
+    event_end_times_test, xs_test, T_test_event_min
+)
+T_contexts = generate_random_context_times_for_x_chunks(
+    x_chunks_test,
+    T_context_min,
+    T_forecast,
 )

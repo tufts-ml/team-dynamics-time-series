@@ -9,7 +9,7 @@ import pylab as pl
 from dynagroup.types import JaxNumpyArray3D, NumpyArray1D
 
 
-def plot_team_slice(
+def plot_TOR_team_slice(
     continuous_states: JaxNumpyArray3D,
     t_0: int,
     T_slice_max: int,
@@ -45,8 +45,8 @@ def plot_team_slice(
         "DeMar DeRozan",
         "Jonas Valanciunas",
     ]
-    PLAYER_LAST_NAMES = ["Scola", "Carroll", "Lowry", "DeRozan", "Valanciunas"]
-    JERSEY_NUMBERS = ["4", "5", "7", "10", "17"]
+    # PLAYER_LAST_NAMES = ["Scola", "Carroll", "Lowry", "DeRozan", "Valanciunas"]
+    # JERSEY_NUMBERS = ["4", "5", "7", "10", "17"]
 
     # Define a list of colormaps
     colormap_names = ["Blues", "Greens", "Greys", "Purples", "Oranges"]

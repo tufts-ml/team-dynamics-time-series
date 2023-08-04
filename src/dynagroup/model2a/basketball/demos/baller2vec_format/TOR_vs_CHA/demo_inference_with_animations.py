@@ -4,9 +4,6 @@ import numpy as np
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
-from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
-)
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
@@ -14,6 +11,9 @@ from dynagroup.model2a.basketball.animate import (
 from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
+)
+from dynagroup.model2a.basketball.diagnostics.posterior_mean_and_forward_simulation import (
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.model2a.basketball.mask import (
     make_mask_of_which_continuous_states_to_use,

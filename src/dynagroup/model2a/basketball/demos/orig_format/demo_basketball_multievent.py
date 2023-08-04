@@ -4,14 +4,14 @@ import numpy as np
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
-from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
-)
-from dynagroup.diagnostics.team_slice import plot_team_slice
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.data.orig_format import (
     get_data_in_original_formatting,
 )
+from dynagroup.model2a.basketball.diagnostics.posterior_mean_and_forward_simulation import (
+    write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
+)
+from dynagroup.model2a.basketball.diagnostics.team_slice import plot_TOR_team_slice
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
@@ -206,7 +206,7 @@ if do_post_inference_plots:
     T_start = int(event_start + pct_event_to_skip * (event_duration))
     forecast_horizon = event_end - T_start
 
-    plot_team_slice(
+    plot_TOR_team_slice(
         DATA.positions,
         T_start,
         forecast_horizon,

@@ -66,7 +66,7 @@ top_half_num_EM_iterations = 20
 initialization_seed = 0
 
 ### Diagnostics
-save_dir = "/Users/mwojno01/Desktop/LATE_redo_plots/"
+save_dir = "/Users/mwojno01/Desktop/DEMO_for_code_transfer/"
 
 ### Inference
 show_plots_after_learning = False

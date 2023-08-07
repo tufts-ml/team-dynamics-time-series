@@ -12,7 +12,7 @@ def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) 
     """
 
     MEAN_DIST_THRESH = 22.36
-    # How was `MEAN_DIST_THRESH` determined? 20 percent of the [0,100]x[0,50]
+    # How was `MEAN_DIST_THRESH` determined? 20 percent of the [0,94]x[0,50]
     # court in both directions would be a diff of [20,10], which has a (Euclidean) dist of 22.36
     # We assume that if the AVERAGE player moved more than this in a single timestep (1/5 of a second)
     # that this is impossible.   Since  a basketball court is around 100feet x 50 feet, a movement of 22.36 in one

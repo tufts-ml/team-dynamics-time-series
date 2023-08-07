@@ -11,10 +11,15 @@ from dynagroup.types import NumpyArray2D, NumpyArray3D
 ###
 
 ### Court dimensions
-# From: https://github.com/linouk23/NBA-Player-Movements/blob/master/Constant.py
+"""
+The dimensions of an NBA court are 95 feet by 50 feet.  
+
+References:
+    https://github.com/airalcorn2/baller2vec/issues/5
+"""
 
 X_MIN_COURT = 0
-X_MAX_COURT = 100
+X_MAX_COURT = 94
 Y_MIN_COURT = 0
 Y_MAX_COURT = 50
 

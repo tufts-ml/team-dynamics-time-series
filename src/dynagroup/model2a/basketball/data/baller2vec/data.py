@@ -69,6 +69,8 @@ def load_basketball_data_from_single_game_file(
     player_names_in_dataset_2_positions: Optional[Dict[str, str]] = None,
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
+    discard_nonstandard_hoop_sides: bool = False,
+    verbose: bool = True,
 ) -> BasketballData:
     """
     We only keep events with the starters for a given game.
@@ -126,7 +128,7 @@ def load_basketball_data_from_single_game_file(
         unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)
     """
-
+    ### Up front material
     potential_starters = set(focal_team_potential_starter_names_2_entity_idxs.keys())
 
     # E.g. for CLE, starters were:
@@ -177,6 +179,7 @@ def load_basketball_data_from_single_game_file(
                 event_label_dict,
                 player_data,
                 sampling_rate_Hz=sampling_rate_Hz,
+                verbose=verbose,
             )
 
             current_player_names = set(event.player_names)
@@ -208,6 +211,7 @@ def load_basketball_data_from_single_game_file(
                 event_label_dict,
                 player_data,
                 sampling_rate_Hz=sampling_rate_Hz,
+                verbose=verbose,
             )
 
             ### Filter out events that don't have all 5 TOR starters
@@ -269,15 +273,22 @@ def load_basketball_data_from_single_game_file(
                     event.moments[idx].player_hoop_sides[i] for i in permutation_indices
                 ]
 
-                ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
-                # flip the court 180 degrees around the center of the court (i.e. negate
-                # both x and y coords w.r.t center of court). This controls for the effect of hoop
-                # switches at half time on the court dynamics, in terms of both offense vs defense
-                # direction, as well as in terms of player handedness.
+            ### Optionally filter out events that don't have normalized hoop sides.
+            NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
+            if (
+                event_with_player_reindexing.moments[0].player_hoop_sides != NORMALIZED_HOOP_SIDES
+            ) and discard_nonstandard_hoop_sides:
+                continue
 
-                # NOTE: The center might be shifted slighly to the left of how I'm doing this.
-                # See the note in the function docstring.
-                NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
+            ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
+            # flip the court 180 degrees around the center of the court (i.e. negate
+            # both x and y coords w.r.t center of court). This controls for the effect of hoop
+            # switches at half time on the court dynamics, in terms of both offense vs defense
+            # direction, as well as in terms of player handedness.
+
+            # NOTE: The center might be shifted slighly to the left of how I'm doing this.
+            # See the note in the function docstring.
+            for idx in range(len(event.moments)):
                 if (
                     event_with_player_reindexing.moments[idx].player_hoop_sides
                     != NORMALIZED_HOOP_SIDES
@@ -304,7 +315,8 @@ def load_basketball_data_from_single_game_file(
             continue
 
     print(
-        f"\n\n --- There were {len(events)} events with focal team starters and {n_events_without_focal_team_starters} without."
+        f"\n\n --- Of {len(event_idxs)} total events, I successfully constructed {len(events)} events with focal team starters."
+        f"\nThe number of processed events without focal team starters was {n_events_without_focal_team_starters}."
     )
     if len(events) == 0:
         raise ValueError("This game had ZERO events retained. Check into this.")

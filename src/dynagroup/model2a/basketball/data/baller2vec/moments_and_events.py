@@ -220,6 +220,7 @@ def get_event_in_baller2vec_format(
     event_label_dict: Dict[str, int],
     player_data: Dict[int, Dict],
     sampling_rate_Hz=5,
+    verbose: bool = True,
 ) -> Event:
     """
     Arguments:
@@ -243,7 +244,8 @@ def get_event_in_baller2vec_format(
     ### Load the data
     num_events_in_this_game = get_num_events_in_game(game_data)
 
-    print(f"The number of events in this game is {num_events_in_this_game}.")
+    if verbose:
+        print(f"The number of events in this game is {num_events_in_this_game}.")
     if event_idx + 1 > num_events_in_this_game:
         raise ValueError(
             f"The desired event index {event_idx} is too large, since the number of "
@@ -256,7 +258,13 @@ def get_event_in_baller2vec_format(
 
     ### Make event
     event = grab_event(
-        game_data, event_label_data, event_label_dict, player_data, event_idx, sampling_rate_Hz
+        game_data,
+        event_label_data,
+        event_label_dict,
+        player_data,
+        event_idx,
+        sampling_rate_Hz,
+        verbose,
     )
 
     return event

@@ -40,7 +40,7 @@ Do the inferred system states track changes in plays?
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_mask_focal_players__DOUBLE_REDO_with_unnormalized_MSEs_RERUN/"
+save_dir = "/Users/mwojno01/Desktop/RETRY_after_fit_and_forecast_fix_25_plays_mask_focal_players/"
 
 # Data properties
 animate_raw_data = False

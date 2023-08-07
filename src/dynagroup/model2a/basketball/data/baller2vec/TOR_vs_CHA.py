@@ -32,11 +32,6 @@ def get_basketball_data_for_TOR_vs_CHA(
             To ascertain confidently whether this refers to the focal team's offensive or defensive
             hoop would require digging through the docs of both baller2vec and the original dataset.)
 
-            NOTE: I assume that the center of the [0,100]x[0,50] court is [50,25].  But some code in
-            the baller2vec repo suggests that the center on the x-axis might be 47 rather than 50
-            (e.g. see https://github.com/airalcorn2/baller2vec/blob/master/settings.py#L17).
-            Check into this.
-
     Returns:
         unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)

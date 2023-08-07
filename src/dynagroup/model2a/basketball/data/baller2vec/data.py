@@ -86,10 +86,7 @@ def load_basketball_data_from_single_game_file(
             To ascertain confidently whether this refers to the focal team's offensive or defensive
             hoop would require digging through the docs of both baller2vec and the original dataset.)
 
-            NOTE: I assume that the center of the [0,100]x[0,50] court is [50,25].  But some code in
-            the baller2vec repo suggests that the center on the x-axis might be 47 rather than 50
-            (e.g. see https://github.com/airalcorn2/baller2vec/blob/master/settings.py#L17).
-            Check into this.
+            NOTE: The center of the [0,94]x[0,50] court is [47,25].  See basetball.court module.
 
     Arguments:
         focal_team_potential_starter_names_2_entity_idxs: A dict mapping potential starter names to entity indices.

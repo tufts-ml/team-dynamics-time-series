@@ -30,7 +30,7 @@ class Forecasts:
         fixed_velocity: array with shape (T_forecast, J, D)
         ground_truth: array with shape (T_forecast, J, D)
         raw: bool.
-            If True, we use raw (unnormalized) basketball coords in [0,100]x[0,50] rather than [0,1]x[0,1]
+            If True, we use raw (unnormalized) basketball coords in [0,94]x[0,50] rather than [0,1]x[0,1]
 
     """
 
@@ -51,7 +51,7 @@ class Forecast_MSEs:
             giving the MSE of the fixed velocity baseline with respect to ground truth.
             Here the mean is taken over the timesteps T and dims D.
         raw: bool.
-            If True, we use raw (unnormalized) basketball coords in [0,100]x[0,50] rather than [0,1]x[0,1]
+            If True, we use raw (unnormalized) basketball coords in [0,94]x[0,50] rather than [0,1]x[0,1]
     """
 
     forward_simulation: NumpyArray2D
@@ -75,7 +75,7 @@ def make_complete_forecasts_for_our_model_and_baselines(
     """
     Arguments:
         use_raw_coords: bool.  If True, we use raw (unnormalized) basketball coords
-            in [0,100]x[0,50] rather than [0,1]x[0,1]
+            in [0,94]x[0,50] rather than [0,1]x[0,1]
     """
     ###
     # Upfront stuff

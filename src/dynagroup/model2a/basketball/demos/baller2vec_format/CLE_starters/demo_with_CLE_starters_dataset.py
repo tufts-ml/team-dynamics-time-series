@@ -40,7 +40,7 @@ over excluded plays (because the lineup is not of interest), or across games.
 
 
 # Data split
-n_train_games = 5
+n_train_games = 25
 n_val_games = 2
 n_test_games = 2
 
@@ -98,13 +98,17 @@ print(f"The plays per game are {plays_per_game}.")
 
 
 games_train = games[:n_train_games]
+games_val = games[n_train_games : n_train_games + n_val_games]
 games_test = games[-n_test_games:]
 
 data_train = make_basketball_data_from_games(games_train)
+data_val = make_basketball_data_from_games(games_val)
 data_test = make_basketball_data_from_games(games_test)
 
 xs_train = normalize_coords(data_train.coords_unnormalized)
+xs_val = normalize_coords(data_val.coords_unnormalized)
 xs_test = normalize_coords(data_test.coords_unnormalized)
+
 
 ###
 # MASKING

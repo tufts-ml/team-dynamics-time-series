@@ -14,6 +14,8 @@ from dynagroup.model2a.basketball.data.baller2vec.data import (
 def get_basketball_data_for_TOR_vs_CHA(
     event_idxs: Optional[List[int]] = None,
     sampling_rate_Hz: int = 5,
+    discard_nonstandard_hoop_sides: bool = False,
+    verbose: bool = True,
 ) -> BasketballData:
     """
     Currently data is hardcoded to be from a single basketball game, TOR vs CHA.
@@ -93,4 +95,6 @@ def get_basketball_data_for_TOR_vs_CHA(
         PLAYER_NAMES_IN_DATASET_2_POSITIONS,
         event_idxs,
         sampling_rate_Hz,
+        discard_nonstandard_hoop_sides,
+        verbose,
     )

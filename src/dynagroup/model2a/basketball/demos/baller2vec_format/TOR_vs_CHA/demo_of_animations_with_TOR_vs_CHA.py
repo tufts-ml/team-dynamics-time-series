@@ -156,9 +156,6 @@ results_init = smart_initialize_model_2a(
     use_continuous_states,
 )
 params_init = results_init.params
-most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
-    :, :, -1
-]  # TxJ
 CSP_init = params_init.CSP  # JxKxDxD
 
 # elbo_init = compute_elbo_from_initialization_results(
@@ -179,7 +176,7 @@ if animate_initialization:
     animate_events_over_vector_field_for_one_player(
         basketball_data.events[first_event_idx:last_event_idx],
         basketball_data.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
-        most_likely_entity_states_after_init,
+        results_init.EZ_summaries.expected_regimes,
         CSP_init,
         J_FOCAL,
     )
@@ -273,14 +270,13 @@ plot_vector_fields(params_learned.CSP, J=5)
 if animate_diagnostics:
     J_FOCAL = 0
     s_maxes = np.argmax(VES_summary.expected_regimes, 1)
-    most_likely_entity_states_after_CAVI = np.argmax(VEZ_summaries.expected_regimes, -1)
     CSP_after_CAVI = params_learned.CSP  # JxKxDxD
 
     # TODO: Give jersey label of the focal player in the title of the animation.
     animate_events_over_vector_field_for_one_player(
         basketball_data.events,
         basketball_data.provided_event_start_stop_idxs,
-        most_likely_entity_states_after_CAVI,
+        VEZ_summaries.expected_regimes,
         CSP_after_CAVI,
         J_FOCAL,
         s_maxes=s_maxes,

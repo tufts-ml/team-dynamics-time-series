@@ -190,6 +190,7 @@ if animate_initialization:
         results_init.EZ_summaries.expected_regimes,
         params_init.CSP,
         J_FOCAL,
+        data_train.player_data,
     )
 
 ####

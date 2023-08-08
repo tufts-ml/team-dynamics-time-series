@@ -40,15 +40,15 @@ Do the inferred system states track changes in plays?
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/EXPLORE_init_on_TOR_dataset/"
+save_dir = "/Users/mwojno01/Desktop/EXPLORE_init_on_TOR_dataset_all_events/"
 
 # Data properties
 animate_raw_data = False
 event_stop_idxs = None
-event_idxs = [i for i in range(25)]
+event_idxs = None  # [i for i in range(25)]
 
 # Model specification
-K = 10
+K = 20
 L = 5
 
 # Model adjustments
@@ -179,6 +179,7 @@ if animate_initialization:
         results_init.EZ_summaries.expected_regimes,
         CSP_init,
         J_FOCAL,
+        basketball_data.player_data,
     )
 
 
@@ -279,5 +280,6 @@ if animate_diagnostics:
         VEZ_summaries.expected_regimes,
         CSP_after_CAVI,
         J_FOCAL,
+        basketball_data.player_data,
         s_maxes=s_maxes,
     )

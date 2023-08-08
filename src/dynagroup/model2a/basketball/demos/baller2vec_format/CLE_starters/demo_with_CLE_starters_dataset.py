@@ -28,7 +28,7 @@ from dynagroup.vi.vi_forecast import get_forecasting_MSEs_on_test_set
 
 
 """
-Module purpose: "Demo" (later, run) our training and forecasting pipeline
+Module purpose: To "demo" (and, later, run) our training and forecasting pipeline
 for the "CLE Starters Dataset".  Note that we reinitialize the model whenever 
 the coordinates have changed a huge amount over timesteps, as can happen over halftime,
 over excluded plays (because the lineup is not of interest), or across games.
@@ -37,7 +37,6 @@ over excluded plays (because the lineup is not of interest), or across games.
 ###
 # Configs
 ###
-
 
 # Data split
 n_train_games = 25
@@ -87,18 +86,25 @@ n_forecasts = 10
 
 ensure_dir(save_dir)
 
-games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=sampling_rate_Hz)
-plays_per_game = [len(game.events) for game in games]
-print(f"The plays per game are {plays_per_game}.")
-
-
 ###
 # Data splitting and preprocessing
 ###
 
+# TODO: This information should be grabbed from the processed data that is written
+# by `write_processed_data_to_disk.py`.  The current blocker is that we don't write
+# all the information we need for this demo.  In particular, the animation uses
+# some additional information (e.g. the "events" themselves and the provided  rather than inferred
+# event boundaries).  The events are structs; while they can be written to and loaded from disk
+# successfully by setting `allow_pickle=True`, this is dangerous because code changes (e.g. adding
+# an attribute to Events) will make it impossible to read data back in from disk. It would be
+# better to work directly with primitives -- e.g. np.arrays.
 
-games_train = games[:n_train_games]
-games_val = games[n_train_games : n_train_games + n_val_games]
+games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=sampling_rate_Hz)
+plays_per_game = [len(game.events) for game in games]
+print(f"The plays per game are {plays_per_game}.")
+
+games_train = games[-(n_train_games + n_test_games + n_val_games) : -(n_test_games + n_val_games)]
+games_val = games[-(n_test_games + n_val_games) : -n_test_games]
 games_test = games[-n_test_games:]
 
 data_train = make_basketball_data_from_games(games_train)
@@ -204,6 +210,17 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 
 # TODO: Move this into a function in the basketball.forecasts.py module.
 # The return value is a List whose elements have type `dynagroup.forecasts.Forecast_MSEs`
+
+# TODO: The two chunking functions, `chunkify_xs_into_events_which_have_sufficient_length`
+# and `generate_random_context_times_for_x_chunks` involve dynamically processed data.
+#  ut these are unnecessary if we use the `generate_random_context_times_for_events` function,
+# which generates static data on disk for exporting to Preetish for AgentFormer.
+# Ideally we should rewrite our forecasting so that we only need
+# one kind of function, presumably `generate_random_context_times_for_events`.  Then we only need
+# to have 1 function here instead of 3, and we remove redundancies that can cause problems upon
+# further development. I am holding off on this until after the NeurIPS rebuttal period.
+# Note that this is related to the proposed change in the `Data splitting and preprocessing`
+# section above.
 
 x_chunks_test = chunkify_xs_into_events_which_have_sufficient_length(
     data_test.inferred_event_stop_idxs, xs_test, T_test_event_min

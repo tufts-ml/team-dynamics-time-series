@@ -29,7 +29,7 @@ reports/*.out
 reports/*.toc
 
 #too large of a dataset
-data/basketball/baller2vec_format/CLE_starters/
+data/basketball/baller2vec_format/preprocessed/CLE_starters/
 
 
 

@@ -40,12 +40,12 @@ Do the inferred system states track changes in plays?
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/RETRY_after_fit_and_forecast_fix_25_plays_mask_focal_players/"
+save_dir = "/Users/mwojno01/Desktop/EXPLORE_init_on_TOR_dataset/"
 
 # Data properties
 animate_raw_data = False
 event_end_times = None
-event_idxs = [i for i in range(25)]
+event_idxs = [i for i in range(5)]
 
 # Model specification
 K = 4
@@ -55,7 +55,7 @@ L = 5
 model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
-animate_initialization = False
+animate_initialization = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20

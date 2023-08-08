@@ -451,6 +451,9 @@ def fit_ARHMM_to_top_half_of_model(
         ###
         # E-step
         ###
+
+        # breakpoint()
+
         # TODO: Handle system covariates properly in this function.
         ES_summary = run_VES_step_JAX(
             STP_JAX,

@@ -181,7 +181,7 @@ def update(
 
 def animate_event(
     event: Event,
-    save_dir: str,
+    save_dir: Optional[str] = None,
     filename_postfix: Optional[str] = "",
     model_dict: Optional[Dict[str, NumpyArray1D]] = None,
     vector_field_dict: Optional[Dict] = None,
@@ -231,9 +231,9 @@ def animate_event(
     for i in range(10):
         player_text[i] = ax.text(0, 0, "", color="w", ha="center", va="center")
         if event.moments[0].player_hoop_sides[i] == 0:
-            col = "b"
+            col = "b"  # try to score on left.
         else:
-            col = "r"
+            col = "r"  # try to score on right
         player_circ[i] = plt.Circle((0, 0), R, color=col)
     ball_circ = plt.Circle((0, 0), R, color=[1, 0.4, 0])
 
@@ -290,7 +290,7 @@ def animate_events_over_vector_field_for_one_player(
     most_likely_entity_states: NumpyArray2D,
     CSP: ContinuousStateParameters_JAX,
     j_focal: int,
-    save_dir: str,
+    save_dir: Optional[str] = None,
     filename_postfix: Optional[str] = "",
     s_maxes: Optional[NumpyArray1D] = None,
 ) -> None:

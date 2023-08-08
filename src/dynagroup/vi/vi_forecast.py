@@ -37,8 +37,8 @@ def get_forecasting_MSEs_on_test_set(
 
 
     Arguments:
-        T_context: Number of samples for context period
-        T_forecast: Number of samples for forecasting period
+        T_context: Number of timesteps for context period
+        T_forecast: Number of timesteps for forecasting period
     """
 
     # TODO: Revise this so that it can return raw forecasts, which can then
@@ -112,7 +112,7 @@ def get_forecasting_MSEs_on_test_set(
             model,
             event_end_times,
         )
-
+    print("")
     ###
     # Forecasting
     ###

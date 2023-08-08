@@ -81,7 +81,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 T_test_event_min = 50
 T_context_min = 10
 T_forecast = 20
-n_forecasts = 10
+n_forecasts = 3
 
 ###
 # I/O
@@ -187,7 +187,7 @@ if animate_initialization:
     animate_events_over_vector_field_for_one_player(
         data_train.events[first_event_idx:last_event_idx],
         data_train.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
-        most_likely_entity_states_after_init,
+        results_init.EZ_summaries.expected_regimes,
         params_init.CSP,
         J_FOCAL,
     )

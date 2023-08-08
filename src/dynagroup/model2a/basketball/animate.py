@@ -17,7 +17,7 @@ from dynagroup.model2a.basketball.court import (
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
 from dynagroup.params import ContinuousStateParameters_JAX
-from dynagroup.types import NumpyArray1D, NumpyArray2D
+from dynagroup.types import NumpyArray1D, NumpyArray3D
 from dynagroup.util import compute_cartesian_product_of_two_1d_arrays
 
 
@@ -151,12 +151,20 @@ def update(
     ### 3. Make vector field
     if vector_field_dict is not None:
         ax.quiver([], [])
-        k_hat = int(vector_field_dict["k_j_sequence"][n])
-        A_j = vector_field_dict["A_j"][k_hat]
-        b_j = vector_field_dict["b_j"][k_hat]
-        dxydt_norm = np.array(XY_NORM.dot(A_j.T) + b_j - XY_NORM)
+        entity_state_weights = vector_field_dict["entity_j_state_posterior_subsequence"][n]
+        K = len(entity_state_weights)
+        A_j_weighted = np.zeros_like(vector_field_dict["A_j"][0])
+        b_j_weighted = np.zeros_like(vector_field_dict["b_j"][0])
+        for k in range(K):
+            A_jk = vector_field_dict["A_j"][k]
+            A_j_weighted += A_jk * entity_state_weights[k]
+            b_jk = vector_field_dict["b_j"][k]
+            b_j_weighted += b_jk * entity_state_weights[k]
+
+        dxydt_norm = np.array(XY_NORM.dot(A_j_weighted.T) + b_j_weighted - XY_NORM)
         xy = unnormalize_coords(XY_NORM)
         dxydt = unnormalize_coords(dxydt_norm)
+        k_hat = np.argmax(entity_state_weights)
         quiver_handle = ax.quiver(
             xy[:, 0], xy[:, 1], dxydt[:, 0], dxydt[:, 1], color=COLORS[k_hat % len(COLORS)]
         )
@@ -287,7 +295,7 @@ def animate_event(
 def animate_events_over_vector_field_for_one_player(
     events: List[Event],
     event_start_stop_idxs: List[Tuple[int]],
-    most_likely_entity_states: NumpyArray2D,
+    entity_state_posterior: NumpyArray3D,
     CSP: ContinuousStateParameters_JAX,
     j_focal: int,
     save_dir: Optional[str] = None,
@@ -296,6 +304,8 @@ def animate_events_over_vector_field_for_one_player(
 ) -> None:
     """
     Arguments:
+        entity_state_posterior : has shape (T,J,D),  gives q(Z).
+            CAVI gives this as VEZ_summaries.expected_regimes.
         s_maxes: An optional array giving the most likely system state for each timestep.
             If provided, we create a model_dict object to pass to the `animate_event` function.
     """
@@ -305,10 +315,12 @@ def animate_events_over_vector_field_for_one_player(
             event_start_stop_idxs[event_idx][0],
             event_start_stop_idxs[event_idx][1],
         )
-        k_hats_for_focal_entity = most_likely_entity_states[event_start_idx:event_stop_idx, j_focal]
+        entity_j_state_posterior_subsequence = entity_state_posterior[
+            event_start_idx:event_stop_idx, j_focal
+        ]
         A_j_init, b_j_init = CSP.As[j_focal], CSP.bs[j_focal]
         vector_field_dict_for_event = {
-            "k_j_sequence": k_hats_for_focal_entity,
+            "entity_j_state_posterior_subsequence": entity_j_state_posterior_subsequence,
             "A_j": A_j_init,
             "b_j": b_j_init,
         }

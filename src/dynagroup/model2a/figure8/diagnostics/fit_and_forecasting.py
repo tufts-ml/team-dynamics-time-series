@@ -3,14 +3,14 @@ from typing import List, Optional
 
 import numpy as np
 
-from dynagroup.diagnostics.posterior_mean_and_forward_simulation import (
-    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
-)
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
 )
 from dynagroup.model import Model
+from dynagroup.model2a.figure8.diagnostics.posterior_mean_and_forward_simulation import (
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
+)
 from dynagroup.params import AllParameters_JAX
 from dynagroup.types import JaxNumpyArray3D, NumpyArray2D
 

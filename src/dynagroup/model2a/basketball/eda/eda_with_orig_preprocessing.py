@@ -34,8 +34,8 @@ for event_idx in range(10):
 
     pct_event_to_skip = 0.0
 
-    event_start = DATA.event_end_times[event_idx] + 1
-    event_end = DATA.event_end_times[event_idx + 1]
+    event_start = DATA.event_boundaries[event_idx] + 1
+    event_end = DATA.event_boundaries[event_idx + 1]
     event_duration = event_end - event_start
 
     T_start = int(event_start + pct_event_to_skip * (event_duration))

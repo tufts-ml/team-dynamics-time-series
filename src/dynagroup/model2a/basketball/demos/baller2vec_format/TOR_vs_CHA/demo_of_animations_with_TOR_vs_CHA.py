@@ -48,7 +48,7 @@ event_stop_idxs = None
 event_idxs = [i for i in range(25)]
 
 # Model specification
-K = 4
+K = 10
 L = 5
 
 # Model adjustments

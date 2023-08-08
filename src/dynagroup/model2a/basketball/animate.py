@@ -141,13 +141,6 @@ def update(
     # Fluctuate ball radius to indicate Z position : helpful for shots
     ball_circ.radius = 1 + event.moments[n].ball_z / 17 * 2
 
-    ### 3. Print game clock info
-    info_str = (
-        f"Period: {event.moments[n].period} "
-        f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f} "
-        f"Shot clock: {event.moments[n].shot_clock:.02f} "
-    )
-
     ### 3. Make vector field
     if vector_field_dict is not None:
         ax.quiver([], [])
@@ -171,9 +164,9 @@ def update(
 
     ### 4. Print game clock info
     info_str = (
-        f"Period: {event.moments[n].period} "
-        f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f} "
-        f"Shot clock: {event.moments[n].shot_clock:.02f} "
+        f"Period: {event.moments[n].period}. "
+        f"Elapsed secs in period: {event.moments[n].period_time_elapsed_secs:.02f}. "
+        f"Shot clock: {event.moments[n].shot_clock:.02f}. "
         f"n: {n}."
     )
 
@@ -250,7 +243,10 @@ def animate_event(
 
     # TODO: Add the `play_description`.  This would tell us if the event was a rebound, etc.
     # It should be obtainable from the 'y' file created by the baller2vec repo.
-    play_description = f"Event: {event.idx}. Label: {event.label}"
+    play_description = f"Event: {event.idx}. Label: {event.label}. "
+    if vector_field_dict:
+        j_focal = vector_field_dict["focal_player_idx"]
+        play_description += f"Focal player: {event.moments[0].player_ids[j_focal]}"
     n_frames = len(event.moments)
 
     # Create partial functions default arguments
@@ -323,6 +319,7 @@ def animate_events_over_vector_field_for_one_player(
             "entity_j_state_posterior_subsequence": entity_j_state_posterior_subsequence,
             "A_j": A_j_init,
             "b_j": b_j_init,
+            "focal_player_idx": j_focal,
         }
         if s_maxes is not None:
             model_dict_for_event = {"System state": s_maxes[event_start_idx:event_stop_idx]}

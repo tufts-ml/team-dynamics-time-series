@@ -4,6 +4,7 @@ import numpy as np
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
+from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
@@ -158,14 +159,22 @@ results_init = smart_initialize_model_2a(
 params_init = results_init.params
 CSP_init = params_init.CSP  # JxKxDxD
 
-# elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, event_stop_idxs, system_covariates
-# )
-# print(f"ELBO after init: {elbo_init:.02f}")
 
 ###
 # Initialization Diagnostics
 ###
+
+### Compute ELBO
+elbo_init = compute_elbo_from_initialization_results(
+    results_init,
+    system_transition_prior,
+    xs,
+    model_basketball,
+    basketball_data.inferred_event_stop_idxs,
+    system_covariates,
+)
+print(f"ELBO after init: {elbo_init:.02f}")
+
 
 ### Animate some plays along with vector fields
 if animate_initialization:

@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
     animate_event,
@@ -54,7 +55,7 @@ save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_gam
 animate_raw_data = False
 
 # Model specification
-K = 4
+K = 10
 L = 5
 
 # Model adjustments
@@ -171,6 +172,17 @@ params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
     :, :, -1
 ]  # TxJ
+
+
+elbo_init = compute_elbo_from_initialization_results(
+    results_init,
+    system_transition_prior,
+    xs_train,
+    model_basketball,
+    data_train.inferred_event_stop_idxs,
+    system_covariates,
+)
+print(f"ELBO after init: {elbo_init:.02f}")
 
 
 ###

@@ -3,6 +3,7 @@ import numpy as np
 
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
+    animate_event,
     animate_events_over_vector_field_for_one_player,
 )
 from dynagroup.model2a.basketball.court import normalize_coords
@@ -39,16 +40,18 @@ over excluded plays (because the lineup is not of interest), or across games.
 ###
 
 # Data split
-n_train_games = 25
+n_train_games = 1
 n_val_games = 2
 n_test_games = 2
 
 # Sampling rate
 sampling_rate_Hz = 5
 
-
 # Directories
 save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_games/"
+
+# Exploratory Data Analysis
+animate_raw_data = False
 
 # Model specification
 K = 4
@@ -117,6 +120,15 @@ xs_test = normalize_coords(data_test.coords_unnormalized)
 
 
 ###
+# Optionally animate raw data
+###
+if animate_raw_data:
+    n_events_to_animate = 5
+    for event in data_train.events[-n_events_to_animate:]:
+        animate_event(event)
+
+
+###
 # MASKING
 ###
 use_continuous_states = None
@@ -166,6 +178,7 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 ###
 
 ### Animate some plays along with vector fields
+# RK: Focal team (blue) has scoring hoop on left.
 if animate_initialization:
     J_FOCAL = 0
     n_events_to_animate = 2
@@ -177,8 +190,6 @@ if animate_initialization:
         most_likely_entity_states_after_init,
         params_init.CSP,
         J_FOCAL,
-        save_dir,
-        "post_init",
     )
 
 ####

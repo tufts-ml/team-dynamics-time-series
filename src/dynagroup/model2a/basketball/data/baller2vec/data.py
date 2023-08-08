@@ -306,13 +306,13 @@ def load_basketball_data_from_single_game_file(
                 ]
 
             ### Optionally filter out events that don't have normalized hoop sides.
-            NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team has hoop on left.
+            NORMALIZED_HOOP_SIDES = [0] * 5 + [1] * 5  # focal team (blue) has scoring hoop on left.
             if (
                 event_with_player_reindexing.moments[0].player_hoop_sides != NORMALIZED_HOOP_SIDES
             ) and discard_nonstandard_hoop_sides:
                 continue
 
-            ### Normalize hoop sides.   Assume focal team has hoop on left.  If not, we
+            ### Normalize hoop sides.   Assume focal team (blue) has scoring hoop on left.  If not, we
             # flip the court 180 degrees around the center of the court (i.e. negate
             # both x and y coords w.r.t center of court). This controls for the effect of hoop
             # switches at half time on the court dynamics, in terms of both offense vs defense

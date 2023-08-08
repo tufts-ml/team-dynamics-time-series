@@ -183,9 +183,7 @@ def run_CAVI_with_JAX(
         )
 
         if verbose:
-            print(
-                f"\nVES step's log normalizer for entity regimes when we use uniform inits for q(Z): {VES_summary.log_normalizer:.02f}"
-            )
+            print(f"\nVES step's log normalizer: {VES_summary.log_normalizer:.02f}")
             if true_system_regimes is not None:
                 most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
                 pct_correct_system = compute_regime_labeling_accuracy(

@@ -61,6 +61,41 @@ class BasketballData:
 ###
 
 
+def rotate_court_180_degrees_for_one_moment_of_an_event(
+    event: Event, idx: int, normalized_hoop_sides: List[int]
+) -> Event:
+    """
+    Rotates the (xy) coordinates for all 10 players, as well as the (xy, but not z) coordinates
+    for the ball, by 180 degrees. Note that this is the same as just subtracting the current
+    x coordinates from the COURT_LENGTH and the y coordinates from the COURT_WIDTH; see the
+    rotation implementation in the `baller2vec` repo.
+
+    Arguments:
+        idx: idx of moment within an event where we want to flip coordinates.
+    """
+
+    ### Flip player coords
+    player_coords_unnormalized = np.vstack(
+        (event.moments[idx].player_xs, event.moments[idx].player_ys)
+    ).T
+    player_coords_unnormalized_flipped = flip_coords_unnormalized(player_coords_unnormalized)
+    event.moments[idx].player_xs = player_coords_unnormalized_flipped[:, 0]
+    event.moments[idx].player_ys = player_coords_unnormalized_flipped[:, 1]
+
+    ### Flip ball coords
+    ball_xy_coords_unnormalized = np.vstack(
+        (event.moments[idx].ball_x, event.moments[idx].ball_y)
+    ).T
+    ball_xy_coords_unnormalized_flipped = flip_coords_unnormalized(ball_xy_coords_unnormalized)
+    event.moments[idx].ball_x = ball_xy_coords_unnormalized_flipped[:, 0]
+    event.moments[idx].ball_y = ball_xy_coords_unnormalized_flipped[:, 1]
+
+    ### Flip player hoop sides
+    event.moments[idx].player_hoop_sides = normalized_hoop_sides
+
+    return event
+
+
 def load_basketball_data_from_single_game_file(
     path_to_game_data: str,
     path_to_event_label_data: str,
@@ -195,8 +230,8 @@ def load_basketball_data_from_single_game_file(
     }
 
     ### Organize the events into a BasketballData object.
-    events = []
-    moments = []
+    events_processed = []
+    moments_processed = []
     n_events_without_focal_team_starters = 0
 
     for event_idx in event_idxs:
@@ -253,10 +288,10 @@ def load_basketball_data_from_single_game_file(
                 player_names_orig_order.index(elem) for elem in player_names_new_order
             ]
 
-            event_with_player_reindexing = copy.copy(event)
+            event_with_player_reindexing = copy.deepcopy(event)
             event_with_player_reindexing.player_names = player_names_new_order
 
-            for idx in range(len(event.moments)):
+            for idx in range(len(event_with_player_reindexing.moments)):
                 event_with_player_reindexing.moments[idx].player_ids = [
                     event.moments[idx].player_ids[i] for i in permutation_indices
                 ]
@@ -282,47 +317,54 @@ def load_basketball_data_from_single_game_file(
             # both x and y coords w.r.t center of court). This controls for the effect of hoop
             # switches at half time on the court dynamics, in terms of both offense vs defense
             # direction, as well as in terms of player handedness.
-
-            # NOTE: The center might be shifted slighly to the left of how I'm doing this.
-            # See the note in the function docstring.
-            for idx in range(len(event.moments)):
+            event_with_player_reindexing_and_court_rotations_where_needed = copy.deepcopy(
+                event_with_player_reindexing
+            )
+            for idx_moment in range(
+                len(event_with_player_reindexing_and_court_rotations_where_needed.moments)
+            ):
                 if (
-                    event_with_player_reindexing.moments[idx].player_hoop_sides
+                    event_with_player_reindexing_and_court_rotations_where_needed.moments[
+                        idx_moment
+                    ].player_hoop_sides
                     != NORMALIZED_HOOP_SIDES
                 ):
-                    coords_unnormalized = np.vstack(
-                        (
-                            event_with_player_reindexing.moments[idx].player_xs,
-                            event_with_player_reindexing.moments[idx].player_ys,
+                    event_with_player_reindexing_and_court_rotations_where_needed = (
+                        rotate_court_180_degrees_for_one_moment_of_an_event(
+                            event_with_player_reindexing_and_court_rotations_where_needed,
+                            idx_moment,
+                            NORMALIZED_HOOP_SIDES,
                         )
-                    ).T
-                    coords_unnormalized_flipped = flip_coords_unnormalized(coords_unnormalized)
-                    event_with_player_reindexing.moments[
-                        idx
-                    ].player_xs = coords_unnormalized_flipped[:, 0]
-                    event_with_player_reindexing.moments[
-                        idx
-                    ].player_ys = coords_unnormalized_flipped[:, 1]
+                    )
 
             ### Now we extend our accumulating lists of moments and events.
-            moments.extend(event.moments)
-            events.extend([event])
+            moments_processed.extend(
+                event_with_player_reindexing_and_court_rotations_where_needed.moments
+            )
+            events_processed.extend([event_with_player_reindexing_and_court_rotations_where_needed])
+
         except:
             warnings.warn(f"Could not process event idx {event_idx}")
             continue
 
     print(
-        f"\n\n --- Of {len(event_idxs)} total events, I successfully constructed {len(events)} events with focal team starters."
+        f"\n\n --- Of {len(event_idxs)} total events, I successfully constructed {len(events_processed)} events with focal team starters."
         f"\nThe number of processed events without focal team starters was {n_events_without_focal_team_starters}."
     )
-    if len(events) == 0:
+    if len(events_processed) == 0:
+        breakpoint()
         raise ValueError("This game had ZERO events retained. Check into this.")
-    unnormalized_coords = coords_from_moments(moments)
-    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events)
-    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(events)
+    unnormalized_coords = coords_from_moments(moments_processed)
+    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events_processed)
+    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(
+        events_processed
+    )
 
     return BasketballData(
-        events, unnormalized_coords, provided_event_start_stop_idxs, inferred_event_stop_idxs
+        events_processed,
+        unnormalized_coords,
+        provided_event_start_stop_idxs,
+        inferred_event_stop_idxs,
     )
 
 

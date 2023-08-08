@@ -58,14 +58,14 @@ L = 5
 model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
-animate_initialization = False
+animate_initialization = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 5
+n_cavi_iterations = 1
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"

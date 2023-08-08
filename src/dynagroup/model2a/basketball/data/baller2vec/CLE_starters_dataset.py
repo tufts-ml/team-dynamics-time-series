@@ -28,11 +28,9 @@ def get_basketball_games_for_CLE_dataset(
     sampling_rate_Hz: int = 5,
     verbose: bool = True,
 ) -> List[BasketballData]:
-    PATH_TO_BALLER2VEC_INFO = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/CLE_starters/info/baller2vec_info.pydict"
+    PATH_TO_BALLER2VEC_INFO = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/CLE_starters/info/baller2vec_info.pydict"
 
-    GAME_AND_EVENT_LABEL_DATA_DIR = (
-        "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/CLE_starters/games/"
-    )
+    GAME_AND_EVENT_LABEL_DATA_DIR = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/CLE_starters/games/"
     # Get a list of all files in the directory that end with *_X.npy
     X_paths = glob.glob(os.path.join(GAME_AND_EVENT_LABEL_DATA_DIR, "*_X.npy"))
     y_paths = glob.glob(os.path.join(GAME_AND_EVENT_LABEL_DATA_DIR, "*_y.npy"))

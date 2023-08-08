@@ -186,6 +186,7 @@ def animate_event(
     filename_postfix: Optional[str] = "",
     model_dict: Optional[Dict[str, NumpyArray1D]] = None,
     vector_field_dict: Optional[Dict] = None,
+    player_data: Optional[Dict] = None,
 ):
     """
     Animates an event (play) from a basketball game, where an event has type Event (baller2vec format).
@@ -246,7 +247,11 @@ def animate_event(
     play_description = f"Event: {event.idx}. Label: {event.label}. "
     if vector_field_dict:
         j_focal = vector_field_dict["focal_player_idx"]
-        play_description += f"Focal player: {event.moments[0].player_ids[j_focal]}"
+        player_id = event.moments[0].player_ids[j_focal]
+        play_description += f"Focal player: {player_id}"
+    if player_data:
+        player_name = player_data[player_id]["name"]
+        play_description += f" ({player_name})."
     n_frames = len(event.moments)
 
     # Create partial functions default arguments
@@ -294,6 +299,7 @@ def animate_events_over_vector_field_for_one_player(
     entity_state_posterior: NumpyArray3D,
     CSP: ContinuousStateParameters_JAX,
     j_focal: int,
+    player_data: Optional[Dict] = None,
     save_dir: Optional[str] = None,
     filename_postfix: Optional[str] = "",
     s_maxes: Optional[NumpyArray1D] = None,
@@ -327,5 +333,10 @@ def animate_events_over_vector_field_for_one_player(
             model_dict_for_event = None
         filename_postfix += f"_focal_player_{j_focal}"
         animate_event(
-            event, save_dir, filename_postfix, model_dict_for_event, vector_field_dict_for_event
+            event,
+            save_dir,
+            filename_postfix,
+            model_dict_for_event,
+            vector_field_dict_for_event,
+            player_data,
         )

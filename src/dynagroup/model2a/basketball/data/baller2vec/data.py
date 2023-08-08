@@ -2,7 +2,7 @@ import copy
 import warnings
 from dataclasses import dataclass
 from time import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import prettyprinter as pp
 
@@ -44,6 +44,8 @@ class BasketballData:
             giving the location where an event starts and stops.
         coords_normalized:  unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)
+        player_data: Maps a player idx (in 0,..., N_Players) to a Dict containing the player's
+            name, playing time, and playerid (in the sense of the `NBA-Player-Movements`)
     """
 
     # Rk: This is kind of a weird and redundant class since ` event_start_stop_idxs` and `coords_unnormalized`
@@ -54,6 +56,7 @@ class BasketballData:
     coords_unnormalized: NumpyArray3D
     provided_event_start_stop_idxs: List[Tuple[int]]
     inferred_event_stop_idxs: List[int]
+    player_data: Dict[int, Dict[str, Any]]
 
 
 ###
@@ -365,6 +368,7 @@ def load_basketball_data_from_single_game_file(
         unnormalized_coords,
         provided_event_start_stop_idxs,
         inferred_event_stop_idxs,
+        player_data,
     )
 
 
@@ -403,9 +407,17 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events)
     inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(events)
     coords_unnormalized = get_flattened_unnormalized_coords_from_games(games)
+    # TODO: I think that the player_data will be the same for all games, by upstream construction.
+    # But we should handle this more carefully. E.g. we could just check it here and raise an error
+    # if false.
+    player_data_from_all_games = games[0].player_data
     print(
         f"From {len(coords_unnormalized)} timesteps, there are {len(provided_event_start_stop_idxs)} provided events and {len(inferred_event_stop_idxs)} inferred events."
     )
     return BasketballData(
-        events, coords_unnormalized, provided_event_start_stop_idxs, inferred_event_stop_idxs
+        events,
+        coords_unnormalized,
+        provided_event_start_stop_idxs,
+        inferred_event_stop_idxs,
+        player_data_from_all_games,
     )

@@ -44,8 +44,8 @@ save_dir = "/Users/mwojno01/Desktop/EXPLORE_init_on_TOR_dataset/"
 
 # Data properties
 animate_raw_data = False
-event_end_times = None
-event_idxs = [i for i in range(5)]
+event_stop_idxs = None
+event_idxs = [i for i in range(25)]
 
 # Model specification
 K = 4
@@ -62,7 +62,7 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 5
+n_cavi_iterations = 3
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -146,7 +146,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs,
-    event_end_times,
+    event_stop_idxs,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -162,13 +162,28 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 CSP_init = params_init.CSP  # JxKxDxD
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.xs, model, event_stop_idxs, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 
 ###
 # Initialization Diagnostics
 ###
+
+### Animate some plays along with vector fields
+if animate_initialization:
+    J_FOCAL = 0
+    first_event_idx, last_event_idx = 0, 5
+    # TODO: Give jersey label of the focal player in the title of the animation.
+    # TODO: Should we by default have the animation match the forecasting entity?
+    animate_events_over_vector_field_for_one_player(
+        basketball_data.events[first_event_idx:last_event_idx],
+        basketball_data.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
+        most_likely_entity_states_after_init,
+        CSP_init,
+        J_FOCAL,
+    )
+
 
 ### Print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
@@ -201,22 +216,6 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
 )
 
 
-### Animate some plays along with vector fields
-if animate_initialization:
-    J_FOCAL = 0
-    # TODO: Give jersey label of the focal player in the title of the animation.
-    # TODO: Should we by default have the animation match the forecasting entity?
-    animate_events_over_vector_field_for_one_player(
-        basketball_data.events,
-        basketball_data.provided_event_start_stop_idxs,
-        most_likely_entity_states_after_init,
-        CSP_init,
-        J_FOCAL,
-        save_dir,
-        "post_init",
-    )
-
-
 ####
 # Inference
 ####
@@ -226,7 +225,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    event_end_times,
+    event_stop_idxs,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -284,7 +283,5 @@ if animate_diagnostics:
         most_likely_entity_states_after_CAVI,
         CSP_after_CAVI,
         J_FOCAL,
-        save_dir,
-        "post_CAVI",
-        s_maxes,
+        s_maxes=s_maxes,
     )

@@ -180,13 +180,13 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 ### Animate some plays along with vector fields
 # RK: Focal team (blue) has scoring hoop on left.
 if animate_initialization:
-    J_FOCAL = 0
-    n_events_to_animate = 2
+    J_FOCAL = 1
+    first_event_idx, last_event_idx = 40, 45
     # TODO: Give jersey label of the focal player in the title of the animation.
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
-        data_train.events[:n_events_to_animate],
-        data_train.provided_event_start_stop_idxs[:n_events_to_animate],
+        data_train.events[first_event_idx:last_event_idx],
+        data_train.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
         most_likely_entity_states_after_init,
         params_init.CSP,
         J_FOCAL,

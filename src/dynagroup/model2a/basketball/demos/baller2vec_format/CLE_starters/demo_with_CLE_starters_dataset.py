@@ -41,9 +41,9 @@ over excluded plays (because the lineup is not of interest), or across games.
 ###
 
 # Data split
-n_train_games = 1
-n_val_games = 2
-n_test_games = 2
+n_train_games = 20
+n_val_games = 4
+n_test_games = 5
 
 # Sampling rate
 sampling_rate_Hz = 5
@@ -192,8 +192,8 @@ print(f"ELBO after init: {elbo_init:.02f}")
 ### Animate some plays along with vector fields
 # RK: Focal team (blue) has scoring hoop on left.
 if animate_initialization:
-    J_FOCAL = 1
-    first_event_idx, last_event_idx = 40, 45
+    J_FOCAL = 0
+    first_event_idx, last_event_idx = 5, 10
     # TODO: Give jersey label of the focal player in the title of the animation.
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(

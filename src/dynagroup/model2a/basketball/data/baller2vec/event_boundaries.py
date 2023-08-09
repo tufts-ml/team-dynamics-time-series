@@ -9,6 +9,9 @@ def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) 
     """
     Try to figure out where the breaks are in our dataset over timesteps
     by finding huge shifts in coordinates.
+
+    Returns:
+        event_stop_idxs, whose usage is very well documented in `run_CAVI_with_JAX`
     """
 
     MEAN_DIST_THRESH = 22.36
@@ -19,8 +22,8 @@ def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) 
     # timestep translates to about 110 feet per second (PER player), which is much
     # faster than Usain Bolt's world record of 33.80 feet per second for 100 meters.
 
-    event_end_times = []
-    TT = -1
+    event_end_times = [-1]
+    TT = 0
     prev_xs_raw = np.zeros(10)
     prev_ys_raw = np.zeros(10)
     for event in events:
@@ -36,13 +39,13 @@ def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) 
             prev_xs_raw = curr_xs_raw
             prev_ys_raw = curr_ys_raw
 
-            if mean_dist_raw >= MEAN_DIST_THRESH:
+            if (mean_dist_raw >= MEAN_DIST_THRESH) and (TT != 0):
+                # The initial observation is never included, because we don't have a previous value.
                 event_end_times.append(TT)
             TT += 1
 
-    # then append the last time step
-    # TODO: recall why we do that.
-    last_timestep = TT + 1
+    # Then append the last timestep
+    last_timestep = TT
     event_end_times.append(last_timestep)
     return event_end_times
 

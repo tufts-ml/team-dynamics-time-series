@@ -3,6 +3,7 @@ from typing import List, Tuple
 import numpy as np
 
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
+from dynagroup.types import NumpyArray1D
 
 
 def get_stop_idxs_for_inferred_events_from_provided_events(events: List[Event]) -> List[int]:
@@ -61,3 +62,27 @@ def get_start_stop_idxs_from_provided_events(events: List[Event]) -> List[Tuple[
         event_last_moment = num_moments_so_far
         event_start_stop_idxs.extend([(event_first_moment, event_last_moment)])
     return event_start_stop_idxs
+
+
+def get_start_and_stop_timestep_idxs_from_event_idx__using_one_indexing(
+    event_stop_idxs: NumpyArray1D, event_idx_in_one_indexing: int
+) -> Tuple[int]:
+    """
+    Arguments:
+        event_stop_idxs: whose usage is very well documented in `run_CAVI_with_JAX`
+    """
+    start_idx = event_stop_idxs[(event_idx_in_one_indexing - 1)] + 1
+    stop_idx = event_stop_idxs[event_idx_in_one_indexing]
+    return (start_idx, stop_idx)
+
+
+def get_start_and_stop_timestep_idxs_from_event_idx(
+    event_stop_idxs: NumpyArray1D, event_idx_in_zero_indexing: int
+) -> Tuple[int]:
+    """
+    Arguments:
+        event_stop_idxs: whose usage is very well documented in `run_CAVI_with_JAX`
+    """
+    return get_start_and_stop_timestep_idxs_from_event_idx__using_one_indexing(
+        event_stop_idxs, event_idx_in_zero_indexing + 1
+    )

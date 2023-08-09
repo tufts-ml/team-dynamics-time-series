@@ -15,8 +15,8 @@ from dynagroup.model2a.basketball.data.baller2vec.data import (
     make_basketball_data_from_games,
 )
 from dynagroup.model2a.basketball.forecasts import (
-    chunkify_xs_into_events_which_have_sufficient_length,
-    generate_random_context_times_for_x_chunks,
+    generate_random_context_times_for_events,
+    get_forecast_MSEs_by_event,
 )
 from dynagroup.model2a.basketball.model import model_basketball
 from dynagroup.model2a.gaussian.initialize import (
@@ -26,7 +26,6 @@ from dynagroup.model2a.gaussian.initialize import (
 from dynagroup.params import Dims
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
-from dynagroup.vi.vi_forecast import get_forecasting_MSEs_on_test_set
 
 
 """
@@ -49,7 +48,7 @@ n_test_games = 5
 sampling_rate_Hz = 5
 
 # Directories
-save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_games/"
+save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_train_{n_val_games}_val_and_{n_test_games}_test_games/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -62,7 +61,7 @@ L = 5
 model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
-animate_initialization = True
+animate_initialization = False
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -194,7 +193,6 @@ print(f"ELBO after init: {elbo_init:.02f}")
 if animate_initialization:
     J_FOCAL = 0
     first_event_idx, last_event_idx = 5, 10
-    # TODO: Give jersey label of the focal player in the title of the animation.
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         data_train.events[first_event_idx:last_event_idx],
@@ -232,49 +230,22 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 # Forecasts
 ###
 
-# TODO: Move this into a function in the basketball.forecasts.py module.
-# The return value is a List whose elements have type `dynagroup.forecasts.Forecast_MSEs`
 
-# TODO: The two chunking functions, `chunkify_xs_into_events_which_have_sufficient_length`
-# and `generate_random_context_times_for_x_chunks` involve dynamically processed data.
-#  ut these are unnecessary if we use the `generate_random_context_times_for_events` function,
-# which generates static data on disk for exporting to Preetish for AgentFormer.
-# Ideally we should rewrite our forecasting so that we only need
-# one kind of function, presumably `generate_random_context_times_for_events`.  Then we only need
-# to have 1 function here instead of 3, and we remove redundancies that can cause problems upon
-# further development. I am holding off on this until after the NeurIPS rebuttal period.
-# Note that this is related to the proposed change in the `Data splitting and preprocessing`
-# section above.
-
-x_chunks_test = chunkify_xs_into_events_which_have_sufficient_length(
-    data_test.inferred_event_stop_idxs, xs_test, T_test_event_min
-)
-T_contexts = generate_random_context_times_for_x_chunks(
-    x_chunks_test,
+random_context_times = generate_random_context_times_for_events(
+    data_test.inferred_event_stop_idxs,
+    T_test_event_min,
     T_context_min,
     T_forecast,
 )
 
-forecasting_MSEs_by_chunk = [None] * len(x_chunks_test)
-for i, (x_chunk_test, T_context) in enumerate(zip(x_chunks_test, T_contexts)):
-    print(f"--- --- Now making forecasts on chunk {i+1}/{len(x_chunks_test)}. --- ---")
-    forecasting_MSEs_by_chunk[i] = get_forecasting_MSEs_on_test_set(
-        x_chunk_test,
-        params_learned,
-        model_basketball,
-        T_context,
-        T_forecast,
-        n_cavi_iterations,
-        n_forecasts,
-        system_covariates,
-    )
-
-
-for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_chunk):
-    mean_median_forward_sim = np.mean(
-        np.median(forecasting_MSEs.forward_simulation, 0)[0]
-    )  # median over S, mean over J
-    mean_fixed_velocity = np.mean(forecasting_MSEs.fixed_velocity[0])  # mean over J
-    print(
-        f"For chunk {i}, forward sim: {mean_median_forward_sim:.02f}, mean_fixed_velocity: {mean_fixed_velocity:.02f}"
-    )
+forecast_MSEs_by_event = get_forecast_MSEs_by_event(
+    xs_test,
+    data_test,
+    params_learned,
+    model_basketball,
+    random_context_times,
+    T_forecast,
+    n_cavi_iterations,
+    n_forecasts,
+    system_covariates,
+)

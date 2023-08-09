@@ -412,7 +412,7 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     # if false.
     player_data_from_all_games = games[0].player_data
     print(
-        f"From {len(coords_unnormalized)} timesteps, there are {len(provided_event_start_stop_idxs)} provided events and {len(inferred_event_stop_idxs)} inferred events."
+        f"From {len(coords_unnormalized)} timesteps, there are {len(provided_event_start_stop_idxs)} provided events (plays) and {len(inferred_event_stop_idxs)} inferred events (examples)."
     )
     return BasketballData(
         events,

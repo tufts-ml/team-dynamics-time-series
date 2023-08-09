@@ -41,7 +41,7 @@ class Moment:
         30-39 = the player y values, players ordered as above
         40-49 = the player hoop sides, players ordered as above (0=left, 1=right)
         50 = event_id
-        51 = wall_clock
+        53 = wall_clock
     """
 
     game_time_elapsed_secs: float
@@ -58,6 +58,7 @@ class Moment:
     player_ys: NumpyArray1D  # float
     player_hoop_sides: List[int]
     event_id: int
+    wall_clock: float
 
 
 @dataclass
@@ -99,6 +100,7 @@ def moment_from_game_slice(slice: NumpyArray1D) -> Moment:
         player_ys=slice[30 : 39 + 1],
         player_hoop_sides=[int(x) for x in slice[40 : 49 + 1]],
         event_id=int(slice[50]),
+        wall_clock=slice[53],
     )
 
 

@@ -98,9 +98,10 @@ def make_complete_forecasts_for_our_model_and_baselines(
 
     ### Sample s and z's for initialization, based on the VES and VEZ steps.
 
-    fixed_init_system_regime = npr.choice(
-        range(DIMS.L), p=VES_summary_from_context_window.expected_regimes[-1]
-    )
+    probs = np.asarray(VES_summary_from_context_window.expected_regimes[-1]).astype("float64")
+    probs /= np.sum(probs)
+    fixed_init_system_regime = npr.choice(range(DIMS.L), p=probs)
+
     fixed_init_entity_regimes = np.zeros(DIMS.J, dtype=int)
     for j in range(DIMS.J):
         probs = np.asarray(VEZ_summaries_from_context_window.expected_regimes[-1, j]).astype(

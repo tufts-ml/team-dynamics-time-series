@@ -2,6 +2,9 @@ import jax.numpy as jnp
 import numpy as np
 
 from dynagroup.io import ensure_dir
+from dynagroup.model2a.basketball.animate import (
+    animate_events_over_vector_field_for_one_player,
+)
 from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
@@ -47,6 +50,7 @@ L = 5
 model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
+animate_initialization = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -150,6 +154,22 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
     :, :, -1
 ]  # TxJ
 CSP_init = params_init.CSP  # JxKxDxD
+
+### Animate some plays along with vector fields
+if animate_initialization:
+    J_FOCAL = 0
+    first_event_idx, last_event_idx = 0, 5
+    # TODO: Give jersey label of the focal player in the title of the animation.
+    # TODO: Should we by default have the animation match the forecasting entity?
+    animate_events_over_vector_field_for_one_player(
+        basketball_data_train.events[first_event_idx:last_event_idx],
+        basketball_data_train.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
+        results_init.EZ_summaries.expected_regimes,
+        CSP_init,
+        J_FOCAL,
+        basketball_data_train.player_data,
+    )
+
 
 ####
 # Inference

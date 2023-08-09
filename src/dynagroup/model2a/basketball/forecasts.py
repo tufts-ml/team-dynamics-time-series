@@ -49,13 +49,13 @@ def generate_random_context_times_for_events(
 class Forecast_MSEs_By_Event:
     """
     Includes raw and summary info.
-        `forecasting_MSEs_by_inferred_events` is raw.
+        `forecasting_MSEs_by_examples` is raw.
         `mean_over_<*>` is summary.
     """
 
-    forecasting_MSEs_by_inferred_events: List[Forecast_MSEs]
-    mean_over_J_median_forward_sims_by_inferred_event: List[float]
-    mean_over_J_fixed_velocities_by_inferred_event: List[float]
+    forecasting_MSEs_by_examples: List[Forecast_MSEs]
+    mean_over_J_median_forward_sims_by_example: List[float]
+    mean_over_J_fixed_velocities_by_example: List[float]
 
 
 def get_forecast_MSEs_by_event(
@@ -76,12 +76,12 @@ def get_forecast_MSEs_by_event(
             specifying how many timesteps to use as context when forecasting on this event.
     """
     ### Get forecasting MSEs by inferred events
-    forecasting_MSEs_by_inferred_events = []
-    num_events = len(data_test.inferred_event_stop_idxs) - 1
+    forecasting_MSEs_by_examples = []
+    num_events = len(data_test.example_stop_idxs) - 1
     for event_idx in range(num_events):
         print(f"--- --- Now making forecasts for event {event_idx+1}/{num_events}. --- ---")
         start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(
-            data_test.inferred_event_stop_idxs, event_idx
+            data_test.example_stop_idxs, event_idx
         )
         random_context_time_float = random_context_times[event_idx]
 
@@ -98,12 +98,12 @@ def get_forecast_MSEs_by_event(
             n_forecasts,
             system_covariates,
         )
-        forecasting_MSEs_by_inferred_events.append(forecasting_MSE)
+        forecasting_MSEs_by_examples.append(forecasting_MSE)
 
     ### Summarize
-    mean_over_J_median_forward_sims_by_inferred_event = []
-    mean_over_J_fixed_velocities_by_inferred_event = []
-    for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_inferred_events):
+    mean_over_J_median_forward_sims_by_example = []
+    mean_over_J_fixed_velocities_by_example = []
+    for i, forecasting_MSEs in enumerate(forecasting_MSEs_by_examples):
         mean_median_forward_sim = np.mean(
             np.median(forecasting_MSEs.forward_simulation, 0)[0]
         )  # median over S, mean over J
@@ -111,11 +111,11 @@ def get_forecast_MSEs_by_event(
         print(
             f"For event {i}, forward sim: {mean_median_forward_sim:.02f}, mean_fixed_velocity: {mean_fixed_velocity:.02f}"
         )
-        mean_over_J_median_forward_sims_by_inferred_event.append(mean_median_forward_sim)
-        mean_over_J_fixed_velocities_by_inferred_event.append(mean_fixed_velocity)
+        mean_over_J_median_forward_sims_by_example.append(mean_median_forward_sim)
+        mean_over_J_fixed_velocities_by_example.append(mean_fixed_velocity)
 
     return Forecast_MSEs_By_Event(
-        forecasting_MSEs_by_inferred_events,
-        mean_over_J_median_forward_sims_by_inferred_event,
-        mean_over_J_fixed_velocities_by_inferred_event,
+        forecasting_MSEs_by_examples,
+        mean_over_J_median_forward_sims_by_example,
+        mean_over_J_fixed_velocities_by_example,
     )

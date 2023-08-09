@@ -13,8 +13,8 @@ import numpy as np
 
 from dynagroup.model2a.basketball.court import flip_coords_unnormalized
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
-    get_start_stop_idxs_from_provided_events,
-    get_stop_idxs_for_inferred_events_from_provided_events,
+    clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs,
+    get_play_start_stop_idxs,
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     Event,
@@ -40,6 +40,9 @@ from dynagroup.types import NumpyArray3D
 class BasketballData:
     """
     Attributes:
+        events: These have been mutated (to handle entity
+            index alignment and court rotation) and filtered (we have removed events whose wall clock diffs are too small
+            relative to the specified sampling rate).
         event_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
             giving the location where an event starts and stops.
         coords_normalized:  unnormalized coordinates for basketball players,
@@ -54,9 +57,10 @@ class BasketballData:
 
     events: List[Event]
     coords_unnormalized: NumpyArray3D
-    provided_event_start_stop_idxs: List[Tuple[int]]
-    inferred_event_stop_idxs: List[int]
+    play_start_stop_idxs: List[Tuple[int]]
+    example_stop_idxs: List[int]
     player_data: Dict[int, Dict[str, Any]]
+    sampling_rate_Hz: float
 
 
 ###
@@ -233,7 +237,7 @@ def load_basketball_data_from_single_game_file(
     }
 
     ### Organize the events into a BasketballData object.
-    events_processed = []
+    events_mutated = []
     moments_processed = []
     n_events_without_focal_team_starters = 0
 
@@ -344,31 +348,38 @@ def load_basketball_data_from_single_game_file(
             moments_processed.extend(
                 event_with_player_reindexing_and_court_rotations_where_needed.moments
             )
-            events_processed.extend([event_with_player_reindexing_and_court_rotations_where_needed])
+            events_mutated.extend([event_with_player_reindexing_and_court_rotations_where_needed])
 
         except:
             warnings.warn(f"Could not process event idx {event_idx}")
             continue
 
     print(
-        f"\n\n --- Of {len(event_idxs)} total events, I successfully constructed {len(events_processed)} events with focal team starters."
+        f"\n\n --- Of {len(event_idxs)} total events, I successfully constructed {len(events_mutated)} events with focal team starters."
         f"\nThe number of processed events without focal team starters was {n_events_without_focal_team_starters}."
     )
-    if len(events_processed) == 0:
+    if len(events_mutated) == 0:
         breakpoint()
         raise ValueError("This game had ZERO events retained. Check into this.")
-    unnormalized_coords = coords_from_moments(moments_processed)
-    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events_processed)
-    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(
-        events_processed
+
+    (
+        events_filtered_and_mutated,
+        example_stop_idxs,
+    ) = clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
+        events_mutated,
+        sampling_rate_Hz,
     )
+    play_start_stop_idxs = get_play_start_stop_idxs(events_filtered_and_mutated)
+    moments_cleaned = [moment for event in events_filtered_and_mutated for moment in event.moments]
+    unnormalized_coords = coords_from_moments(moments_cleaned)
 
     return BasketballData(
-        events_processed,
+        events_filtered_and_mutated,
         unnormalized_coords,
-        provided_event_start_stop_idxs,
-        inferred_event_stop_idxs,
+        play_start_stop_idxs,
+        example_stop_idxs,
         player_data,
+        sampling_rate_Hz,
     )
 
 
@@ -403,21 +414,32 @@ def get_flattened_unnormalized_coords_from_games(games: List[BasketballData]) ->
 
 
 def make_basketball_data_from_games(games: List[BasketballData]):
+    # TODO: sampling_rate_Hz should be stored inside
+
+    # RK: The games have already been constructed as Basketball Data; so we just need to concatentate
+    # everything.
+    sampling_rate_Hz = games[0].sampling_rate_Hz
     events = get_flattened_events_from_games(games)
-    provided_event_start_stop_idxs = get_start_stop_idxs_from_provided_events(events)
-    inferred_event_stop_idxs = get_stop_idxs_for_inferred_events_from_provided_events(events)
+    play_start_stop_idxs = get_play_start_stop_idxs(events)
+    (
+        _,
+        example_stop_idxs,
+    ) = clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
+        events, sampling_rate_Hz
+    )
     coords_unnormalized = get_flattened_unnormalized_coords_from_games(games)
     # TODO: I think that the player_data will be the same for all games, by upstream construction.
     # But we should handle this more carefully. E.g. we could just check it here and raise an error
     # if false.
     player_data_from_all_games = games[0].player_data
     print(
-        f"From {len(coords_unnormalized)} timesteps, there are {len(provided_event_start_stop_idxs)} provided events (plays) and {len(inferred_event_stop_idxs)} inferred events (examples)."
+        f"From {len(coords_unnormalized)} timesteps, there are {len(play_start_stop_idxs)} provided events (plays) and {len(example_stop_idxs)} inferred events (examples)."
     )
     return BasketballData(
         events,
         coords_unnormalized,
-        provided_event_start_stop_idxs,
-        inferred_event_stop_idxs,
+        play_start_stop_idxs,
+        example_stop_idxs,
         player_data_from_all_games,
+        sampling_rate_Hz,
     )

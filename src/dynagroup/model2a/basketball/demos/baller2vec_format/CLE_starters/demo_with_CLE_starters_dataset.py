@@ -48,7 +48,7 @@ n_test_games = 1
 sampling_rate_Hz = 5
 
 # Directories
-save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_train_{n_val_games}_val_and_{n_test_games}_test_games/"
+save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -158,7 +158,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs_train,
-    data_train.inferred_event_stop_idxs,
+    data_train.example_stop_idxs,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -178,7 +178,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     xs_train,
     model_basketball,
-    data_train.inferred_event_stop_idxs,
+    data_train.example_stop_idxs,
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
@@ -196,7 +196,7 @@ if animate_initialization:
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         data_train.events[first_event_idx:last_event_idx],
-        data_train.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
+        data_train.play_start_stop_idxs[first_event_idx:last_event_idx],
         results_init.EZ_summaries.expected_regimes,
         params_init.CSP,
         J_FOCAL,
@@ -212,7 +212,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    data_train.inferred_event_stop_idxs,
+    data_train.example_stop_idxs,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -232,7 +232,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 
 
 random_context_times = generate_random_context_times_for_events(
-    data_test.inferred_event_stop_idxs,
+    data_test.example_stop_idxs,
     T_test_event_min,
     T_context_min,
     T_forecast,

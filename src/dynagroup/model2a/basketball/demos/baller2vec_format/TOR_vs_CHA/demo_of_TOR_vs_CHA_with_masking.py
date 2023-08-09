@@ -170,7 +170,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     xs,
     model_basketball,
-    basketball_data.inferred_event_stop_idxs,
+    basketball_data.example_stop_idxs,
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
@@ -184,7 +184,7 @@ if animate_initialization:
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         basketball_data.events[first_event_idx:last_event_idx],
-        basketball_data.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
+        basketball_data.play_start_stop_idxs[first_event_idx:last_event_idx],
         results_init.EZ_summaries.expected_regimes,
         CSP_init,
         J_FOCAL,
@@ -285,7 +285,7 @@ if animate_diagnostics:
     # TODO: Give jersey label of the focal player in the title of the animation.
     animate_events_over_vector_field_for_one_player(
         basketball_data.events,
-        basketball_data.provided_event_start_stop_idxs,
+        basketball_data.play_start_stop_idxs,
         VEZ_summaries.expected_regimes,
         CSP_after_CAVI,
         J_FOCAL,

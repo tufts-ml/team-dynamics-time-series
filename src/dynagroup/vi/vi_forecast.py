@@ -127,6 +127,7 @@ def get_forecasting_MSEs_on_test_set(
         n_forecasts_from_our_model=n_forecasts,
         system_covariates=system_covariates,
         use_raw_coords=True,
+        seed=seed,
     )
     MSEs = MSEs_from_forecasts(forecasts)
     return MSEs

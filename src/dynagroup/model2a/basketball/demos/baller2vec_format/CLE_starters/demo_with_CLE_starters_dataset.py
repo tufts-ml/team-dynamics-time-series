@@ -40,9 +40,9 @@ over excluded plays (because the lineup is not of interest), or across games.
 ###
 
 # Data split
-n_train_games = 20
-n_val_games = 4
-n_test_games = 5
+n_train_games = 1
+n_val_games = 1
+n_test_games = 1
 
 # Sampling rate
 sampling_rate_Hz = 5
@@ -79,7 +79,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasts
 T_test_event_min = 50
-T_context_min = 10
+T_context_min = 20
 T_forecast = 20
 n_forecasts = 3
 

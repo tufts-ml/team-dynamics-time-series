@@ -70,6 +70,7 @@ def make_complete_forecasts_for_our_model_and_baselines(
     n_forecasts_from_our_model: int,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     use_raw_coords: bool = True,
+    seed: int = 0,
     verbose: bool = True,
 ) -> Forecasts:
     """
@@ -77,22 +78,31 @@ def make_complete_forecasts_for_our_model_and_baselines(
         use_raw_coords: bool.  If True, we use raw (unnormalized) basketball coords
             in [0,94]x[0,50] rather than [0,1]x[0,1]
     """
+    npr.seed(seed)
+
     ###
     # Upfront stuff
     ###
 
     DIMS = dims_from_params(params_learned)
+    T_forecast_plus_initialization_timestep_to_discard = T_forecast + 1
+
     continuous_states_during_context_window = continuous_states[:T_context]
     continuous_states_during_forecast_window = continuous_states[T_context : T_context + T_forecast]
     discrete_derivative = continuous_states[T_context + 1] - continuous_states[T_context]
 
-    # MSE_forecasts=np.zeros(n_forecasts_from_our_model)
+    ###
+    # Ground truth
+    ###
+    ground_truth_in_normalized_coords = (
+        continuous_states_during_forecast_window  # (forecast_window, J, D)
+    )
 
     ###
     # Forward simulations from our HSRDM model
     ###
 
-    forward_simulations_unnormalized = np.zeros(
+    forward_simulations_in_normalized_coords = np.zeros(
         (n_forecasts_from_our_model, T_forecast, DIMS.J, DIMS.D)
     )
 
@@ -109,11 +119,10 @@ def make_complete_forecasts_for_our_model_and_baselines(
         )
         probs /= np.sum(probs)
         fixed_init_entity_regimes[j] = npr.choice(range(DIMS.K), p=probs)
+
     fixed_init_continuous_states = continuous_states_during_context_window[-1]
 
-    T_forecast_plus_initialization_timestep_to_discard = T_forecast + 1
-
-    for forecast_seed in range(n_forecasts_from_our_model):
+    for forecast_seed in range(seed, seed + n_forecasts_from_our_model):
         if verbose:
             print(
                 f"Now running forward sims for seed {forecast_seed+1}/{n_forecasts_from_our_model}.",
@@ -130,23 +139,30 @@ def make_complete_forecasts_for_our_model_and_baselines(
             fixed_init_continuous_states=fixed_init_continuous_states,
             system_covariates=system_covariates,
         )
-        forward_simulations_unnormalized[forecast_seed] = forward_sample_with_init_at_beginning.xs[
+        forward_simulations_in_normalized_coords[
+            forecast_seed
+        ] = forward_sample_with_init_at_beginning.xs[
             1:
         ]  # (forecast_window, J, D)
-        ground_truth_in_normalized_coords = (
-            continuous_states_during_forecast_window  # (forecast_window, J, D)
-        )
 
     ###
     # Compute velocity baseline
     ###
 
-    velocity_baseline_in_normalized_coords = np.zeros((T_forecast, DIMS.J, DIMS.D))
-    velocity_baseline_in_normalized_coords[0] = continuous_states_during_forecast_window[0]
-    for t in range(1, T_forecast):
-        velocity_baseline_in_normalized_coords[t] = (
-            velocity_baseline_in_normalized_coords[t - 1] + discrete_derivative
+    velocity_baseline_in_normalized_coords_with_init_at_beginning = np.zeros(
+        (T_forecast_plus_initialization_timestep_to_discard, DIMS.J, DIMS.D)
+    )
+    velocity_baseline_in_normalized_coords_with_init_at_beginning[
+        0
+    ] = continuous_states_during_context_window[-1]
+    for t in range(1, T_forecast_plus_initialization_timestep_to_discard):
+        velocity_baseline_in_normalized_coords_with_init_at_beginning[t] = (
+            velocity_baseline_in_normalized_coords_with_init_at_beginning[t - 1]
+            + discrete_derivative
         )
+    velocity_baseline_in_normalized_coords = (
+        velocity_baseline_in_normalized_coords_with_init_at_beginning[1:]
+    )
 
     ###
     # Prepare return object
@@ -154,15 +170,15 @@ def make_complete_forecasts_for_our_model_and_baselines(
     if use_raw_coords:
         forward_simulations = np.array(
             [
-                unnormalize_coords(forward_simulations_unnormalized[s])
-                for s in range(len(forward_simulations_unnormalized))
+                unnormalize_coords(forward_simulations_in_normalized_coords[s])
+                for s in range(len(forward_simulations_in_normalized_coords))
             ]
         )
         ground_truth = unnormalize_coords(ground_truth_in_normalized_coords)
         velocity_baseline = unnormalize_coords(velocity_baseline_in_normalized_coords)
         raw_coords = True
     else:
-        forward_simulations = forward_simulations_unnormalized
+        forward_simulations = forward_simulations_in_normalized_coords
         ground_truth = ground_truth_in_normalized_coords
         velocity_baseline = velocity_baseline_in_normalized_coords
         raw_coords = False

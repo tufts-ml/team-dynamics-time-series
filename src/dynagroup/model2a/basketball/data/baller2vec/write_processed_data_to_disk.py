@@ -80,7 +80,7 @@ xs_test = normalize_coords(data_test.coords_unnormalized)
 # Random context times
 ###
 random_context_times = generate_random_context_times_for_events(
-    data_test.inferred_event_stop_idxs,
+    data_test.example_stop_idxs,
     T_test_event_min,
     T_context_min,
     T_forecast,
@@ -98,16 +98,16 @@ for n_train_games in n_train_games_list:
     )
     np.save(
         f"{DATA_EXPORT_DIR}/event_stop_idxs_train__with_{n_train_games}_games.npy",
-        data_train_dict[n_train_games].inferred_event_stop_idxs,
+        data_train_dict[n_train_games].example_stop_idxs,
     )
 
 
 np.save(f"{DATA_EXPORT_DIR}/xs_test.npy", xs_test)
-np.save(f"{DATA_EXPORT_DIR}/event_stop_idxs_val.npy", data_val.inferred_event_stop_idxs)
+np.save(f"{DATA_EXPORT_DIR}/event_stop_idxs_val.npy", data_val.example_stop_idxs)
 
 
 np.save(f"{DATA_EXPORT_DIR}/xs_val.npy", xs_val)
-np.save(f"{DATA_EXPORT_DIR}/event_stop_idxs_test.npy", data_test.inferred_event_stop_idxs)
+np.save(f"{DATA_EXPORT_DIR}/event_stop_idxs_test.npy", data_test.example_stop_idxs)
 
 
 ### Write Random Context Times

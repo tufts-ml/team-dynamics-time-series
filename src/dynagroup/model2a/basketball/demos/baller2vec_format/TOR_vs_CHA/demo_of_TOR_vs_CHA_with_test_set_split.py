@@ -163,7 +163,7 @@ if animate_initialization:
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
         basketball_data_train.events[first_event_idx:last_event_idx],
-        basketball_data_train.provided_event_start_stop_idxs[first_event_idx:last_event_idx],
+        basketball_data_train.play_start_stop_idxs[first_event_idx:last_event_idx],
         results_init.EZ_summaries.expected_regimes,
         CSP_init,
         J_FOCAL,

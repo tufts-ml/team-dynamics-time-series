@@ -162,6 +162,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     DIMS: Dims,
     continuous_states: JaxNumpyArray3D,
     strategy: PreInitialization_Strategy_For_CSP,
+    event_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> ContinuousStateParameters_Gaussian_JAX:
@@ -193,13 +194,21 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
+    ### Make sample weights (as a combo of `use_continuous_states`` and `event_end_times`)
+    breakpoint()
+
+    sample_weights = use_continuous_states
+    for event_end_idx in event_end_times[:-1]:
+        event_start_idx = event_end_idx + 1
+        sample_weights[event_start_idx, :] = False
+
     As = np.zeros((J, K, D, D))
     bs = np.zeros((J, K, D))
     Qs = np.tile(np.eye(D)[None, None, :, :], (J, K, 1, 1))
 
     ### Find cluster memberships based on locations (values) or velocities (discrete derivatives) of continuous states
     continuous_state_diffs = continuous_states[1:, :, :] - continuous_states[:-1, :, :]
-    use_continuous_state_diffs = use_continuous_states[1:, :] * use_continuous_states[:-1, :]
+    sample_weight_diffs = sample_weights[1:, :] * sample_weights[:-1, :]
 
     kms = [None] * J
     for j in range(J):
@@ -210,11 +219,12 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             warnings.simplefilter(action="ignore", category=FutureWarning)
             if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
                 kms[j] = KMeans(K).fit(
-                    continuous_states[:, j, :], sample_weight=use_continuous_states[:, j]
+                    continuous_states[:, j, :], sample_weight=sample_weights[:, j]
                 )
             elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
+                # breakpoint()
                 kms[j] = KMeans(K).fit(
-                    continuous_state_diffs[:, j, :], sample_weight=use_continuous_state_diffs[:, j]
+                    continuous_state_diffs[:, j, :], sample_weight=sample_weight_diffs[:, j]
                 )
             else:
                 raise ValueError(
@@ -236,11 +246,11 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             samples_are_in_cluster_jk = kms[j].labels_ == k
             if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
                 use_outcomes_jk = (
-                    samples_are_in_cluster_jk[1:] * use_continuous_states[1:, j]
+                    samples_are_in_cluster_jk[1:] * sample_weights[1:, j]
                 )  # shape (T-1,)
             elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
                 use_outcomes_jk = (
-                    samples_are_in_cluster_jk * use_continuous_state_diffs[:, j]
+                    samples_are_in_cluster_jk * sample_weight_diffs[:, j]
                 )  # shape (T-1,)
             else:
                 raise ValueError(
@@ -597,7 +607,11 @@ def smart_initialize_model_2a(
     else:
         # TODO: Support fixed or random draws from prior for As, Qs.
         CSP_JAX = make_kmeans_preinitialization_of_CSP_JAX(
-            DIMS, continuous_states, preinitialization_strategy_for_CSP, use_continuous_states
+            DIMS,
+            continuous_states,
+            preinitialization_strategy_for_CSP,
+            event_end_times,
+            use_continuous_states,
         )
         # TODO: Support fixed or random draws from prior.
         ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)

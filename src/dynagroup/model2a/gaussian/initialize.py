@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 
+from dynagroup.diagnostics.kmeans import plot_kmeans_on_2d_data
 from dynagroup.examples import (
     example_end_times_are_proper,
     fix__log_emissions_from_entities__at_example_boundaries,
@@ -167,6 +168,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     strategy: PreInitialization_Strategy_For_CSP,
     example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
+    save_dir: Optional[str] = None,
     verbose: bool = True,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
@@ -209,8 +211,16 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     continuous_state_diffs = continuous_states[1:, :, :] - continuous_states[:-1, :, :]
     sample_weight_diffs = sample_weights[1:, :] * sample_weights[:-1, :]
 
-    # TEMP: Adding a breakpoint so I can plot these things.
-    breakpoint()
+    if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
+        data_for_kmeans = continuous_states
+        weights_for_kmeans = sample_weights
+    elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
+        data_for_kmeans = continuous_state_diffs
+        weights_for_kmeans = sample_weight_diffs
+    else:
+        raise ValueError(
+            f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
+        )
 
     kms = [None] * J
     for j in range(J):
@@ -219,19 +229,15 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
             #   Set the value of `n_init` explicitly to suppress the warning
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
-                kms[j] = KMeans(K).fit(
-                    continuous_states[:, j, :], sample_weight=sample_weights[:, j]
-                )
-            elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
-                # breakpoint()
-                kms[j] = KMeans(K).fit(
-                    continuous_state_diffs[:, j, :], sample_weight=sample_weight_diffs[:, j]
-                )
-            else:
-                raise ValueError(
-                    f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
-                )
+            kms[j] = KMeans(K).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
+
+    ### Plot K-means fits
+    plot_kmeans_on_2d_data(
+        data_for_kmeans,
+        weights_for_kmeans,
+        kms,
+        save_dir,
+    )
 
     ### Initialize parameters by running separate vector autoregressions within each cluster.
 
@@ -543,6 +549,7 @@ def smart_initialize_model_2a(
     seed: int = 0,
     system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
+    save_dir: Optional[str] = None,
     params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
 ) -> InitializationResults:
@@ -614,6 +621,7 @@ def smart_initialize_model_2a(
             preinitialization_strategy_for_CSP,
             example_end_times,
             use_continuous_states,
+            save_dir,
         )
         # TODO: Support fixed or random draws from prior.
         ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)

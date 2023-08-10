@@ -113,6 +113,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
     system_covariates,
+    save_dir=save_dir,
 )
 
 params_init = results_init.params

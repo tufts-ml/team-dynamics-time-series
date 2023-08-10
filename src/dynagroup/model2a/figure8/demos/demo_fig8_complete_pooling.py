@@ -181,6 +181,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
+    save_dir,
 )
 params_init = results_init.params
 

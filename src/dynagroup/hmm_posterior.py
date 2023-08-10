@@ -6,7 +6,7 @@ import jax_dataclasses as jdc
 import numpy as np
 from ssm.messages import hmm_expected_states
 
-from dynagroup.events import eligible_transitions_to_next
+from dynagroup.examples import eligible_transitions_to_next
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,

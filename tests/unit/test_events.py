@@ -2,10 +2,10 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from dynagroup.events import (
-    fix__log_emissions_from_entities__at_event_boundaries,
-    fix_log_entity_transitions_at_event_boundaries,
-    fix_log_system_transitions_at_event_boundaries,
+from dynagroup.examples import (
+    fix__log_emissions_from_entities__at_example_boundaries,
+    fix_log_entity_transitions_at_example_boundaries,
+    fix_log_system_transitions_at_example_boundaries,
     get_non_initialization_times,
 )
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
@@ -69,10 +69,10 @@ def model():
     return figure8_model_JAX
 
 
-def test_fix_log_system_transitions_at_event_boundaries(
+def test_fix_log_system_transitions_at_example_boundaries(
     IP, log_system_transitions, example_end_times, T, DIMS
 ):
-    log_system_transitions_fixed = fix_log_system_transitions_at_event_boundaries(
+    log_system_transitions_fixed = fix_log_system_transitions_at_example_boundaries(
         log_system_transitions,
         IP,
         example_end_times,
@@ -86,10 +86,10 @@ def test_fix_log_system_transitions_at_event_boundaries(
             assert jnp.allclose(log_system_transitions_fixed[t], log_system_transitions[t])
 
 
-def test_fix_log_entity_transitions_at_event_boundaries(
+def test_fix_log_entity_transitions_at_example_boundaries(
     IP, log_entity_transitions, example_end_times, T, DIMS
 ):
-    log_entity_transitions_fixed = fix_log_entity_transitions_at_event_boundaries(
+    log_entity_transitions_fixed = fix_log_entity_transitions_at_example_boundaries(
         log_entity_transitions,
         IP,
         example_end_times,
@@ -106,10 +106,10 @@ def test_fix_log_entity_transitions_at_event_boundaries(
             assert jnp.allclose(log_entity_transitions_fixed[t], log_entity_transitions[t])
 
 
-def test_fix__log_emissions_from_entities__at_event_boundaries(
+def test_fix__log_emissions_from_entities__at_example_boundaries(
     log_state_emissions, continuous_states, IP, model, example_end_times, T
 ):
-    log_state_emissions_fixed = fix__log_emissions_from_entities__at_event_boundaries(
+    log_state_emissions_fixed = fix__log_emissions_from_entities__at_example_boundaries(
         log_state_emissions, continuous_states, IP, model, example_end_times
     )
 

@@ -8,12 +8,11 @@ from dynagroup.model2a.basketball.animate import (
     animate_event,
     animate_events_over_vector_field_for_one_player,
 )
-from dynagroup.model2a.basketball.court import normalize_coords
-from dynagroup.model2a.basketball.data.baller2vec.CLE_starters_dataset import (
-    get_basketball_games_for_CLE_dataset,
-)
-from dynagroup.model2a.basketball.data.baller2vec.data import (
-    make_basketball_data_from_games,
+from dynagroup.model2a.basketball.data.baller2vec.disk import (
+    DataSamplingConfig,
+    DataSplitConfig,
+    ForecastConfig,
+    load_processed_data_to_analyze,
 )
 from dynagroup.model2a.basketball.forecasts import (
     generate_random_context_times_for_events,
@@ -40,8 +39,12 @@ over excluded plays (because the lineup is not of interest), or across games.
 # Configs
 ###
 
+# Processed data dir
+processed_data_dir = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/processed/"
+
 # Data split
-n_train_games = 1
+n_train_games_list = [1, 5, 20]
+n_train_games_to_use = 1
 n_val_games = 1
 n_test_games = 1
 
@@ -49,7 +52,7 @@ n_test_games = 1
 sampling_rate_Hz = 5
 
 # Directories
-save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
+save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -94,30 +97,19 @@ ensure_dir(save_dir)
 # Data splitting and preprocessing
 ###
 
-# TODO: This information should be grabbed from the processed data that is written
-# by `write_processed_data_to_disk.py`.  The current blocker is that we don't write
-# all the information we need for this demo.  In particular, the animation uses
-# some additional information (e.g. the "events" themselves and the provided  rather than inferred
-# event boundaries).  The events are structs; while they can be written to and loaded from disk
-# successfully by setting `allow_pickle=True`, this is dangerous because code changes (e.g. adding
-# an attribute to Events) will make it impossible to read data back in from disk. It would be
-# better to work directly with primitives -- e.g. np.arrays.
+data_sampling_config = DataSamplingConfig(sampling_rate_Hz)
+data_split_config = DataSplitConfig(n_train_games_list, n_val_games, n_test_games)
+forecast_config = ForecastConfig(T_test_event_min, T_context_min, T_forecast)
 
-games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=sampling_rate_Hz)
-plays_per_game = [len(game.events) for game in games]
-print(f"The plays per game are {plays_per_game}.")
+DATA = load_processed_data_to_analyze(
+    data_sampling_config,
+    data_split_config,
+    forecast_config,
+    processed_data_dir,
+)
+DATA_TRAIN, DATA_TEST, DATA_VAL = DATA.train_dict[n_train_games_to_use], DATA.test, DATA.val
+random_context_times = DATA.random_context_times
 
-games_train = games[-(n_train_games + n_test_games + n_val_games) : -(n_test_games + n_val_games)]
-games_val = games[-(n_test_games + n_val_games) : -n_test_games]
-games_test = games[-n_test_games:]
-
-data_train = make_basketball_data_from_games(games_train)
-data_val = make_basketball_data_from_games(games_val)
-data_test = make_basketball_data_from_games(games_test)
-
-xs_train = normalize_coords(data_train.coords_unnormalized)
-xs_val = normalize_coords(data_val.coords_unnormalized)
-xs_test = normalize_coords(data_test.coords_unnormalized)
 
 ###
 # MASKING
@@ -132,10 +124,10 @@ use_continuous_states = None
 # animate
 if animate_raw_data:
     n_events_to_animate = 5
-    for event in data_train.events[-n_events_to_animate:]:
+    for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(xs_train, data_train.example_stop_idxs, use_continuous_states)
+plot_discrete_derivatives(DATA_TRAIN.xs, DATA_TRAIN.example_stop_idxs, use_continuous_states)
 
 
 ###
@@ -144,7 +136,7 @@ plot_discrete_derivatives(xs_train, data_train.example_stop_idxs, use_continuous
 
 #### Setup Dims
 
-J = np.shape(xs_train)[1]
+J = np.shape(DATA_TRAIN.xs)[1]
 D, D_t = 2, 2
 N = 0
 M_s, M_e = 0, 0  # for now!
@@ -162,8 +154,8 @@ print("Running smart initialization.")
 
 results_init = smart_initialize_model_2a(
     DIMS,
-    xs_train,
-    data_train.example_stop_idxs,
+    DATA_TRAIN.xs,
+    DATA_TRAIN.example_stop_idxs,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -182,9 +174,9 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
     system_transition_prior,
-    xs_train,
+    DATA_TRAIN.xs,
     model_basketball,
-    data_train.example_stop_idxs,
+    DATA_TRAIN.example_stop_idxs,
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
@@ -201,12 +193,12 @@ if animate_initialization:
     first_event_idx, last_event_idx = 5, 10
     # TODO: Should we by default have the animation match the forecasting entity?
     animate_events_over_vector_field_for_one_player(
-        data_train.events[first_event_idx:last_event_idx],
-        data_train.play_start_stop_idxs[first_event_idx:last_event_idx],
+        DATA_TRAIN.events[first_event_idx:last_event_idx],
+        DATA_TRAIN.play_start_stop_idxs[first_event_idx:last_event_idx],
         results_init.EZ_summaries.expected_regimes,
         params_init.CSP,
         J_FOCAL,
-        data_train.player_data,
+        DATA_TRAIN.player_data,
     )
 
 ####
@@ -214,11 +206,11 @@ if animate_initialization:
 ####
 
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-    jnp.asarray(xs_train),
+    jnp.asarray(DATA_TRAIN.xs),
     n_cavi_iterations,
     results_init,
     model_basketball,
-    data_train.example_stop_idxs,
+    DATA_TRAIN.example_stop_idxs,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -238,15 +230,15 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 
 
 random_context_times = generate_random_context_times_for_events(
-    data_test.example_stop_idxs,
+    DATA_TEST.example_stop_idxs,
     T_test_event_min,
     T_context_min,
     T_forecast,
 )
 
 forecast_MSEs_by_event = get_forecast_MSEs_by_event(
-    xs_test,
-    data_test,
+    DATA_TEST.xs,
+    DATA_TEST.example_stop_idxs,
     params_learned,
     model_basketball,
     random_context_times,

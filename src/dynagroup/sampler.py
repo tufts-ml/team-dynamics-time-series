@@ -31,7 +31,7 @@ class Sample:
             Each entry is in {1,...,K}
         xs: has shape (T, J, D)
         ys: has shape (T, J, N)
-        event_end_times: optional, has shape (E+1,)
+        example_end_times: optional, has shape (E+1,)
             An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
             where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
             time gap between timesteps, and a discontinuity in the continuous states x.
@@ -55,7 +55,7 @@ class Sample:
     zs: NumpyArray2D
     xs: NumpyArray3D
     ys: NumpyArray3D
-    event_end_times: Optional[NumpyArray1D] = None
+    example_end_times: Optional[NumpyArray1D] = None
 
 
 @jdc.pytree_dataclass

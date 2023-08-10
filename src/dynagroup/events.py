@@ -28,16 +28,16 @@ What is the data representation strategy in the presence of multiple events?
     where T is the total number of timesteps, J is the number of entities, 
     and N is the observation dimension. Here, T= T_1 + T_2 + ... +T_E,
     where E  is the number of events (or training examples). We track the ending indices of each event 
-    for efficient indexing in `event_end_times`, which looks like 
+    for efficient indexing in `example_end_times`, which looks like 
     [-1, <bunch of times giving ends of all segments besides the last one>, T]
     In particular, if there are E events, then along with the observations, we store 
-    event_end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th event ended.  
+    example_end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th event ended.  
     So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
-        [event_end_times[e-1]+1 : event_end_times[e]].
+        [example_end_times[e-1]+1 : example_end_times[e]].
 
     Examples:
-        * If the data has shape (T,J,D)=(10,3,2), we might have event_end_times=[-1, 5, 10].
-        * In the default case, where there are not multiple events, the `event_end_times` are 
+        * If the data has shape (T,J,D)=(10,3,2), we might have example_end_times=[-1, 5, 10].
+        * In the default case, where there are not multiple events, the `example_end_times` are 
     taken to be [-1,T].
 
 What is the inference strategy in the presence of multiple events?
@@ -46,16 +46,16 @@ What is the inference strategy in the presence of multiple events?
     (e.g., arHMMs) reveals that we can handle this situation as follows:
 
         * E-steps (VEZ or VES): Whenever we get to a cross-event boundary (so for any pair of timesteps 
-            (t_1, t_2) where t_1 is in event_end_times), we replace the usual transition function with the 
+            (t_1, t_2) where t_1 is in example_end_times), we replace the usual transition function with the 
             appropriate initial regime distribution. Similarly, whenever we have started a new event 
-            (so for any timestep t where t+1 is in event_end_times), we replace the usual emissions with the 
+            (so for any timestep t where t+1 is in example_end_times), we replace the usual emissions with the 
             initial emissions.
         * M-steps: We update the initialization parameters IP using any data from any timesteps that ARE at 
-            the beginning of an event (so any timesteps t where t+1 is in event_end_times). We update the continuous 
+            the beginning of an event (so any timesteps t where t+1 is in example_end_times). We update the continuous 
             state parameters CSP using data from any timesteps t that AREN'T at the beginning of an event 
-            (so any timesteps t where t+1 is in event_end_times). We update the entity transition parameters ETP 
+            (so any timesteps t where t+1 is in example_end_times). We update the entity transition parameters ETP 
             and system transition parameters STP using any pair timesteps that don't straddle a transition boundary 
-            (so we ignore any pair of timesteps (t_1, t_2) where t_1 is in event_end_times).
+            (so we ignore any pair of timesteps (t_1, t_2) where t_1 is in example_end_times).
         
 """
 
@@ -64,26 +64,26 @@ What is the inference strategy in the presence of multiple events?
 ###
 
 
-def event_end_times_are_proper(event_end_times: NumpyArray1D, T: int) -> Optional[bool]:
-    """event_end_times should look like [-1, <bunch of times giving ends of all segments besides the last one>, T]"""
-    return event_end_times[0] == -1 and event_end_times[-1] == T
+def example_end_times_are_proper(example_end_times: NumpyArray1D, T: int) -> Optional[bool]:
+    """example_end_times should look like [-1, <bunch of times giving ends of all segments besides the last one>, T]"""
+    return example_end_times[0] == -1 and example_end_times[-1] == T
 
 
-def only_one_event(event_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
-    return (event_end_times is None) or (
-        len(event_end_times) == 2 and (event_end_times == [-1, T]).all()
+def only_one_event(example_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
+    return (example_end_times is None) or (
+        len(example_end_times) == 2 and (example_end_times == [-1, T]).all()
     )
 
 
-def get_initialization_times(event_end_times: NumpyArray1D) -> NumpyArray1D:
+def get_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
     These are times just after event boundaries.
     """
     # want to use np and not lists here, so that we can add 1 to the event end times.
-    return np.array(event_end_times[:-1]) + 1
+    return np.array(example_end_times[:-1]) + 1
 
 
-def get_non_initialization_times(event_end_times: NumpyArray1D) -> NumpyArray1D:
+def get_non_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
     These are times NOT just after event boundaries.
     """
@@ -92,12 +92,12 @@ def get_non_initialization_times(event_end_times: NumpyArray1D) -> NumpyArray1D:
     # indices EXCEPT?  I wanted to return a generator, but it seems that I can't index a numpy array
     # with a generator
 
-    T = event_end_times[-1]
-    initialization_times = get_initialization_times(event_end_times)
+    T = example_end_times[-1]
+    initialization_times = get_initialization_times(example_end_times)
     return np.array([i for i in range(T) if i not in initialization_times])
 
 
-def eligible_transitions_to_next(event_end_times: NumpyArray1D) -> NumpyArray1D:
+def eligible_transitions_to_next(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
     The t-th timestep is not an eligible transition source if there is en event boundary between the t-th and the
     (t+1)-st timestep.
@@ -107,13 +107,13 @@ def eligible_transitions_to_next(event_end_times: NumpyArray1D) -> NumpyArray1D:
         an inference operation on transitions.
 
     Example:
-        If event_end_times=[-1,4,10], this function returns
+        If example_end_times=[-1,4,10], this function returns
             array([ True,  True,  True,  True, False,  True,  True,  True,  True]).
         The value at index 4 is False because the transition from 4 to 5 is not eligible for doing inference.
         (It crosses an event boundary.)
     """
-    T = event_end_times[-1]
-    return np.isin(np.arange(T - 1), event_end_times[1:-1], invert=True)
+    T = example_end_times[-1]
+    return np.isin(np.arange(T - 1), example_end_times[1:-1], invert=True)
 
 
 ###
@@ -124,7 +124,7 @@ def eligible_transitions_to_next(event_end_times: NumpyArray1D) -> NumpyArray1D:
 def fix_log_system_transitions_at_event_boundaries(
     log_system_transitions: JaxNumpyArray4D,
     IP: InitializationParameters,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> JaxNumpyArray4D:
     """
     Arguments:
@@ -138,7 +138,7 @@ def fix_log_system_transitions_at_event_boundaries(
     # pi_system: has shape (L,).
     # We reshape this so that there the transitions to entity K are uniform across the rows
     log_transitions_to_destinations_per_init_dist = np.tile(np.log(IP.pi_system), (L, 1))
-    for end_time in event_end_times[1:-1]:
+    for end_time in example_end_times[1:-1]:
         log_system_transitions_fixed[end_time] = log_transitions_to_destinations_per_init_dist
     return jnp.array(log_system_transitions_fixed)
 
@@ -146,7 +146,7 @@ def fix_log_system_transitions_at_event_boundaries(
 def fix_log_entity_transitions_at_event_boundaries(
     log_entity_transitions: JaxNumpyArray4D,
     IP: InitializationParameters,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> JaxNumpyArray4D:
     """
     Arguments:
@@ -161,7 +161,7 @@ def fix_log_entity_transitions_at_event_boundaries(
         # pi_entities : has shape (J, K).
         # We reshape this so that there the transitions to entity K are uniform across the rows
         log_transitions_to_destinations_per_init_dist = np.tile(np.log(IP.pi_entities[j]), (K, 1))
-        for end_time in event_end_times[1:-1]:
+        for end_time in example_end_times[1:-1]:
             log_entity_transitions_fixed[
                 end_time, j
             ] = log_transitions_to_destinations_per_init_dist
@@ -172,7 +172,7 @@ def fix__log_emissions_from_system__at_event_boundaries(
     log_emissions_from_system: JaxNumpyArray2D,
     VEZ_expected_regimes: JaxNumpyArray3D,
     IP: InitializationParameters,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> JaxNumpyArray3D:
     """
     Arguments:
@@ -195,7 +195,7 @@ def fix__log_emissions_from_system__at_event_boundaries(
     initial_log_emissions_from_system = jnp.repeat(initial_log_emission_for_each_system_regime, L)
 
     # TODO: Maybe vectorize this
-    for end_time in event_end_times[1:-1]:
+    for end_time in example_end_times[1:-1]:
         log_emissions_from_system_fixed[end_time + 1] = initial_log_emissions_from_system
 
     return jnp.array(log_emissions_from_system_fixed)
@@ -206,7 +206,7 @@ def fix__log_emissions_from_entities__at_event_boundaries(
     continuous_states: JaxNumpyArray3D,
     IP: InitializationParameters,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> JaxNumpyArray3D:
     """
     Arguments:
@@ -217,7 +217,7 @@ def fix__log_emissions_from_entities__at_event_boundaries(
     log_emissions_from_entities_fixed = np.array(log_emissions_from_entities)
 
     # TODO: Vectorize all this
-    for end_time in event_end_times[1:-1]:
+    for end_time in example_end_times[1:-1]:
         log_emissions_from_entities_fixed[
             end_time + 1
         ] = model.compute_log_initial_continuous_state_emissions_JAX(

@@ -21,7 +21,7 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
     WALL_CLOCK_DIFF_UPPER_THRESHOLD = EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES * 1.2
 
     events_cleaned = copy.deepcopy(events)
-    event_end_times = [-1]
+    example_end_times = [-1]
     TT = 0
     prev_wall_clock = -np.inf
     for event_idx, event in enumerate(events):
@@ -44,7 +44,7 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
                 print(
                     f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
                 )
-                event_end_times.append(TT)
+                example_end_times.append(TT)
             prev_wall_clock = curr_wall_clock
             TT += 1
 
@@ -56,8 +56,8 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
 
     # Then append the last timestep
     last_timestep = TT
-    event_end_times.append(last_timestep)
-    return events_cleaned, event_end_times
+    example_end_times.append(last_timestep)
+    return events_cleaned, example_end_times
 
 
 def get_play_start_stop_idxs(events: List[Event]) -> List[Tuple[int]]:
@@ -80,7 +80,7 @@ def get_play_start_stop_idxs(events: List[Event]) -> List[Tuple[int]]:
 # Helper Functions
 ###
 
-### The two functions below are used to convert `event_end_times` into pairs
+### The two functions below are used to convert `example_end_times` into pairs
 ### of indices designating the beginning and end of an event.
 
 

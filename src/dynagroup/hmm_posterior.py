@@ -468,7 +468,7 @@ def make_list_from_hmm_posterior_summaries(
 def compute_closed_form_M_step(
     posterior_summary: HMM_Posterior_Summary_NUMPY,
     use_continuous_states: Optional[NumpyArray2D] = None,
-    event_end_times: Optional[NumpyArray1D] = None,
+    example_end_times: Optional[NumpyArray1D] = None,
 ) -> NumpyArray2D:
     """
     Returns:
@@ -485,8 +485,8 @@ def compute_closed_form_M_step(
     if use_continuous_states is None:
         use_continuous_states = np.full((T), True)
 
-    if event_end_times is None:
-        event_end_times = np.array([-1, T])
+    if example_end_times is None:
+        example_end_times = np.array([-1, T])
 
     # Compute tpm
     tpm_empirical = np.zeros((K, K))
@@ -495,12 +495,12 @@ def compute_closed_form_M_step(
             tpm_empirical[k, k_prime] = np.sum(
                 posterior_summary.expected_joints[:, k, k_prime]
                 * use_continuous_states[1:]
-                * eligible_transitions_to_next(event_end_times),
+                * eligible_transitions_to_next(example_end_times),
                 axis=0,
             ) / np.sum(
                 posterior_summary.expected_regimes[:-1, k]
                 * use_continuous_states[1:]
-                * eligible_transitions_to_next(event_end_times),
+                * eligible_transitions_to_next(example_end_times),
                 axis=0,
             )
 
@@ -517,7 +517,7 @@ def compute_closed_form_M_step(
 def compute_closed_form_M_step_on_posterior_summaries(
     posterior_summaries: HMM_Posterior_Summaries_NUMPY,
     use_continuous_states: Optional[NumpyArray2D] = None,
-    event_end_times: Optional[NumpyArray1D] = None,
+    example_end_times: Optional[NumpyArray1D] = None,
 ) -> NumpyArray3D:
     """
     Arguments:
@@ -536,15 +536,15 @@ def compute_closed_form_M_step_on_posterior_summaries(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
-    if event_end_times is None:
-        event_end_times = np.array([-1, T])
+    if example_end_times is None:
+        example_end_times = np.array([-1, T])
 
     posterior_summaries_list = make_list_from_hmm_posterior_summaries(posterior_summaries)
 
     tpms = [None] * J
     for j in range(J):
         tpms[j] = compute_closed_form_M_step(
-            posterior_summaries_list[j], use_continuous_states[:, j], event_end_times
+            posterior_summaries_list[j], use_continuous_states[:, j], example_end_times
         )
 
     return np.array(tpms)

@@ -9,7 +9,7 @@ from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 
 from dynagroup.events import (
-    event_end_times_are_proper,
+    example_end_times_are_proper,
     fix__log_emissions_from_entities__at_event_boundaries,
     fix_log_entity_transitions_at_event_boundaries,
     only_one_event,
@@ -162,7 +162,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     DIMS: Dims,
     continuous_states: JaxNumpyArray3D,
     strategy: PreInitialization_Strategy_For_CSP,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> ContinuousStateParameters_Gaussian_JAX:
@@ -194,11 +194,11 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
-    ### Make sample weights (as a combo of `use_continuous_states`` and `event_end_times`)
+    ### Make sample weights (as a combo of `use_continuous_states`` and `example_end_times`)
     breakpoint()
 
     sample_weights = use_continuous_states
-    for event_end_idx in event_end_times[:-1]:
+    for event_end_idx in example_end_times[:-1]:
         event_start_idx = event_end_idx + 1
         sample_weights[event_start_idx, :] = False
 
@@ -296,7 +296,7 @@ def make_data_free_preinitialization_of_EP_JAX(
 
 def fit_ARHMM_to_bottom_half_of_model(
     continuous_states: JaxNumpyArray3D,
-    event_end_times: Optional[JaxNumpyArray1D],
+    example_end_times: Optional[JaxNumpyArray1D],
     CSP_JAX: ContinuousStateParameters_Gaussian_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_Gaussian_JAX,
@@ -362,11 +362,11 @@ def fit_ARHMM_to_bottom_half_of_model(
             fix_log_entity_transitions_at_event_boundaries(
                 log_transition_matrices_averaged_over_system_regimes,
                 IP_JAX,
-                event_end_times,
+                example_end_times,
             )
         )
         log_entity_emissions = fix__log_emissions_from_entities__at_event_boundaries(
-            log_entity_emissions, continuous_states, IP_JAX, model, event_end_times
+            log_entity_emissions, continuous_states, IP_JAX, model, example_end_times
         )
 
         ###
@@ -396,7 +396,7 @@ def fit_ARHMM_to_bottom_half_of_model(
             tpms = compute_closed_form_M_step_on_posterior_summaries(
                 EZ_summaries,
                 use_continuous_states,
-                event_end_times,
+                example_end_times,
             )
             Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
             ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(
@@ -407,7 +407,7 @@ def fit_ARHMM_to_bottom_half_of_model(
             # M-step (for CSP)
             ###
             CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
-                EZ_summaries.expected_regimes, continuous_states, event_end_times
+                EZ_summaries.expected_regimes, continuous_states, example_end_times
             )
 
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
@@ -421,7 +421,7 @@ def fit_ARHMM_to_bottom_half_of_model(
 def fit_ARHMM_to_top_half_of_model(
     continuous_states: NumpyArray3D,
     system_covariates: Optional[NumpyArray2D],
-    event_end_times: Optional[JaxNumpyArray1D],
+    example_end_times: Optional[JaxNumpyArray1D],
     STP_JAX: SystemTransitionParameters_JAX,
     ETP_JAX: EntityTransitionParameters_MetaSwitch_JAX,
     IP_JAX: InitializationParameters_Gaussian_JAX,
@@ -472,7 +472,7 @@ def fit_ARHMM_to_top_half_of_model(
             continuous_states,
             EZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
             use_continuous_states=use_continuous_states,
         )
@@ -496,7 +496,7 @@ def fit_ARHMM_to_top_half_of_model(
                 iteration,
                 num_M_step_iterations_for_ETP_gradient_descent,
                 model,
-                event_end_times,
+                example_end_times,
                 use_continuous_states,
                 verbose,
             )
@@ -505,10 +505,10 @@ def fit_ARHMM_to_top_half_of_model(
             system_transition_prior = None
 
             ### M-step (STP)
-            if only_one_event(event_end_times, T):
+            if only_one_event(example_end_times, T):
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
-                STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, event_end_times)
+                STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)
             else:
                 NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT = 5
                 STP_JAX = run_M_step_for_STP_via_gradient_descent(
@@ -518,7 +518,7 @@ def fit_ARHMM_to_top_half_of_model(
                     iteration,
                     NUM_M_STEP_ITERATIONS_FOR_STP_GRADIENT_DESCENT,
                     model,
-                    event_end_times,
+                    example_end_times,
                     system_covariates,
                 )
 
@@ -533,7 +533,7 @@ def fit_ARHMM_to_top_half_of_model(
 def smart_initialize_model_2a(
     DIMS: Dims,
     continuous_states: Union[NumpyArray3D, JaxNumpyArray3D],
-    event_end_times: Optional[NumpyArray1D],
+    example_end_times: Optional[NumpyArray1D],
     model: Model,
     preinitialization_strategy_for_CSP: PreInitialization_Strategy_For_CSP,
     num_em_iterations_for_bottom_half: int = 5,
@@ -546,7 +546,7 @@ def smart_initialize_model_2a(
 ) -> InitializationResults:
     """
     Arguments:
-        event_end_times: optional, has shape (E+1,)
+        example_end_times: optional, has shape (E+1,)
             An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
             where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
             time gap between timesteps, and a discontinuity in the continuous states x.
@@ -581,11 +581,11 @@ def smart_initialize_model_2a(
     # 2) Find a way to do smarter init for the recurrence parameters
     # 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
 
-    if event_end_times is None:
+    if example_end_times is None:
         T = len(continuous_states)
-        event_end_times = np.array([-1, T])
+        example_end_times = np.array([-1, T])
 
-    if not event_end_times_are_proper(event_end_times, len(continuous_states)):
+    if not example_end_times_are_proper(example_end_times, len(continuous_states)):
         raise ValueError(
             f"Event end times do not have the proper format. Consult the `events` module "
             f"and try again.  Event_end_times MUST begin with -1 and end with T, the length "
@@ -610,7 +610,7 @@ def smart_initialize_model_2a(
             DIMS,
             continuous_states,
             preinitialization_strategy_for_CSP,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
         )
         # TODO: Support fixed or random draws from prior.
@@ -625,7 +625,7 @@ def smart_initialize_model_2a(
     ###
     results_bottom = fit_ARHMM_to_bottom_half_of_model(
         continuous_states,
-        event_end_times,
+        example_end_times,
         CSP_JAX,
         ETP_JAX,
         IP_JAX,
@@ -667,7 +667,7 @@ def smart_initialize_model_2a(
     results_top = fit_ARHMM_to_top_half_of_model(
         continuous_states,
         system_covariates,
-        event_end_times,
+        example_end_times,
         STP_JAX,
         ETP_JAX,
         IP_JAX,
@@ -690,7 +690,7 @@ def smart_initialize_model_2a(
             results_top.ES_summary,
             results_bottom.EZ_summaries,
             continuous_states,
-            event_end_times,
+            example_end_times,
         )
 
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)

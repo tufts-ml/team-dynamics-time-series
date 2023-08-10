@@ -120,7 +120,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.positions, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.positions, model, example_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 

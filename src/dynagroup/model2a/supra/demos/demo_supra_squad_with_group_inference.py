@@ -43,7 +43,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 ###
 
 ### Events
-event_end_times = None
+example_end_times = None
 
 ### Data Snippet
 show_plots_of_data = False
@@ -163,7 +163,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     snip.squad_angles,
     circle_model_JAX,
-    event_end_times,
+    example_end_times,
     system_covariates,
 )
 print(f"\nELBO after init: {elbo_init:.02f}")
@@ -230,7 +230,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     circle_model_JAX,
-    event_end_times,
+    example_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

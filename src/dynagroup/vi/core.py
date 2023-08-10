@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from dynagroup.events import example_end_times_are_proper
+from dynagroup.examples import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -53,13 +53,13 @@ def run_CAVI_with_JAX(
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
         example_end_times: optional, has shape (E+1,)
-            An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
-            where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
-            time gap between timesteps, and a discontinuity in the continuous states x.
+            An `example` (or event) takes an ordinary sampled group time series of shape (T,J,:) and interprets it
+            as (T_grand,J,:), where T_grand is the sum of the number of timesteps across i.i.d "examples".
+            An example might induce a largetime gap between timesteps, and a discontinuity in the continuous states x.
 
-            If there are E events, then along with the observations, we store
-                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
-            So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+            If there are E examples, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th example ended.
+            So to get the timesteps for the e-th example, you can index from 1,…,T_grand by doing
                     [end_times[e-1]+1 : end_times[e]].
 
         M_step_toggles: Describes what kind of M-step should be done (gradient-descent, closed-form, or None)
@@ -93,7 +93,7 @@ def run_CAVI_with_JAX(
         L: number of system-level regimes
         K: number of entity-level regimes
         D: dimension of continuous states
-        E: number of events
+        E: number of examples
     """
 
     ###
@@ -135,7 +135,7 @@ def run_CAVI_with_JAX(
 
     if not example_end_times_are_proper(example_end_times, len(continuous_states)):
         raise ValueError(
-            f"Event end times do not have the proper format. Consult the `events` module "
+            f"Event end times do not have the proper format. Consult the `examples` module "
             f"and try again.  `example_end_times` MUST begin with -1 and end with T, the length "
             f"of the grand time series."
         )

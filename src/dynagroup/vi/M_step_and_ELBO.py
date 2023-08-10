@@ -12,11 +12,11 @@ from joblib import Parallel, delayed
 from statsmodels.regression.linear_model import WLS
 from statsmodels.tools.tools import add_constant
 
-from dynagroup.events import (
+from dynagroup.examples import (
     eligible_transitions_to_next,
     get_initialization_times,
     get_non_initialization_times,
-    only_one_event,
+    only_one_example,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -617,7 +617,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     # Preprocess based on the possible existence of event segmentation times
     times_to_use = slice(None)
-    if not only_one_event(example_end_times, T):
+    if not only_one_example(example_end_times, T):
         times_to_use = get_non_initialization_times(example_end_times)
 
     VEZ_expected_regimes_to_use = VEZ_expected_regimes[times_to_use]
@@ -693,7 +693,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             f"states are not used."
         )
 
-    if not only_one_event(example_end_times, T=len(group_angles)):
+    if not only_one_example(example_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"This function has not yet been expanded to handle the case where the time series is "
             f"spliced into separate events.  For guidance, see how this was handled in the Gaussian case."
@@ -1112,7 +1112,7 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
     group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     example_end_times: NumpyArray1D,
 ) -> InitializationParameters_VonMises_JAX:
-    if not only_one_event(example_end_times, T=len(group_angles)):
+    if not only_one_example(example_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"Haven't yet implemented M-step for init params in von mises case when there are "
             f"multiple events."

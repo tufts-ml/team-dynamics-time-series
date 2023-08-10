@@ -8,11 +8,11 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 
-from dynagroup.events import (
+from dynagroup.examples import (
     example_end_times_are_proper,
-    fix__log_emissions_from_entities__at_event_boundaries,
-    fix_log_entity_transitions_at_event_boundaries,
-    only_one_event,
+    fix__log_emissions_from_entities__at_example_boundaries,
+    fix_log_entity_transitions_at_example_boundaries,
+    only_one_example,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -359,13 +359,13 @@ def fit_ARHMM_to_bottom_half_of_model(
         ###
 
         log_transition_matrices_averaged_over_system_regimes = (
-            fix_log_entity_transitions_at_event_boundaries(
+            fix_log_entity_transitions_at_example_boundaries(
                 log_transition_matrices_averaged_over_system_regimes,
                 IP_JAX,
                 example_end_times,
             )
         )
-        log_entity_emissions = fix__log_emissions_from_entities__at_event_boundaries(
+        log_entity_emissions = fix__log_emissions_from_entities__at_example_boundaries(
             log_entity_emissions, continuous_states, IP_JAX, model, example_end_times
         )
 
@@ -505,7 +505,7 @@ def fit_ARHMM_to_top_half_of_model(
             system_transition_prior = None
 
             ### M-step (STP)
-            if only_one_event(example_end_times, T):
+            if only_one_example(example_end_times, T):
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
                 STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)

@@ -15,44 +15,44 @@ from dynagroup.types import (
 
 """
 
-What is an event?
+What is an example (previously called an example)?
 
-    An event can be considered as an (iid) training example from a group dynamics model.
-    A separate event might induce a large time gap between time-steps, 
+    An example can be considered as an (iid) training example from a group dynamics model.
+    A separate example might induce a large time gap between time-steps, 
     and a discontinuity in the continuous states x. Thus is should be handled correctly. 
 
-What is the data representation strategy in the presence of multiple events?
+What is the data representation strategy in the presence of multiple examples?
 
-    The sequences for each event are stacked on top of one another. 
+    The sequences for each example are stacked on top of one another. 
     So the dimensionality of observations will be (T,J,N), 
     where T is the total number of timesteps, J is the number of entities, 
     and N is the observation dimension. Here, T= T_1 + T_2 + ... +T_E,
-    where E  is the number of events (or training examples). We track the ending indices of each event 
+    where E  is the number of examples (or training examples). We track the ending indices of each example 
     for efficient indexing in `example_end_times`, which looks like 
     [-1, <bunch of times giving ends of all segments besides the last one>, T]
-    In particular, if there are E events, then along with the observations, we store 
-    example_end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th event ended.  
-    So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+    In particular, if there are E examples, then along with the observations, we store 
+    example_end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th example ended.  
+    So to get the timesteps for the e-th example, you can index from 1,…,T_grand by doing
         [example_end_times[e-1]+1 : example_end_times[e]].
 
     Examples:
         * If the data has shape (T,J,D)=(10,3,2), we might have example_end_times=[-1, 5, 10].
-        * In the default case, where there are not multiple events, the `example_end_times` are 
+        * In the default case, where there are not multiple examples, the `example_end_times` are 
     taken to be [-1,T].
 
-What is the inference strategy in the presence of multiple events?
+What is the inference strategy in the presence of multiple examples?
 
     Inspecting the proof for filtering and smoothing in HMM's with time-dependent transitions 
     (e.g., arHMMs) reveals that we can handle this situation as follows:
 
-        * E-steps (VEZ or VES): Whenever we get to a cross-event boundary (so for any pair of timesteps 
+        * E-steps (VEZ or VES): Whenever we get to a cross-example boundary (so for any pair of timesteps 
             (t_1, t_2) where t_1 is in example_end_times), we replace the usual transition function with the 
-            appropriate initial regime distribution. Similarly, whenever we have started a new event 
+            appropriate initial regime distribution. Similarly, whenever we have started a new example 
             (so for any timestep t where t+1 is in example_end_times), we replace the usual emissions with the 
             initial emissions.
         * M-steps: We update the initialization parameters IP using any data from any timesteps that ARE at 
-            the beginning of an event (so any timesteps t where t+1 is in example_end_times). We update the continuous 
-            state parameters CSP using data from any timesteps t that AREN'T at the beginning of an event 
+            the beginning of an example (so any timesteps t where t+1 is in example_end_times). We update the continuous 
+            state parameters CSP using data from any timesteps t that AREN'T at the beginning of an example 
             (so any timesteps t where t+1 is in example_end_times). We update the entity transition parameters ETP 
             and system transition parameters STP using any pair timesteps that don't straddle a transition boundary 
             (so we ignore any pair of timesteps (t_1, t_2) where t_1 is in example_end_times).
@@ -69,7 +69,7 @@ def example_end_times_are_proper(example_end_times: NumpyArray1D, T: int) -> Opt
     return example_end_times[0] == -1 and example_end_times[-1] == T
 
 
-def only_one_event(example_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
+def only_one_example(example_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
     return (example_end_times is None) or (
         len(example_end_times) == 2 and (example_end_times == [-1, T]).all()
     )
@@ -77,15 +77,15 @@ def only_one_event(example_end_times: Optional[NumpyArray1D], T: int) -> Optiona
 
 def get_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
-    These are times just after event boundaries.
+    These are times just after example boundaries.
     """
-    # want to use np and not lists here, so that we can add 1 to the event end times.
+    # want to use np and not lists here, so that we can add 1 to the example end times.
     return np.array(example_end_times[:-1]) + 1
 
 
 def get_non_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
-    These are times NOT just after event boundaries.
+    These are times NOT just after example boundaries.
     """
 
     # TODO: The returned numpy array (of all NORMAL times) could get large if there are lots of timesteps. Is there an easier way to view all
@@ -99,7 +99,7 @@ def get_non_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1
 
 def eligible_transitions_to_next(example_end_times: NumpyArray1D) -> NumpyArray1D:
     """
-    The t-th timestep is not an eligible transition source if there is en event boundary between the t-th and the
+    The t-th timestep is not an eligible transition source if there is en example boundary between the t-th and the
     (t+1)-st timestep.
 
     Returns:
@@ -110,18 +110,18 @@ def eligible_transitions_to_next(example_end_times: NumpyArray1D) -> NumpyArray1
         If example_end_times=[-1,4,10], this function returns
             array([ True,  True,  True,  True, False,  True,  True,  True,  True]).
         The value at index 4 is False because the transition from 4 to 5 is not eligible for doing inference.
-        (It crosses an event boundary.)
+        (It crosses an example boundary.)
     """
     T = example_end_times[-1]
     return np.isin(np.arange(T - 1), example_end_times[1:-1], invert=True)
 
 
 ###
-# Fixing up emissions and transitions (for forward-backward when there are events)
+# Fixing up emissions and transitions (for forward-backward when there are examples)
 ###
 
 
-def fix_log_system_transitions_at_event_boundaries(
+def fix_log_system_transitions_at_example_boundaries(
     log_system_transitions: JaxNumpyArray4D,
     IP: InitializationParameters,
     example_end_times: NumpyArray1D,
@@ -143,7 +143,7 @@ def fix_log_system_transitions_at_event_boundaries(
     return jnp.array(log_system_transitions_fixed)
 
 
-def fix_log_entity_transitions_at_event_boundaries(
+def fix_log_entity_transitions_at_example_boundaries(
     log_entity_transitions: JaxNumpyArray4D,
     IP: InitializationParameters,
     example_end_times: NumpyArray1D,
@@ -168,7 +168,7 @@ def fix_log_entity_transitions_at_event_boundaries(
     return jnp.array(log_entity_transitions_fixed)
 
 
-def fix__log_emissions_from_system__at_event_boundaries(
+def fix__log_emissions_from_system__at_example_boundaries(
     log_emissions_from_system: JaxNumpyArray2D,
     VEZ_expected_regimes: JaxNumpyArray3D,
     IP: InitializationParameters,
@@ -201,7 +201,7 @@ def fix__log_emissions_from_system__at_event_boundaries(
     return jnp.array(log_emissions_from_system_fixed)
 
 
-def fix__log_emissions_from_entities__at_event_boundaries(
+def fix__log_emissions_from_entities__at_example_boundaries(
     log_emissions_from_entities: JaxNumpyArray3D,
     continuous_states: JaxNumpyArray3D,
     IP: InitializationParameters,

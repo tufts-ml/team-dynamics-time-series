@@ -14,16 +14,20 @@ from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 
 
 def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
-    events: List[Event], sampling_rate_Hz: float
+    events: List[Event],
+    sampling_rate_Hz: float,
+    verbose: bool = True,
 ) -> Tuple[List[Event], List[int]]:
     EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES = 1000 / sampling_rate_Hz
     WALL_CLOCK_DIFF_LOWER_THRESHOLD = EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES * 0.8
     WALL_CLOCK_DIFF_UPPER_THRESHOLD = EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES * 1.2
 
     events_cleaned = copy.deepcopy(events)
-    example_end_times = [-1]
-    TT = 0
+
+    example_end_times = []
+    T_curr = 0
     prev_wall_clock = -np.inf
+
     for event_idx, event in enumerate(events):
         moment_idxs_to_remove = []
 
@@ -33,20 +37,20 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
             wall_clock_diff = curr_wall_clock - prev_wall_clock
 
             if wall_clock_diff < WALL_CLOCK_DIFF_LOWER_THRESHOLD:
-                print(
-                    f"For event idx {event_idx}, flagging for removal a moment whose wall clock diff was {wall_clock_diff:.02f}"
-                )
+                if verbose:
+                    print(
+                        f"For event idx {event_idx}, flagging for removal a moment whose wall clock diff was {wall_clock_diff:.02f}"
+                    )
                 moment_idxs_to_remove.append(moment_idx)
                 continue
-                # print(f"t={TT}, wall_clock_diff={wall_clock_diff:.02f}")
-                # raise ValueError("Wall clock diff between samples too small to be possible. Investigate")
-            if (wall_clock_diff > WALL_CLOCK_DIFF_UPPER_THRESHOLD) and (TT != 0):
-                print(
-                    f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
-                )
-                example_end_times.append(TT)
+            if wall_clock_diff > WALL_CLOCK_DIFF_UPPER_THRESHOLD:
+                if verbose:
+                    print(
+                        f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
+                    )
+                example_end_times.append(T_curr - 1)
             prev_wall_clock = curr_wall_clock
-            TT += 1
+            T_curr += 1
 
         # Remove moments whose wall clock diffs that are too big.
         new_moments = construct_a_new_list_after_removing_multiple_items(
@@ -55,7 +59,7 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
         events_cleaned[event_idx].moments = new_moments
 
     # Then append the last timestep
-    last_timestep = TT
+    last_timestep = T_curr
     example_end_times.append(last_timestep)
     return events_cleaned, example_end_times
 

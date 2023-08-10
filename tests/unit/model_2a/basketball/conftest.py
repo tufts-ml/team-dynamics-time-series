@@ -12,7 +12,7 @@ from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
 def event():
     """
     This event has a large temporal gap between moments 0 and 1.
-    It can be used to test the construction of examples.
+    It can be used to test the construction of example_end_times.
     """
     path_to_game_data = (
         "data/basketball/baller2vec_format/preprocessed/CLE_starters/games/0021500601_X.npy"

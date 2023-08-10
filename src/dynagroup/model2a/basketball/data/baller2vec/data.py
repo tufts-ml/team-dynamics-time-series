@@ -13,7 +13,8 @@ import numpy as np
 
 from dynagroup.model2a.basketball.court import flip_coords_unnormalized
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
-    clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs,
+    clean_events_of_moments_with_too_small_intervals,
+    get_example_stop_idxs,
     get_play_start_stop_idxs,
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
@@ -238,7 +239,6 @@ def load_basketball_data_from_single_game_file(
 
     ### Organize the events into a BasketballData object.
     events_mutated = []
-    moments_processed = []
     n_events_without_focal_team_starters = 0
 
     for event_idx in event_idxs:
@@ -344,10 +344,7 @@ def load_basketball_data_from_single_game_file(
                         )
                     )
 
-            ### Now we extend our accumulating lists of moments and events.
-            moments_processed.extend(
-                event_with_player_reindexing_and_court_rotations_where_needed.moments
-            )
+            ### Now we extend our accumulating lists of events.
             events_mutated.extend([event_with_player_reindexing_and_court_rotations_where_needed])
 
         except:
@@ -362,20 +359,19 @@ def load_basketball_data_from_single_game_file(
         breakpoint()
         raise ValueError("This game had ZERO events retained. Check into this.")
 
-    (
-        events_filtered_and_mutated,
-        example_stop_idxs,
-    ) = clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
-        events_mutated,
-        sampling_rate_Hz,
+    events_filtered_and_mutated = clean_events_of_moments_with_too_small_intervals(
+        events_mutated, sampling_rate_Hz
     )
+
+    moments_filtered = [moment for event in events_filtered_and_mutated for moment in event.moments]
+    coords_unnormalized = coords_from_moments(moments_filtered)
+
+    example_stop_idxs = get_example_stop_idxs(events_filtered_and_mutated, sampling_rate_Hz)
     play_start_stop_idxs = get_play_start_stop_idxs(events_filtered_and_mutated)
-    moments_cleaned = [moment for event in events_filtered_and_mutated for moment in event.moments]
-    unnormalized_coords = coords_from_moments(moments_cleaned)
 
     return BasketballData(
         events_filtered_and_mutated,
-        unnormalized_coords,
+        coords_unnormalized,
         play_start_stop_idxs,
         example_stop_idxs,
         player_data,
@@ -398,7 +394,7 @@ def get_flattened_events_from_games(games: List[BasketballData]) -> List[Event]:
     return events_all
 
 
-def get_flattened_unnormalized_coords_from_games(games: List[BasketballData]) -> NumpyArray3D:
+def get_flattened_coords_unnormalized_from_games(games: List[BasketballData]) -> NumpyArray3D:
     """
     Concatentate all the unnormalized coords from a set of games
     """
@@ -414,20 +410,17 @@ def get_flattened_unnormalized_coords_from_games(games: List[BasketballData]) ->
 
 
 def make_basketball_data_from_games(games: List[BasketballData]):
-    # TODO: sampling_rate_Hz should be stored inside
-
     # RK: The games have already been constructed as Basketball Data; so we just need to concatentate
     # everything.
     sampling_rate_Hz = games[0].sampling_rate_Hz
     events = get_flattened_events_from_games(games)
-    play_start_stop_idxs = get_play_start_stop_idxs(events)
-    (
-        _,
-        example_stop_idxs,
-    ) = clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
-        events, sampling_rate_Hz
-    )
-    coords_unnormalized = get_flattened_unnormalized_coords_from_games(games)
+    events_filtered = clean_events_of_moments_with_too_small_intervals(events, sampling_rate_Hz)
+    moments_filtered = [moment for event in events_filtered for moment in event.moments]
+    coords_unnormalized = coords_from_moments(moments_filtered)
+
+    example_stop_idxs = get_example_stop_idxs(events_filtered, sampling_rate_Hz)
+    play_start_stop_idxs = get_play_start_stop_idxs(events_filtered)
+
     # TODO: I think that the player_data will be the same for all games, by upstream construction.
     # But we should handle this more carefully. E.g. we could just check it here and raise an error
     # if false.

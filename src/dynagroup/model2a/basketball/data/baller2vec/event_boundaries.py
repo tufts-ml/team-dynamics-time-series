@@ -1,4 +1,5 @@
 import copy
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
@@ -9,23 +10,42 @@ from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 
 
 ###
+# Structs
+###
+@dataclass
+class Example_Boundary_Constants:
+    expected_time_in_ms_between_samples: float
+    wall_clock_diff_lower_threshold: float
+    wall_clock_diff_upper_threshold: float
+
+
+def example_boundary_constants_from_sampling_rate_Hz(
+    sampling_rate_Hz: float,
+) -> Example_Boundary_Constants:
+    expected_time_in_ms_between_samples = 1000 / sampling_rate_Hz
+    wall_clock_diff_lower_threshold = expected_time_in_ms_between_samples * 0.8
+    wall_clock_diff_upper_threshold = expected_time_in_ms_between_samples * 1.2
+    return Example_Boundary_Constants(
+        expected_time_in_ms_between_samples,
+        wall_clock_diff_lower_threshold,
+        wall_clock_diff_upper_threshold,
+    )
+
+
+###
 # Main Functions
 ###
 
 
-def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idxs(
+def clean_events_of_moments_with_too_small_intervals(
     events: List[Event],
     sampling_rate_Hz: float,
     verbose: bool = True,
-) -> Tuple[List[Event], List[int]]:
-    EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES = 1000 / sampling_rate_Hz
-    WALL_CLOCK_DIFF_LOWER_THRESHOLD = EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES * 0.8
-    WALL_CLOCK_DIFF_UPPER_THRESHOLD = EXPECTED_TIME_IN_MS_BETWEEN_SAMPLES * 1.2
+) -> List[Event]:
+    EBC = example_boundary_constants_from_sampling_rate_Hz(sampling_rate_Hz)
 
     events_cleaned = copy.deepcopy(events)
 
-    example_end_times = []
-    T_curr = 0
     prev_wall_clock = -np.inf
 
     for event_idx, event in enumerate(events):
@@ -36,14 +56,41 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
             curr_wall_clock = moment.wall_clock
             wall_clock_diff = curr_wall_clock - prev_wall_clock
 
-            if wall_clock_diff < WALL_CLOCK_DIFF_LOWER_THRESHOLD:
+            if wall_clock_diff < EBC.wall_clock_diff_lower_threshold:
                 if verbose:
                     print(
                         f"For event idx {event_idx}, flagging for removal a moment whose wall clock diff was {wall_clock_diff:.02f}"
                     )
                 moment_idxs_to_remove.append(moment_idx)
-                continue
-            if wall_clock_diff > WALL_CLOCK_DIFF_UPPER_THRESHOLD:
+
+            prev_wall_clock = curr_wall_clock
+
+        # Remove moments whose wall clock diffs that are too big.
+        new_moments = construct_a_new_list_after_removing_multiple_items(
+            event.moments, moment_idxs_to_remove
+        )
+        events_cleaned[event_idx].moments = new_moments
+
+    return events_cleaned
+
+
+def get_example_stop_idxs(
+    events: List[Event],
+    sampling_rate_Hz: float,
+    verbose: bool = True,
+) -> List[int]:
+    EBC = example_boundary_constants_from_sampling_rate_Hz(sampling_rate_Hz)
+
+    example_end_times = []
+    T_curr = 0
+    prev_wall_clock = -np.inf
+
+    for event in events:
+        for moment in event.moments:
+            curr_wall_clock = moment.wall_clock
+            wall_clock_diff = curr_wall_clock - prev_wall_clock
+
+            if wall_clock_diff > EBC.wall_clock_diff_upper_threshold:
                 if verbose:
                     print(
                         f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
@@ -52,16 +99,10 @@ def clean_events_of_moments_with_too_small_intervals_and_return_example_stop_idx
             prev_wall_clock = curr_wall_clock
             T_curr += 1
 
-        # Remove moments whose wall clock diffs that are too big.
-        new_moments = construct_a_new_list_after_removing_multiple_items(
-            event.moments, moment_idxs_to_remove
-        )
-        events_cleaned[event_idx].moments = new_moments
-
     # Then append the last timestep
     last_timestep = T_curr
     example_end_times.append(last_timestep)
-    return events_cleaned, example_end_times
+    return example_end_times
 
 
 def get_play_start_stop_idxs(events: List[Event]) -> List[Tuple[int]]:

@@ -36,6 +36,9 @@ from dynagroup.params import (
     InitializationParameters_Gaussian_JAX,
     SystemTransitionParameters_JAX,
 )
+from dynagroup.sample_weights import (
+    make_sample_weights_which_mask_the_initial_timestep_for_each_event,
+)
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -191,16 +194,12 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     T, J, D = np.shape(continuous_states)
     K = DIMS.K
 
-    if use_continuous_states is None:
-        use_continuous_states = np.full((T, J), True)
-
     ### Make sample weights (as a combo of `use_continuous_states`` and `example_end_times`)
-    breakpoint()
-
-    sample_weights = use_continuous_states
-    for event_end_idx in example_end_times[:-1]:
-        event_start_idx = event_end_idx + 1
-        sample_weights[event_start_idx, :] = False
+    sample_weights = make_sample_weights_which_mask_the_initial_timestep_for_each_event(
+        continuous_states,
+        example_end_times,
+        use_continuous_states,
+    )
 
     As = np.zeros((J, K, D, D))
     bs = np.zeros((J, K, D))
@@ -209,6 +208,9 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     ### Find cluster memberships based on locations (values) or velocities (discrete derivatives) of continuous states
     continuous_state_diffs = continuous_states[1:, :, :] - continuous_states[:-1, :, :]
     sample_weight_diffs = sample_weights[1:, :] * sample_weights[:-1, :]
+
+    # TEMP: Adding a breakpoint so I can plot these things.
+    breakpoint()
 
     kms = [None] * J
     for j in range(J):

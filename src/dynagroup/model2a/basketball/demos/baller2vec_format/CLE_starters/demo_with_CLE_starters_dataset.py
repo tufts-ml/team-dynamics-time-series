@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.eda.show_derivatives import plot_discrete_derivatives
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
@@ -118,20 +119,24 @@ xs_train = normalize_coords(data_train.coords_unnormalized)
 xs_val = normalize_coords(data_val.coords_unnormalized)
 xs_test = normalize_coords(data_test.coords_unnormalized)
 
+###
+# MASKING
+###
+use_continuous_states = None
+
 
 ###
-# Optionally animate raw data
+# Raw data diagnostics
 ###
+
+# animate
 if animate_raw_data:
     n_events_to_animate = 5
     for event in data_train.events[-n_events_to_animate:]:
         animate_event(event)
 
+plot_discrete_derivatives(xs_train, data_train.example_stop_idxs, use_continuous_states)
 
-###
-# MASKING
-###
-use_continuous_states = None
 
 ###
 # Setup Model

@@ -38,7 +38,7 @@ data_load_dir = "/Users/mwojno01/Desktop/"
 save_dir = "/Users/mwojno01/Desktop/DEVEL_basketball_one_player/"
 
 # Data properties
-event_end_times = None
+example_end_times = None
 
 
 # Initialization
@@ -111,7 +111,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs,
-    event_end_times,
+    example_end_times,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -123,7 +123,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.xs, model, example_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -149,7 +149,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    event_end_times,
+    example_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

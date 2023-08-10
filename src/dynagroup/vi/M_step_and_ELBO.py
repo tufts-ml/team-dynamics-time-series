@@ -84,9 +84,9 @@ def compute_energy_from_init(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     continuous_states: JaxNumpyArray3D,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> float:
-    init_times = get_initialization_times(event_end_times)
+    init_times = get_initialization_times(example_end_times)
 
     expected_system_init_probs = jnp.sum(
         VES_summary.expected_regimes[init_times], axis=0
@@ -127,11 +127,11 @@ def compute_energy(
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
     model: Model,
-    event_end_times: JaxNumpyArray2D,
+    example_end_times: JaxNumpyArray2D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     energy_init = compute_energy_from_init(
-        IP, VES_summary, VEZ_summaries, continuous_states, model, event_end_times
+        IP, VES_summary, VEZ_summaries, continuous_states, model, example_end_times
     )
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
     energy_post_init_negated_and_divided_by_num_timesteps += (
@@ -140,7 +140,7 @@ def compute_energy(
             VES_summary,
             system_transition_prior,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
     )
@@ -151,7 +151,7 @@ def compute_energy(
             VES_summary,
             VEZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
         )
     )
 
@@ -161,7 +161,7 @@ def compute_energy(
             continuous_states,
             VEZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
         )
     )
 
@@ -185,7 +185,7 @@ def compute_elbo_decomposed(
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     continuous_states: JaxNumpyArray3D,
     model: Model,
-    event_end_times: JaxNumpyArray2D,
+    example_end_times: JaxNumpyArray2D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> ELBO_Decomposed:
     energy = compute_energy(
@@ -198,7 +198,7 @@ def compute_elbo_decomposed(
         system_transition_prior,
         continuous_states,
         model,
-        event_end_times,
+        example_end_times,
         system_covariates,
     )
     entropy = compute_entropy(VES_summary, VEZ_summaries)
@@ -294,7 +294,7 @@ def compute_expected_log_entity_transitions_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
@@ -319,7 +319,7 @@ def compute_expected_log_entity_transitions_JAX(
     log_transition_matrices_weighted = (
         log_transition_matrices
         * use_continuous_states[1:, :, None, None, None]
-        * eligible_transitions_to_next(event_end_times)[:, None, None, None, None]
+        * eligible_transitions_to_next(example_end_times)[:, None, None, None, None]
     )
 
     return jnp.sum(variational_probs * log_transition_matrices_weighted)
@@ -330,10 +330,10 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: JaxNumpyArray2D,
 ) -> float:
-    non_initialization_times = get_non_initialization_times(event_end_times)
+    non_initialization_times = get_non_initialization_times(example_end_times)
     non_initialization_times_shifted_one_index_lower = non_initialization_times - 1
 
     variational_probs = VEZ_summaries.expected_regimes[non_initialization_times]
@@ -358,7 +358,7 @@ def compute_expected_log_system_transitions_JAX(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
@@ -378,7 +378,7 @@ def compute_expected_log_system_transitions_JAX(
     return jnp.sum(
         variational_probs
         * log_transition_matrices
-        * eligible_transitions_to_next(event_end_times)[:, None, None]
+        * eligible_transitions_to_next(example_end_times)[:, None, None]
     )
 
 
@@ -388,7 +388,7 @@ def compute_cost_for_entity_transition_parameters_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
@@ -415,7 +415,7 @@ def compute_cost_for_entity_transition_parameters_JAX(
         VES_summary,
         VEZ_summaries,
         model,
-        event_end_times,
+        example_end_times,
         use_continuous_states,
     )
     log_prior = 0.0  # TODO: Add prior?
@@ -430,7 +430,7 @@ def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
@@ -447,7 +447,7 @@ def compute_cost_for_entity_transition_parameters_with_unconstrained_tpms_JAX(
         VES_summary,
         VEZ_summaries,
         model,
-        event_end_times,
+        example_end_times,
         use_continuous_states=use_continuous_states,
     )
 
@@ -457,7 +457,7 @@ def compute_cost_for_system_transition_parameters_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
@@ -472,7 +472,7 @@ def compute_cost_for_system_transition_parameters_JAX(
         STP,
         VES_summary,
         model,
-        event_end_times,
+        example_end_times,
         system_covariates,
     )
     if system_transition_prior is not None:
@@ -493,7 +493,7 @@ def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
     VES_summary: HMM_Posterior_Summary_JAX,
     system_transition_prior: Optional[SystemTransitionPrior_JAX],
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
     """
@@ -509,7 +509,7 @@ def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
         VES_summary,
         system_transition_prior,
         model,
-        event_end_times,
+        example_end_times,
         system_covariates,
     )
 
@@ -519,7 +519,7 @@ def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> float:
     """
@@ -546,7 +546,7 @@ def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
             continuous_states,
             VEZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
         )
     )
@@ -560,7 +560,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: JaxNumpyArray2D,
 ) -> float:
     """
@@ -576,7 +576,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
         continuous_states,
         VEZ_summaries,
         model,
-        event_end_times,
+        example_end_times,
         use_continuous_states,
     )
 
@@ -589,7 +589,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     VEZ_expected_regimes: JaxNumpyArray3D,
     continuous_states: JaxNumpyArray3D,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> ContinuousStateParameters_Gaussian_JAX:
     """
@@ -617,8 +617,8 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     # Preprocess based on the possible existence of event segmentation times
     times_to_use = slice(None)
-    if not only_one_event(event_end_times, T):
-        times_to_use = get_non_initialization_times(event_end_times)
+    if not only_one_event(example_end_times, T):
+        times_to_use = get_non_initialization_times(example_end_times)
 
     VEZ_expected_regimes_to_use = VEZ_expected_regimes[times_to_use]
     continuous_states_to_use = continuous_states[times_to_use]
@@ -671,7 +671,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
     VEZ_expected_regimes: JaxNumpyArray3D,
     group_angles: JaxNumpyArray2D,
     all_params: AllParameters_JAX,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D],
     parallelize: bool = True,
 ) -> ContinuousStateParameters_VonMises_JAX:
@@ -693,7 +693,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             f"states are not used."
         )
 
-    if not only_one_event(event_end_times, T=len(group_angles)):
+    if not only_one_event(example_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"This function has not yet been expanded to handle the case where the time series is "
             f"spliced into separate events.  For guidance, see how this was handled in the Gaussian case."
@@ -758,13 +758,13 @@ def run_M_step_for_ETP_via_gradient_descent(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> EntityTransitionParameters_JAX:
     """
     Arguments:
-        event_end_times: optional, has shape (E+1,)
+        example_end_times: optional, has shape (E+1,)
             An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
             where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
             time gap between timesteps, and a discontinuity in the continuous states x.
@@ -787,7 +787,7 @@ def run_M_step_for_ETP_via_gradient_descent(
         VES_summary=VES_summary,
         VEZ_summaries=VEZ_summaries,
         model=model,
-        event_end_times=event_end_times,
+        example_end_times=example_end_times,
         use_continuous_states=use_continuous_states,
     )
 
@@ -823,7 +823,7 @@ def run_M_step_for_ETP(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     verbose: bool = True,
 ) -> AllParameters_JAX:
@@ -844,7 +844,7 @@ def run_M_step_for_ETP(
             iteration,
             num_M_step_iters,
             model,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
             verbose,
         )
@@ -861,7 +861,7 @@ def run_M_step_for_ETP(
 def run_M_step_for_STP_in_closed_form(
     STP: SystemTransitionParameters_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> SystemTransitionParameters_JAX:
     # Previously, we had
     #     STP_gives_a_TPM = not STP.Gammas.any() and not STP.Upsilon.any() and STP.Pi.any()
@@ -875,7 +875,7 @@ def run_M_step_for_STP_in_closed_form(
     warnings.warn(
         "Running closed-form M-step for STP.  Note that this ignores the prior specification."
     )
-    exp_Pi = compute_closed_form_M_step(VES_summary, event_end_times=event_end_times)
+    exp_Pi = compute_closed_form_M_step(VES_summary, example_end_times=example_end_times)
     Pi_new = jnp.asarray(np.log(exp_Pi))
     return SystemTransitionParameters_JAX(STP.Gammas, STP.Upsilon, Pi_new)
 
@@ -887,7 +887,7 @@ def run_M_step_for_STP_via_gradient_descent(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
     verbose: bool = True,
 ) -> SystemTransitionParameters_JAX:
@@ -898,7 +898,7 @@ def run_M_step_for_STP_via_gradient_descent(
         VES_summary=VES_summary,
         system_transition_prior=system_transition_prior,
         model=model,
-        event_end_times=event_end_times,
+        example_end_times=example_end_times,
         system_covariates=system_covariates,
     )
 
@@ -933,7 +933,7 @@ def run_M_step_for_STP(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
     verbose: bool = True,
 ) -> AllParameters_JAX:
@@ -941,7 +941,7 @@ def run_M_step_for_STP(
         print("Skipping M-step for STP, as requested.")
         return all_params
     elif M_step_toggles_STP == M_Step_Toggle_Value.CLOSED_FORM_TPM:
-        STP_new = run_M_step_for_STP_in_closed_form(all_params.STP, VES_summary, event_end_times)
+        STP_new = run_M_step_for_STP_in_closed_form(all_params.STP, VES_summary, example_end_times)
     elif M_step_toggles_STP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         STP_new = run_M_step_for_STP_via_gradient_descent(
             all_params.STP,
@@ -950,7 +950,7 @@ def run_M_step_for_STP(
             iteration,
             num_M_step_iters,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
             verbose,
         )
@@ -973,7 +973,7 @@ def run_M_step_for_CSP(
     iteration: int,
     num_M_step_iters: int,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
     use_continuous_states: Optional[JaxNumpyArray2D],
 ) -> AllParameters_JAX:
     if M_step_toggles_CSP == M_Step_Toggle_Value.OFF:
@@ -983,7 +983,7 @@ def run_M_step_for_CSP(
         CSP_new = run_M_step_for_CSP_in_closed_form__Gaussian_case(
             VEZ_summaries.expected_regimes,
             continuous_states,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
         )
     elif M_step_toggles_CSP == M_Step_Toggle_Value.CLOSED_FORM_VON_MISES:
@@ -991,7 +991,7 @@ def run_M_step_for_CSP(
             VEZ_summaries.expected_regimes,
             continuous_states,
             all_params,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
         )
     elif M_step_toggles_CSP == M_Step_Toggle_Value.GRADIENT_DESCENT:
@@ -1010,7 +1010,7 @@ def run_M_step_for_CSP(
             continuous_states=continuous_states,
             VEZ_summaries=VEZ_summaries,
             model=model,
-            event_end_times=event_end_times,
+            example_end_times=example_end_times,
             use_continuous_states=use_continuous_states,
         )
 
@@ -1049,7 +1049,7 @@ def run_M_step_for_IP_in_closed_form__Gaussian_case(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     continuous_states: JaxNumpyArray3D,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> InitializationParameters_Gaussian_JAX:
     """
     Arguments:
@@ -1057,7 +1057,7 @@ def run_M_step_for_IP_in_closed_form__Gaussian_case(
             the HMM_Posterior_Summaries_JAX class.
     """
 
-    init_times = get_initialization_times(event_end_times)
+    init_times = get_initialization_times(example_end_times)
 
     EPSILON = 1e-3
     # These are set to be the values that minimize the cross-entropy, plus some noise
@@ -1110,9 +1110,9 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     VES_summary: HMM_Posterior_Summary_JAX,
     group_angles: Union[JaxNumpyArray2D, JaxNumpyArray3D],
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> InitializationParameters_VonMises_JAX:
-    if not only_one_event(event_end_times, T=len(group_angles)):
+    if not only_one_event(example_end_times, T=len(group_angles)):
         raise NotImplementedError(
             f"Haven't yet implemented M-step for init params in von mises case when there are "
             f"multiple events."
@@ -1140,7 +1140,7 @@ def run_M_step_for_IP(
     VES_summary: HMM_Posterior_Summary_JAX,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     continuous_states: NumpyArray3D,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> InitializationParameters_JAX:
     if M_step_toggles_IP == M_Step_Toggle_Value.OFF:
         print("Skipping M-step for IP, as requested.")
@@ -1151,7 +1151,7 @@ def run_M_step_for_IP(
             VEZ_summaries,
             VES_summary,
             continuous_states,
-            event_end_times,
+            example_end_times,
         )
     elif M_step_toggles_IP == M_Step_Toggle_Value.CLOSED_FORM_VON_MISES:
         IP_new = run_M_step_for_IP_in_closed_form__VonMises_case(
@@ -1159,7 +1159,7 @@ def run_M_step_for_IP(
             VEZ_summaries,
             VES_summary,
             continuous_states,
-            event_end_times,
+            example_end_times,
         )
     elif M_step_toggles_IP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         raise ValueError(

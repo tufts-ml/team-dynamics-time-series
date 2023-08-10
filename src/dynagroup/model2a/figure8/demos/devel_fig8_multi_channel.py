@@ -53,7 +53,7 @@ MODEL_ADJUSTMENT = "multi_channel"
 # Options for `MODEL_ADJUSTMENT`: None, "one_system_regime", "remove_recurrence", "complete_pooling", "multi_channel"
 
 # Events
-event_end_times = None
+example_end_times = None
 
 # For initialization
 show_plots_after_init = False
@@ -146,7 +146,7 @@ elif MODEL_ADJUSTMENT == "complete_pooling":
     for j in range(J):
         xs_stacked[T * j : T * (j + 1), 0, :] = sample.xs[:, j, :]
     xs_for_inference = xs_stacked
-    event_end_times = np.array([-1] + [T * (i + 1) for i in range(J)])
+    example_end_times = np.array([-1] + [T * (i + 1) for i in range(J)])
     if mask_final_regime_transition_for_entity_2:
         # TODO: Do this via a proper function, don't hardcode it
         use_continuous_states = np.full((T_pooled, J), True)
@@ -162,7 +162,7 @@ elif MODEL_ADJUSTMENT == "multi_channel":
         first_dim, last_dim = 2 * j, 2 * j + 1
         xs_multi_channel[:, 0, first_dim : last_dim + 1] = sample.xs[:, j, :]
     xs_for_inference = xs_multi_channel
-    event_end_times = np.array([-1, T])
+    example_end_times = np.array([-1, T])
 
 ###
 # I/O
@@ -184,7 +184,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs_for_inference,
-    event_end_times,
+    example_end_times,
     figure8_model_JAX,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -206,7 +206,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model,
-    event_end_times,
+    example_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from dynagroup.events import event_end_times_are_proper
+from dynagroup.events import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
@@ -36,7 +36,7 @@ def run_CAVI_with_JAX(
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
-    event_end_times: Optional[JaxNumpyArray1D] = None,
+    example_end_times: Optional[JaxNumpyArray1D] = None,
     M_step_toggles: Optional[M_Step_Toggles] = None,
     num_M_step_iters: int = 50,
     system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
@@ -52,7 +52,7 @@ def run_CAVI_with_JAX(
             If (T,J), we assume this means (T,J,D) where D=1, and convert it to have 3 array dims.
         transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
-        event_end_times: optional, has shape (E+1,)
+        example_end_times: optional, has shape (E+1,)
             An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
             where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
             time gap between timesteps, and a discontinuity in the continuous states x.
@@ -130,13 +130,13 @@ def run_CAVI_with_JAX(
             f"code for doing the M-step for the initialization parameters."
         )
 
-    if event_end_times is None:
-        event_end_times = np.array([-1, T])
+    if example_end_times is None:
+        example_end_times = np.array([-1, T])
 
-    if not event_end_times_are_proper(event_end_times, len(continuous_states)):
+    if not example_end_times_are_proper(example_end_times, len(continuous_states)):
         raise ValueError(
             f"Event end times do not have the proper format. Consult the `events` module "
-            f"and try again.  `event_end_times` MUST begin with -1 and end with T, the length "
+            f"and try again.  `example_end_times` MUST begin with -1 and end with T, the length "
             f"of the grand time series."
         )
 
@@ -156,7 +156,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
         print(
@@ -177,7 +177,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             VEZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
             use_continuous_states,
         )
@@ -200,7 +200,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             VES_summary.expected_regimes,
             model,
-            event_end_times,
+            example_end_times,
         )
 
         if verbose:
@@ -227,7 +227,7 @@ def run_CAVI_with_JAX(
                 system_transition_prior,
                 continuous_states,
                 model,
-                event_end_times,
+                example_end_times,
                 system_covariates,
             )
             print(
@@ -250,7 +250,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
             verbose,
         )
@@ -262,7 +262,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
         if verbose:
@@ -283,7 +283,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
             verbose,
         )
@@ -295,7 +295,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
         if verbose:
@@ -315,7 +315,7 @@ def run_CAVI_with_JAX(
             i,
             num_M_step_iters,
             model,
-            event_end_times,
+            example_end_times,
             use_continuous_states,
         )
 
@@ -326,7 +326,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
         if verbose:
@@ -344,7 +344,7 @@ def run_CAVI_with_JAX(
             VES_summary,
             VEZ_summaries,
             continuous_states,
-            event_end_times,
+            example_end_times,
         )
         all_params = AllParameters_JAX(
             all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new
@@ -361,7 +361,7 @@ def run_CAVI_with_JAX(
             system_transition_prior,
             continuous_states,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
         if verbose:

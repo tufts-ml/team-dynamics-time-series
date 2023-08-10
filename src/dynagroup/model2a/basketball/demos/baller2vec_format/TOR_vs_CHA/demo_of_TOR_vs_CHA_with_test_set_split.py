@@ -38,8 +38,8 @@ save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_complete_forecasting_test_set
 event_idxs_train = [i for i in range(25)]
 event_idxs_test = [i + 25 for i in range(5)]
 
-event_end_times_train = None
-event_end_times_test = None
+example_end_times_train = None
+example_end_times_test = None
 
 
 # Model specification
@@ -140,7 +140,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs_train,
-    event_end_times_train,
+    example_end_times_train,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -180,7 +180,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    event_end_times_train,
+    example_end_times_train,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

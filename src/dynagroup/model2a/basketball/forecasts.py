@@ -6,7 +6,6 @@ import numpy as np
 
 from dynagroup.forecasts import Forecast_MSEs
 from dynagroup.model import Model
-from dynagroup.model2a.basketball.data.baller2vec.data import BasketballData
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     get_start_and_stop_timestep_idxs_from_event_idx,
 )
@@ -60,7 +59,7 @@ class Forecast_MSEs_By_Event:
 
 def get_forecast_MSEs_by_event(
     xs_test: NumpyArray3D,
-    data_test: BasketballData,
+    example_stop_idxs_test: List[int],
     params_learned: AllParameters_JAX,
     model_basketball: Model,
     random_context_times: NumpyArray1D,
@@ -77,11 +76,11 @@ def get_forecast_MSEs_by_event(
     """
     ### Get forecasting MSEs by inferred events
     forecasting_MSEs_by_examples = []
-    num_events = len(data_test.example_stop_idxs) - 1
+    num_events = len(example_stop_idxs_test) - 1
     for event_idx in range(num_events):
         print(f"--- --- Now making forecasts for event {event_idx+1}/{num_events}. --- ---")
         start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(
-            data_test.example_stop_idxs, event_idx
+            example_stop_idxs_test, event_idx
         )
         random_context_time_float = random_context_times[event_idx]
 

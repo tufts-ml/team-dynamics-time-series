@@ -49,6 +49,7 @@ def plot_discrete_derivatives(
         ]
 
         # Create a hexbin plot
+        plt.close("all")
         plt.figure(figsize=(10, 8))
         plt.hexbin(xs, ys, gridsize=50, cmap="viridis", bins="log", mincnt=1)
         plt.colorbar(label="Log Count")

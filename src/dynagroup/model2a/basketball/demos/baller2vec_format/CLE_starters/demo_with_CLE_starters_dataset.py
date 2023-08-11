@@ -127,7 +127,9 @@ if animate_raw_data:
     for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(DATA_TRAIN.xs, DATA_TRAIN.example_stop_idxs, use_continuous_states)
+plot_discrete_derivatives(
+    DATA_TRAIN.xs, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir
+)
 
 
 ###

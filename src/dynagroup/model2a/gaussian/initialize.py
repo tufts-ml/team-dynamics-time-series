@@ -9,6 +9,7 @@ from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 
 from dynagroup.diagnostics.kmeans import plot_kmeans_on_2d_data
+from dynagroup.diagnostics.steps_in_state import plot_steps_assigned_to_state
 from dynagroup.examples import (
     example_end_times_are_proper,
     fix__log_emissions_from_entities__at_example_boundaries,
@@ -238,7 +239,6 @@ def make_kmeans_preinitialization_of_CSP_JAX(
         kms,
         save_dir,
     )
-
     ### Initialize parameters by running separate vector autoregressions within each cluster.
 
     # For each state, initialize CSP via a (multivariate-outcome) linear regression
@@ -256,21 +256,25 @@ def make_kmeans_preinitialization_of_CSP_JAX(
                 use_outcomes_jk = (
                     samples_are_in_cluster_jk[1:] * sample_weights[1:, j]
                 )  # shape (T-1,)
+                outcome_indices_jk = np.where(use_outcomes_jk)[0]
             elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
                 use_outcomes_jk = (
                     samples_are_in_cluster_jk * sample_weight_diffs[:, j]
                 )  # shape (T-1,)
+
+                outcome_indices_jk = np.where(use_outcomes_jk)[0]
             else:
                 raise ValueError(
                     f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
                 )
 
-            outcome_indices_jk = np.where(use_outcomes_jk)[0] + 1
             predictor_indices_jk = outcome_indices_jk - 1
 
-            ### run vector autoregression
             outcomes_jk = outcomes_j[outcome_indices_jk]
             predictors_jk = predictors_j[predictor_indices_jk]
+            plot_steps_assigned_to_state(outcomes_jk, predictors_jk, j, k, save_dir)
+
+            ### run vector autoregression
             lr = LinearRegression(fit_intercept=True)
             lr.fit(predictors_jk, outcomes_jk)
             As[j, k] = lr.coef_
@@ -376,6 +380,7 @@ def fit_ARHMM_to_bottom_half_of_model(
         log_entity_emissions = fix__log_emissions_from_entities__at_example_boundaries(
             log_entity_emissions, continuous_states, IP_JAX, model, example_end_times
         )
+        breakpoint()
 
         ###
         # E-step.

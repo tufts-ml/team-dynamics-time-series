@@ -53,6 +53,7 @@ def plot_kmeans_on_2d_data(
     K = kmeans_fits_by_entity[0].n_clusters
 
     for j in range(J):
+        plt.close("all")
         plt.figure(figsize=(8, 8))
         xs = [x for (t, x) in enumerate(data[:, j, 0])]
         ys = [y for (t, y) in enumerate(data[:, j, 1])]
@@ -86,6 +87,5 @@ def plot_kmeans_on_2d_data(
             plt.show()
         if save_dir is not None:
             plt.savefig(
-                save_dir
-                + f"{basename_prefix}_hexbin_plot_of_discrete_derivatives_for_entity_{j}.pdf"
+                save_dir + f"{basename_prefix}_kmeans_on_raw_data_or_derivatives_for_entity_{j}.pdf"
             )

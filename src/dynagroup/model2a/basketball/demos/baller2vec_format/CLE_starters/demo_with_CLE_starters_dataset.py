@@ -40,7 +40,7 @@ over excluded plays (because the lineup is not of interest), or across games.
 ###
 
 # Processed data dir
-processed_data_dir = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/processed/"
+processed_data_dir = "data/basketball/baller2vec_format/processed/"
 
 # Data split
 n_train_games_list = [1, 5, 20]

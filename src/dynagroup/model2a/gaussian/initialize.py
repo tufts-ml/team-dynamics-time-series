@@ -232,6 +232,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             warnings.simplefilter(action="ignore", category=FutureWarning)
             kms[j] = KMeans(K).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
 
+    breakpoint()
     ### Plot K-means fits
     plot_kmeans_on_2d_data(
         data_for_kmeans,

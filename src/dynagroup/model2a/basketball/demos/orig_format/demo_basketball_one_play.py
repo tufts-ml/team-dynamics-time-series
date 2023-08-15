@@ -34,8 +34,8 @@ It has multiple turnovers.
 ###
 
 # Directories
-data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_basketball_one_player/"
+data_load_path = "data/basketball/one_play/basketball_play.npy"
+save_dir = "results/basketball/analyses/DEVEL_basketball_one_player/"
 
 # Data properties
 example_end_times = None
@@ -65,7 +65,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # I/O
 ###
 ensure_dir(save_dir)
-xs_unnormalized = np.load(data_load_dir + "basketball_play.npy")
+xs_unnormalized = np.load(data_load_path)
 
 ###
 # Preprocess Data

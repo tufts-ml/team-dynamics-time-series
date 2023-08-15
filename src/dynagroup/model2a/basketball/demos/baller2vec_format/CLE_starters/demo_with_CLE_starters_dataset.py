@@ -52,10 +52,11 @@ n_test_games = 1
 sampling_rate_Hz = 5
 
 # Directories
-save_dir = f"/Users/mwojno01/Desktop/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
+save_dir = f"results/basketball/analyses/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
+save_plots_of_initialization_diagnostics = True
 
 # Model specification
 K = 10
@@ -165,7 +166,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    save_dir,
+    save_dir * save_plots_of_initialization_diagnostics,
 )
 params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[

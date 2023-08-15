@@ -10,7 +10,7 @@ from dynagroup.model2a.basketball.data.orig_format import (
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/explore_basketball/"
+save_dir = "results/basketball/analyses/explore_basketball/"
 
 
 ###

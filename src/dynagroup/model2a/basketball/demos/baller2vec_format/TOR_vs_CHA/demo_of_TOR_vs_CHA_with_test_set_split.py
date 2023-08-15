@@ -31,8 +31,7 @@ where each play has an initial context window and then a forecasting window.
 ###
 
 # Directories
-data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_25_plays_complete_forecasting_test_set_performance/"
+save_dir = "results/basketball/analyses/DEVEL_25_plays_complete_forecasting_test_set_performance/"
 
 # Data properties
 event_idxs_train = [i for i in range(25)]

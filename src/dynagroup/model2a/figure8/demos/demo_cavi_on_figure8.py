@@ -97,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/REDO_fig8_after_fit_and_forecasting_backtrack/"
+save_dir = "results/fig8/analyses/RETRY_fig8_after_working_on_init_fix_for_basketball/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

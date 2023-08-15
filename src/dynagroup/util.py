@@ -1,3 +1,4 @@
+import datetime
 import warnings
 from typing import List, Tuple
 
@@ -268,3 +269,12 @@ def construct_a_new_list_after_removing_multiple_items(
 
     """
     return [item for index, item in enumerate(orig_list) if index not in indices_to_remove]
+
+
+###
+# Datetime
+###
+
+
+def get_current_datetime_as_string():
+    return datetime.datetime.now().strftime("%m-%d-%Y_%Hh%Mm%Ss")

@@ -232,7 +232,6 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             warnings.simplefilter(action="ignore", category=FutureWarning)
             kms[j] = KMeans(K).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
 
-    breakpoint()
     ### Plot K-means fits
     plot_kmeans_on_2d_data(
         data_for_kmeans,
@@ -287,6 +286,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     As = jnp.asarray(As)
     bs = jnp.asarray(bs)
     Qs = jnp.asarray(Qs)
+    breakpoint()
     return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
 
 
@@ -650,7 +650,10 @@ def smart_initialize_model_2a(
         params_frozen,
         verbose,
     )
-    # zhats = np.argmax(results_bottom.EZ_summaries.expected_regimes, axis=2) # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
+    # zhats = np.argmax(
+    #    results_bottom.EZ_summaries.expected_regimes, axis=2
+    # )  # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
+    breakpoint()
 
     ###
     # Top-level HMM

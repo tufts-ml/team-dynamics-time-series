@@ -24,6 +24,7 @@ from dynagroup.model2a.gaussian.initialize import (
     smart_initialize_model_2a,
 )
 from dynagroup.params import Dims
+from dynagroup.util import get_current_datetime_as_string
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
@@ -52,7 +53,8 @@ n_test_games = 1
 sampling_rate_Hz = 5
 
 # Directories
-save_dir = f"results/basketball/analyses/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games_AFTER_better_filtering_and_event_construction_by_clock_times/"
+datetime_as_string = get_current_datetime_as_string()
+save_dir = f"results/basketball/analyses/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False

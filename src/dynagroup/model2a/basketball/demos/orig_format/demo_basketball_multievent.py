@@ -32,7 +32,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/just_init/"
+save_dir = "results/basketball/analyses/just_init/"
 
 # Initialization
 do_init_plots = False

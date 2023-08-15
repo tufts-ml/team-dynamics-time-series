@@ -354,6 +354,12 @@ def fit_ARHMM_to_bottom_half_of_model(
         log_entity_emissions = compute_log_entity_emissions_JAX(
             CSP_JAX, IP_JAX, continuous_states, model
         )
+
+        ### Patch emissions if there are separate events.
+        log_entity_emissions = fix__log_emissions_from_entities__at_example_boundaries(
+            log_entity_emissions, continuous_states, IP_JAX, model, example_end_times
+        )
+
         log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
             ETP_JAX,
             continuous_states[:-1],
@@ -366,10 +372,7 @@ def fit_ARHMM_to_bottom_half_of_model(
             log_transition_matrices, axis=2
         )  # has shape (T-1, J, K, K )
 
-        ###
-        # Patch the ingredients for the E-step if there are separate events.
-        ###
-
+        ### Patch transition matrices if there are separate events.
         log_transition_matrices_averaged_over_system_regimes = (
             fix_log_entity_transitions_at_example_boundaries(
                 log_transition_matrices_averaged_over_system_regimes,
@@ -377,10 +380,6 @@ def fit_ARHMM_to_bottom_half_of_model(
                 example_end_times,
             )
         )
-        log_entity_emissions = fix__log_emissions_from_entities__at_example_boundaries(
-            log_entity_emissions, continuous_states, IP_JAX, model, example_end_times
-        )
-        breakpoint()
 
         ###
         # E-step.

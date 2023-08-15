@@ -41,7 +41,7 @@ Do the inferred system states track changes in plays?
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/EXPLORE_init_on_TOR_dataset_all_events/"
+save_dir = "results/basketball/analyses/EXPLORE_init_on_TOR_dataset_all_events/"
 
 # Data properties
 animate_raw_data = False

@@ -77,7 +77,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/NEW_TRY_fig8_complete_pooling/"
+save_dir = "results/fig8/analyses/NEW_TRY_fig8_complete_pooling/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]

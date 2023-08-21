@@ -12,7 +12,7 @@ pp.install_extras()
 
 import numpy as np
 
-from dynagroup.model2a.basketball.court import flip_coords_unnormalized
+from dynagroup.model2a.basketball.court import flip_player_coords_unnormalized
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     clean_events_of_moments_with_too_small_intervals,
     get_example_stop_idxs,
@@ -20,17 +20,18 @@ from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     Event,
-    coords_from_moments,
+    ball_coords_from_moments,
     get_event_in_baller2vec_format,
     get_num_events_in_game,
     load_event_label_decoder_from_pydict_info_path,
     load_player_data_from_pydict_info_path,
+    player_coords_from_moments,
 )
 from dynagroup.model2a.basketball.data.baller2vec.positions import (
     get_player_name_2_position,
     make_opponent_names_2_entity_idxs,
 )
-from dynagroup.types import NumpyArray3D
+from dynagroup.types import NumpyArray2D, NumpyArray3D
 
 
 ###
@@ -45,20 +46,26 @@ class BasketballData:
         events: These have been mutated (to handle entity
             index alignment and court rotation) and filtered (we have removed events whose wall clock diffs are too small
             relative to the specified sampling rate).
-        event_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
-            giving the location where an event starts and stops.
-        coords_normalized:  unnormalized coordinates for basketball players,
+        player_coords_unnormalized:  unnormalized coordinates for basketball players,
             array of shape (T_slice, J=10, D=2)
+        ball_coords_unnormalized: unnormalized coordinates for balls,
+            array of shape (T_slice, D=3)
+        play_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
+            giving the location where a play starts and stops.
+        example_stop_idxs:  List of ints, giving the location where an example starts and stops.
+        ball_coords_unnormalized: unnormalized coordinates for balls,
+            array of shape (T_slice, D=3)
         player_data: Maps a player idx (in 0,..., N_Players) to a Dict containing the player's
             name, playing time, and playerid (in the sense of the `NBA-Player-Movements`)
     """
 
-    # Rk: This is kind of a weird and redundant class since ` event_start_stop_idxs` and `coords_unnormalized`
-    # can both be derived from `events`.  Can I figure out what downstream tasks need from `events` and just
-    # represent that?
+    # Rk: This is kind of a weird and redundant class since `play_start_stop_idxs` and `player_coords_unnormalized`
+    # and `ball_coords_unnormalized` can all be derived from `events`.  Can I figure out what downstream tasks
+    # need from `events` and justrepresent that?
 
     events: List[Event]
-    coords_unnormalized: NumpyArray3D
+    player_coords_unnormalized: NumpyArray3D
+    ball_coords_unnormalized: NumpyArray2D
     play_start_stop_idxs: List[Tuple[int]]
     example_stop_idxs: List[int]
     player_data: Dict[int, Dict[str, Any]]
@@ -87,17 +94,19 @@ def rotate_court_180_degrees_for_one_moment_of_an_event(
     player_coords_unnormalized = np.vstack(
         (event.moments[idx].player_xs, event.moments[idx].player_ys)
     ).T
-    player_coords_unnormalized_flipped = flip_coords_unnormalized(player_coords_unnormalized)
+    player_coords_unnormalized_flipped = flip_player_coords_unnormalized(player_coords_unnormalized)
     event.moments[idx].player_xs = player_coords_unnormalized_flipped[:, 0]
     event.moments[idx].player_ys = player_coords_unnormalized_flipped[:, 1]
 
     ### Flip ball coords
-    ball_xy_coords_unnormalized = np.vstack(
+    ball_xy_player_coords_unnormalized = np.vstack(
         (event.moments[idx].ball_x, event.moments[idx].ball_y)
     ).T
-    ball_xy_coords_unnormalized_flipped = flip_coords_unnormalized(ball_xy_coords_unnormalized)
-    event.moments[idx].ball_x = ball_xy_coords_unnormalized_flipped[:, 0]
-    event.moments[idx].ball_y = ball_xy_coords_unnormalized_flipped[:, 1]
+    ball_xy_player_coords_unnormalized_flipped = flip_player_coords_unnormalized(
+        ball_xy_player_coords_unnormalized
+    )
+    event.moments[idx].ball_x = ball_xy_player_coords_unnormalized_flipped[:, 0]
+    event.moments[idx].ball_y = ball_xy_player_coords_unnormalized_flipped[:, 1]
 
     ### Flip player hoop sides
     event.moments[idx].player_hoop_sides = normalized_hoop_sides
@@ -365,14 +374,16 @@ def load_basketball_data_from_single_game_file(
     )
 
     moments_filtered = [moment for event in events_filtered_and_mutated for moment in event.moments]
-    coords_unnormalized = coords_from_moments(moments_filtered)
+    player_coords_unnormalized = player_coords_from_moments(moments_filtered)
+    ball_coords_unnormalized = ball_coords_from_moments(moments_filtered)
 
     example_stop_idxs = get_example_stop_idxs(events_filtered_and_mutated, sampling_rate_Hz)
     play_start_stop_idxs = get_play_start_stop_idxs(events_filtered_and_mutated)
 
     return BasketballData(
         events_filtered_and_mutated,
-        coords_unnormalized,
+        player_coords_unnormalized,
+        ball_coords_unnormalized,
         play_start_stop_idxs,
         example_stop_idxs,
         player_data,
@@ -395,19 +406,23 @@ def get_flattened_events_from_games(games: List[BasketballData]) -> List[Event]:
     return events_all
 
 
-def get_flattened_coords_unnormalized_from_games(games: List[BasketballData]) -> NumpyArray3D:
+def get_flattened_player_coords_unnormalized_from_games(
+    games: List[BasketballData],
+) -> NumpyArray3D:
     """
     Concatentate all the unnormalized coords from a set of games
     """
 
-    # concatentate the coords_unnormalized
-    coords_unnormalized_as_tuple = ()
+    # concatentate the player_coords_unnormalized
+    player_coords_unnormalized_as_tuple = ()
     for game in games:
-        coords_unnormalized_as_tuple = coords_unnormalized_as_tuple + (game.coords_unnormalized,)
-    coords_unnormalized = np.vstack(
-        coords_unnormalized_as_tuple
+        player_coords_unnormalized_as_tuple = player_coords_unnormalized_as_tuple + (
+            game.player_coords_unnormalized,
+        )
+    player_coords_unnormalized = np.vstack(
+        player_coords_unnormalized_as_tuple
     )  # T=total number of training samples about 4.5 hours..
-    return coords_unnormalized
+    return player_coords_unnormalized
 
 
 def make_basketball_data_from_games(games: List[BasketballData]):
@@ -417,7 +432,8 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     events = get_flattened_events_from_games(games)
     events_filtered = clean_events_of_moments_with_too_small_intervals(events, sampling_rate_Hz)
     moments_filtered = [moment for event in events_filtered for moment in event.moments]
-    coords_unnormalized = coords_from_moments(moments_filtered)
+    player_coords_unnormalized = player_coords_from_moments(moments_filtered)
+    ball_coords_unnormalized = ball_coords_from_moments(moments_filtered)
 
     example_stop_idxs = get_example_stop_idxs(events_filtered, sampling_rate_Hz)
     play_start_stop_idxs = get_play_start_stop_idxs(events_filtered)
@@ -427,11 +443,12 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     # if false.
     player_data_from_all_games = games[0].player_data
     print(
-        f"From {len(coords_unnormalized)} timesteps, there are {len(play_start_stop_idxs)} provided events (plays) and {len(example_stop_idxs)} inferred events (examples)."
+        f"From {len(player_coords_unnormalized)} timesteps, there are {len(play_start_stop_idxs)} provided events (plays) and {len(example_stop_idxs)} inferred events (examples)."
     )
     return BasketballData(
         events,
-        coords_unnormalized,
+        player_coords_unnormalized,
+        ball_coords_unnormalized,
         play_start_stop_idxs,
         example_stop_idxs,
         player_data_from_all_games,

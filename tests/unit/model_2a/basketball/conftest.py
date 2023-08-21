@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 
+from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
+    get_basketball_data_for_TOR_vs_CHA,
+)
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     get_event_in_baller2vec_format,
     load_event_label_decoder_from_pydict_info_path,
@@ -89,3 +92,13 @@ def two_events_with_unusually_small_temporal_gap_between_them():
         events.append(event)
 
     return events
+
+
+@pytest.fixture()
+def basketball_data():
+    return get_basketball_data_for_TOR_vs_CHA(
+        event_idxs=None,
+        sampling_rate_Hz=5,
+        discard_nonstandard_hoop_sides=False,
+        verbose=False,
+    )

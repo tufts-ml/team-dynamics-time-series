@@ -13,7 +13,7 @@ from dynagroup.model2a.supra.get_data import (
 # Configs
 ###
 
-save_dir = "/Users/mwojno01/Desktop/TRY_supra_2023_05_15/"
+save_dir = "results/supra/analyses/TRY_supra_2023_05_15/"
 
 ###
 # Procedural Stuff

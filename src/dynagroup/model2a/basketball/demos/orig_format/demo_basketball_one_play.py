@@ -25,7 +25,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 Apply the group dynamics model to one play.
 Per the NBA-Player-Movements-MTW repo, this play is event 1 from 0021500492.json
 It can be visualized by running 
-python3 main.py --path=/Users/mwojno01/Repos/dynagroup/data/basketball/orig_format/0021500492.json --event=
+python3 main.py --path=data/basketball/orig_format/0021500492.json --event=
 It has multiple turnovers.
 """
 
@@ -34,11 +34,11 @@ It has multiple turnovers.
 ###
 
 # Directories
-data_load_dir = "/Users/mwojno01/Desktop/"
-save_dir = "/Users/mwojno01/Desktop/DEVEL_basketball_one_player/"
+data_load_path = "data/basketball/one_play/basketball_play.npy"
+save_dir = "results/basketball/analyses/DEVEL_basketball_one_player/"
 
 # Data properties
-event_end_times = None
+example_end_times = None
 
 
 # Initialization
@@ -65,7 +65,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # I/O
 ###
 ensure_dir(save_dir)
-xs_unnormalized = np.load(data_load_dir + "basketball_play.npy")
+xs_unnormalized = np.load(data_load_path)
 
 ###
 # Preprocess Data
@@ -111,19 +111,20 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     xs,
-    event_end_times,
+    example_end_times,
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
+    save_dir=save_dir,
 )
 params_init = results_init.params
 
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.xs, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.xs, model, example_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 
@@ -149,7 +150,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model_basketball,
-    event_end_times,
+    example_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

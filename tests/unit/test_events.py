@@ -2,10 +2,10 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from dynagroup.events import (
-    fix__log_emissions_from_entities__at_event_boundaries,
-    fix_log_entity_transitions_at_event_boundaries,
-    fix_log_system_transitions_at_event_boundaries,
+from dynagroup.examples import (
+    fix__log_emissions_from_entities__at_example_boundaries,
+    fix_log_entity_transitions_at_example_boundaries,
+    fix_log_system_transitions_at_example_boundaries,
     get_non_initialization_times,
 )
 from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
@@ -48,7 +48,7 @@ def log_system_transitions(DIMS, T):
 
 
 @pytest.fixture
-def event_end_times(T):
+def example_end_times(T):
     """e.g. if T=10 this returns [-1,4,10]"""
     return [-1, int(T / 2) - 1, T]
 
@@ -69,16 +69,16 @@ def model():
     return figure8_model_JAX
 
 
-def test_fix_log_system_transitions_at_event_boundaries(
-    IP, log_system_transitions, event_end_times, T, DIMS
+def test_fix_log_system_transitions_at_example_boundaries(
+    IP, log_system_transitions, example_end_times, T, DIMS
 ):
-    log_system_transitions_fixed = fix_log_system_transitions_at_event_boundaries(
+    log_system_transitions_fixed = fix_log_system_transitions_at_example_boundaries(
         log_system_transitions,
         IP,
-        event_end_times,
+        example_end_times,
     )
     for t in range(T - 1):
-        if t in event_end_times:
+        if t in example_end_times:
             assert not jnp.allclose(log_system_transitions_fixed[t], log_system_transitions[t])
             for k in range(DIMS.K):
                 assert jnp.allclose(log_system_transitions_fixed[t, k, :], jnp.log(IP.pi_system))
@@ -86,16 +86,16 @@ def test_fix_log_system_transitions_at_event_boundaries(
             assert jnp.allclose(log_system_transitions_fixed[t], log_system_transitions[t])
 
 
-def test_fix_log_entity_transitions_at_event_boundaries(
-    IP, log_entity_transitions, event_end_times, T, DIMS
+def test_fix_log_entity_transitions_at_example_boundaries(
+    IP, log_entity_transitions, example_end_times, T, DIMS
 ):
-    log_entity_transitions_fixed = fix_log_entity_transitions_at_event_boundaries(
+    log_entity_transitions_fixed = fix_log_entity_transitions_at_example_boundaries(
         log_entity_transitions,
         IP,
-        event_end_times,
+        example_end_times,
     )
     for t in range(T - 1):
-        if t in event_end_times:
+        if t in example_end_times:
             assert not jnp.allclose(log_entity_transitions_fixed[t], log_entity_transitions[t])
             for j in range(DIMS.J):
                 for k in range(DIMS.K):
@@ -106,22 +106,22 @@ def test_fix_log_entity_transitions_at_event_boundaries(
             assert jnp.allclose(log_entity_transitions_fixed[t], log_entity_transitions[t])
 
 
-def test_fix__log_emissions_from_entities__at_event_boundaries(
-    log_state_emissions, continuous_states, IP, model, event_end_times, T
+def test_fix__log_emissions_from_entities__at_example_boundaries(
+    log_state_emissions, continuous_states, IP, model, example_end_times, T
 ):
-    log_state_emissions_fixed = fix__log_emissions_from_entities__at_event_boundaries(
-        log_state_emissions, continuous_states, IP, model, event_end_times
+    log_state_emissions_fixed = fix__log_emissions_from_entities__at_example_boundaries(
+        log_state_emissions, continuous_states, IP, model, example_end_times
     )
 
     # if there is an event boundary, then the NEXT continuous state is drawn from the initial distribution.
     for t in range(T - 1):
-        if t in event_end_times:
+        if t in example_end_times:
             assert not jnp.allclose(log_state_emissions_fixed[t + 1], log_state_emissions[t + 1])
             # TODO: test that the new value is exactly the continuous state evaluated at the normal model with IP parameters.
         else:
             assert jnp.allclose(log_state_emissions_fixed[t + 1], log_state_emissions[t + 1])
 
 
-def test_get_non_initialization_times(event_end_times):
+def test_get_non_initialization_times(example_end_times):
     expected_result = np.array([1, 2, 3, 4, 6, 7, 8, 9])
-    assert np.allclose(get_non_initialization_times(event_end_times), expected_result)
+    assert np.allclose(get_non_initialization_times(example_end_times), expected_result)

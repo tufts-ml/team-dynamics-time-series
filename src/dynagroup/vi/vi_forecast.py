@@ -47,7 +47,7 @@ def get_forecasting_MSEs_on_test_set(
     ###
     # Upfront computations
     ###
-    event_end_times = None
+    example_end_times = None
     use_continuous_states = None
 
     T_test, J = np.shape(continuous_states)[:2]
@@ -57,8 +57,8 @@ def get_forecasting_MSEs_on_test_set(
             f"The number of timesteps desired for context {T_context} must be less than "
             f"the number of timesteps in the provided test set {T_test}. "
         )
-    if event_end_times is None:
-        event_end_times = np.array([-1, T_context])
+    if example_end_times is None:
+        example_end_times = np.array([-1, T_context])
 
     ###
     # Initialize the E-step for the context period
@@ -70,7 +70,7 @@ def get_forecasting_MSEs_on_test_set(
     results_init = smart_initialize_model_2a(
         DIMS,
         continuous_states_during_context_window,
-        event_end_times,
+        example_end_times,
         model,
         preinitialization_strategy_for_CSP=PreInitialization_Strategy_For_CSP.DERIVATIVE,
         num_em_iterations_for_bottom_half=5,
@@ -98,7 +98,7 @@ def get_forecasting_MSEs_on_test_set(
             continuous_states_during_context_window,
             VEZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
             use_continuous_states,
         )
@@ -110,7 +110,7 @@ def get_forecasting_MSEs_on_test_set(
             continuous_states_during_context_window,
             VES_summary.expected_regimes,
             model,
-            event_end_times,
+            example_end_times,
         )
     print("")
     ###
@@ -127,6 +127,7 @@ def get_forecasting_MSEs_on_test_set(
         n_forecasts_from_our_model=n_forecasts,
         system_covariates=system_covariates,
         use_raw_coords=True,
+        seed=seed,
     )
     MSEs = MSEs_from_forecasts(forecasts)
     return MSEs

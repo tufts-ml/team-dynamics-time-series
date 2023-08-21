@@ -32,7 +32,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 ###
 
 # Directories
-save_dir = "/Users/mwojno01/Desktop/just_init/"
+save_dir = "results/basketball/analyses/just_init/"
 
 # Initialization
 do_init_plots = False
@@ -113,6 +113,7 @@ results_init = smart_initialize_model_2a(
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
     system_covariates,
+    save_dir=save_dir,
 )
 
 params_init = results_init.params
@@ -120,7 +121,7 @@ params_init = results_init.params
 # initialization_results
 
 # elbo_init = compute_elbo_from_initialization_results(
-#     initialization_results, system_transition_prior, sample.positions, model, event_end_times, system_covariates
+#     initialization_results, system_transition_prior, sample.positions, model, example_end_times, system_covariates
 # )
 # print(f"ELBO after init: {elbo_init:.02f}")
 

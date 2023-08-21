@@ -12,7 +12,7 @@ from dynagroup.types import NumpyArray1D, NumpyArray2D, NumpyArray3D
 @dataclass
 class Data:
     positions: NumpyArray3D  # (T_grand,J,D)
-    event_end_times: NumpyArray1D  # (E,)
+    example_end_times: NumpyArray1D  # (E,)
     has_ball_team: NumpyArray1D  # (T_grand, )
     has_ball_players: NumpyArray2D  # (T_grand, J)
 
@@ -27,13 +27,13 @@ def get_data_in_original_formatting() -> Data:
 
     # covariates are (T_grand,M). The first two columns give the (x,y) positions of the ball. The third column
     # gives its radius (when in the air, the radius gets larger.)
-    DATA_LOAD_DIR = "/Users/mwojno01/Repos/dynagroup/data/basketball/orig_format/"
+    DATA_LOAD_DIR = "data/basketball/orig_format/"
     POST_HALFTIME_TIMESTEP = 13841  # Visually extracted from filenames, below.
     positions_raw = np.load(
         DATA_LOAD_DIR
         + "basketball_game_TOR_vs_CHA_post_halftime_timestep_13841_stacked_starter_plays.npy"
     )
-    event_end_times = np.load(
+    example_end_times = np.load(
         DATA_LOAD_DIR + "basketball_game_TOR_vs_CHA_post_halftime_timestep_13841_end_times.npy"
     )
     covariates_raw = np.load(
@@ -134,4 +134,4 @@ def get_data_in_original_formatting() -> Data:
     System level covariates
         * team has ball
     """
-    return Data(positions, event_end_times, has_ball_team, has_ball_players)
+    return Data(positions, example_end_times, has_ball_team, has_ball_players)

@@ -249,6 +249,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     for j in range(J):
         predictors_j = continuous_states[:-1, j, :]
         outcomes_j = continuous_states[1:, j, :]
+        tied_residuals_j = np.zeros((0, D))
         for k in range(K):
             ### find which samples to use
             samples_are_in_cluster_jk = kms[j].labels_ == k
@@ -280,9 +281,44 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             As[j, k] = lr.coef_
             bs[j, k] = lr.intercept_
             expectations_jk = (As[j, k] @ predictors_jk.T).T + bs[j, k]
-            residuals = outcomes_jk - expectations_jk
-            Qs[j, k] = np.cov(residuals, rowvar=False)
+            residuals_jk = outcomes_jk - expectations_jk
+            tied_residuals_j = np.concatenate((tied_residuals_j, residuals_jk))
+            Qs[j, k] = np.cov(residuals_jk, rowvar=False)
 
+            # FORCE_IDENTITY_STATE_MATRIX = True
+            # if FORCE_IDENTITY_STATE_MATRIX:
+            #     As[j,k] = np.eye(D)
+
+            # FORCE_SMALL_DIAGONAL_COVARIANCES = True
+            # if FORCE_SMALL_DIAGONAL_COVARIANCES:
+            #     Qs[j,k] =  np.eye(D) * 1e-12
+
+        # TIE_COVARIANCES=False
+        # if TIE_COVARIANCES:
+        #     for k in range(K):
+        #         Qs[j,k] = np.cov(tied_residuals_j, rowvar=False)
+
+        # TIED_DIAGONAL_COVARIANCE = False
+        # if TIED_DIAGONAL_COVARIANCE:
+        #     variances_j=np.diag(np.cov(tied_residuals_j, rowvar=False))
+        #     for k in range(K):
+        #         Qs[j,k] = np.zeros((D,D))
+        #         for d in range(D):
+        #             Qs[j,k,d,d] = variances_j[d]
+
+        # TIED_SMALL_DIAGONAL_COVARIANCE_VIA_MINIMUM = False
+        # if TIED_SMALL_DIAGONAL_COVARIANCE_VIA_MINIMUM:
+        #     variances_j= np.min(Qs[j,:], axis=0)*np.eye(2)
+        #     for k in range(K):
+        #         Qs[j,k] = variances_j
+
+        # TIED_SMALL_DIAGONAL_COVARIANCE_VIA_HARDCODE = True
+        # if TIED_SMALL_DIAGONAL_COVARIANCE_VIA_HARDCODE:
+        #     variances_j= np.min(Qs[j,:], axis=0)*np.eye(2)*1e-5
+        #     for k in range(K):
+        #         Qs[j,k] = variances_j
+
+    breakpoint()
     As = jnp.asarray(As)
     bs = jnp.asarray(bs)
     Qs = jnp.asarray(Qs)

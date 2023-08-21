@@ -134,16 +134,16 @@ def write_processed_data_to_disk(
         ]
         data_train_dict[n_train_games] = make_basketball_data_from_games(games_train)
         xs_train_dict[n_train_games] = normalize_coords(
-            data_train_dict[n_train_games].coords_unnormalized
+            data_train_dict[n_train_games].player_coords_unnormalized
         )
 
     games_val = games[-(n_test_games + n_val_games) : -n_test_games]
     data_val = make_basketball_data_from_games(games_val)
-    xs_val = normalize_coords(data_val.coords_unnormalized)
+    xs_val = normalize_coords(data_val.player_coords_unnormalized)
 
     games_test = games[-n_test_games:]
     data_test = make_basketball_data_from_games(games_test)
-    xs_test = normalize_coords(data_test.coords_unnormalized)
+    xs_test = normalize_coords(data_test.player_coords_unnormalized)
 
     ###
     # Random context times

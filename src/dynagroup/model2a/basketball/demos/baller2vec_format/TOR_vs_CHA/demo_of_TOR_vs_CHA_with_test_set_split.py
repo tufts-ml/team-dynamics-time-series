@@ -100,8 +100,8 @@ basketball_data_test = get_basketball_data_for_TOR_vs_CHA(
 # Preprocess Data
 ###
 
-xs_train = normalize_coords(basketball_data_train.coords_unnormalized)
-xs_test = normalize_coords(basketball_data_test.coords_unnormalized)
+xs_train = normalize_coords(basketball_data_train.player_coords_unnormalized)
+xs_test = normalize_coords(basketball_data_test.player_coords_unnormalized)
 
 ###
 # MASKING

@@ -16,7 +16,7 @@ def test_discarding_of_nonstandard_hoop_sides():
         discard_nonstandard_hoop_sides=False,
         verbose=False,
     )
-    n_timesteps_with_no_discarding = np.shape(data_with_no_discarding.coords_unnormalized)[0]
+    n_timesteps_with_no_discarding = np.shape(data_with_no_discarding.player_coords_unnormalized)[0]
 
     data_with_discarding = get_basketball_data_for_TOR_vs_CHA(
         event_idxs=None,
@@ -24,7 +24,7 @@ def test_discarding_of_nonstandard_hoop_sides():
         discard_nonstandard_hoop_sides=True,
         verbose=False,
     )
-    n_timesteps_with_discarding = np.shape(data_with_discarding.coords_unnormalized)[0]
+    n_timesteps_with_discarding = np.shape(data_with_discarding.player_coords_unnormalized)[0]
     assert n_timesteps_with_no_discarding > n_timesteps_with_discarding
 
 
@@ -41,7 +41,7 @@ def test_symmetry_of_player_locations_on_court_width_when_we_rotate_the_court_to
             discard_nonstandard_hoop_sides=discard_nonstandard_hoop_sides,
             verbose=False,
         )
-        un = data_with_discarding.coords_unnormalized
+        un = data_with_discarding.player_coords_unnormalized
 
         x_dists = np.zeros((10, 2))
         y_dists = np.zeros((10, 2))
@@ -73,3 +73,7 @@ def test_symmetry_of_player_locations_on_court_width_when_we_rotate_the_court_to
                 avg_horizontal_distance_from_right_boundary_at_percentile,
                 atol=1,
             )
+
+
+def test_presence_of_unnormalized_ball_coords(basketball_data):
+    assert basketball_data.ball_coords_unnormalized is not None

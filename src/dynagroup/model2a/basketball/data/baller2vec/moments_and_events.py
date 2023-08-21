@@ -277,11 +277,21 @@ def get_event_in_baller2vec_format(
 ###
 
 
-def coords_from_moments(moments: List[Moment]) -> Coords:
+def player_coords_from_moments(moments: List[Moment]) -> Coords:
     T = len(moments)
     J = 10
-    coords = np.zeros((T, J, 2))
+    player_coords = np.zeros((T, J, 2))
     for t in range(T):
-        coords[t, :, 0] = moments[t].player_xs
-        coords[t, :, 1] = moments[t].player_ys
-    return coords
+        player_coords[t, :, 0] = moments[t].player_xs
+        player_coords[t, :, 1] = moments[t].player_ys
+    return player_coords
+
+
+def ball_coords_from_moments(moments: List[Moment]) -> Coords:
+    T = len(moments)
+    ball_coords = np.zeros((T, 3))
+    for t in range(T):
+        ball_coords[t, 0] = moments[t].ball_x
+        ball_coords[t, 1] = moments[t].ball_y
+        ball_coords[t, 2] = moments[t].ball_z
+    return ball_coords

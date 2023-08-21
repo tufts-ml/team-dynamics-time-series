@@ -41,7 +41,7 @@ class Moment:
         30-39 = the player y values, players ordered as above
         40-49 = the player hoop sides, players ordered as above (0=left, 1=right)
         50 = event_id
-        51 = wall_clock
+        53 = wall_clock
     """
 
     game_time_elapsed_secs: float
@@ -58,6 +58,7 @@ class Moment:
     player_ys: NumpyArray1D  # float
     player_hoop_sides: List[int]
     event_id: int
+    wall_clock: float
 
 
 @dataclass
@@ -99,6 +100,7 @@ def moment_from_game_slice(slice: NumpyArray1D) -> Moment:
         player_ys=slice[30 : 39 + 1],
         player_hoop_sides=[int(x) for x in slice[40 : 49 + 1]],
         event_id=int(slice[50]),
+        wall_clock=slice[53],
     )
 
 
@@ -206,7 +208,7 @@ def get_num_events_in_game(
     """
     Arguments:
         game_data: A numpy array obtained from loading a "game data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy",
+             "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy",
             that was produced by the baller2vec_forked preprocessing.  These files have size
             (T,D=54)
     """
@@ -228,16 +230,16 @@ def get_event_in_baller2vec_format(
             we don't know the maximum number of events in the file, but we at least print it out
             while running this function.
         game_data: Array of shape (T,D=54) obtained from loading a "game data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy",
+             "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy",
             that was produced by the baller2vec_forked preprocessing.
         event_label_data: Array of shape (T,) obtained from loading an "event label data" file, e.g.
-             "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy",
+             "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy",
             that was produced by the baller2vec_forked preprocessing.
         event_label_dict: Dict obtained by loading a [MISNAMED] "baller2vec_config" file, e.g.
-             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict",
+             e.g. "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict",
             that was produces as the OUTPUT of baller2vec_forked preprocessing
         player_data: Dict obtained by loading a [MISNAMED] "baller2vec_config" file, e.g.
-             e.g. "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict",
+             e.g. "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict",
             that was produces as the OUTPUT of baller2vec_forked preprocessing
     """
 
@@ -275,11 +277,21 @@ def get_event_in_baller2vec_format(
 ###
 
 
-def coords_from_moments(moments: List[Moment]) -> Coords:
+def player_coords_from_moments(moments: List[Moment]) -> Coords:
     T = len(moments)
     J = 10
-    coords = np.zeros((T, J, 2))
+    player_coords = np.zeros((T, J, 2))
     for t in range(T):
-        coords[t, :, 0] = moments[t].player_xs
-        coords[t, :, 1] = moments[t].player_ys
-    return coords
+        player_coords[t, :, 0] = moments[t].player_xs
+        player_coords[t, :, 1] = moments[t].player_ys
+    return player_coords
+
+
+def ball_coords_from_moments(moments: List[Moment]) -> Coords:
+    T = len(moments)
+    ball_coords = np.zeros((T, 3))
+    for t in range(T):
+        ball_coords[t, 0] = moments[t].ball_x
+        ball_coords[t, 1] = moments[t].ball_y
+        ball_coords[t, 2] = moments[t].ball_z
+    return ball_coords

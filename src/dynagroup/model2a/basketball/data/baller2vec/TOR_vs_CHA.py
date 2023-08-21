@@ -46,9 +46,13 @@ def get_basketball_data_for_TOR_vs_CHA(
         "Kyle Lowry": 4,  # point guard
     }
 
-    PATH_TO_GAME_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy"
-    PATH_TO_EVENT_LABEL_DATA = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy"
-    PATH_TO_BALLER2VEC_INFO = "/Users/mwojno01/Repos/dynagroup/data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict"
+    PATH_TO_GAME_DATA = "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy"
+    PATH_TO_EVENT_LABEL_DATA = (
+        "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy"
+    )
+    PATH_TO_BALLER2VEC_INFO = (
+        "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict"
+    )
 
     ### Identify positions of all players in game
     PLAYER_NAMES_IN_DATASET_2_POSITIONS = {

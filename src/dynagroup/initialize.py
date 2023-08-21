@@ -170,12 +170,12 @@ def compute_elbo_from_initialization_results(
     system_transition_prior: SystemTransitionPrior_JAX,
     continuous_states: JaxNumpyArray3D,
     model: Model,
-    event_end_times: Optional[NumpyArray1D],
+    example_end_times: Optional[NumpyArray1D],
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> ELBO_Decomposed:
-    if event_end_times is None:
+    if example_end_times is None:
         T = len(continuous_states)
-        event_end_times = np.array([-1, T])
+        example_end_times = np.array([-1, T])
 
     elbo_decomposed = compute_elbo_decomposed(
         initialization_results.params,
@@ -184,7 +184,7 @@ def compute_elbo_from_initialization_results(
         system_transition_prior,
         continuous_states,
         model,
-        event_end_times,
+        example_end_times,
         system_covariates,
     )
     return elbo_decomposed.elbo

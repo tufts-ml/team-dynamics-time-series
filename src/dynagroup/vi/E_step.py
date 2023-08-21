@@ -3,11 +3,11 @@ from typing import Optional
 import jax.numpy as jnp
 import numpy as np
 
-from dynagroup.events import (
-    fix__log_emissions_from_entities__at_event_boundaries,
-    fix__log_emissions_from_system__at_event_boundaries,
-    fix_log_entity_transitions_at_event_boundaries,
-    fix_log_system_transitions_at_event_boundaries,
+from dynagroup.examples import (
+    fix__log_emissions_from_entities__at_example_boundaries,
+    fix__log_emissions_from_system__at_example_boundaries,
+    fix_log_entity_transitions_at_example_boundaries,
+    fix_log_system_transitions_at_example_boundaries,
 )
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -95,7 +95,7 @@ def run_VES_step_JAX(
     continuous_states: JaxNumpyArray3D,
     VEZ_summaries: HMM_Posterior_Summaries_JAX,
     model: Model,
-    event_end_times: Optional[JaxNumpyArray1D],
+    example_end_times: Optional[JaxNumpyArray1D],
     system_covariates: Optional[JaxNumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
 ) -> HMM_Posterior_Summary_JAX:
@@ -189,14 +189,14 @@ def run_VES_step_JAX(
     ###
     # Patch the ingredients for the E-step if there are separate events.
     ###
-    log_transitions = fix_log_system_transitions_at_event_boundaries(
+    log_transitions = fix_log_system_transitions_at_example_boundaries(
         log_transitions,
         IP,
-        event_end_times,
+        example_end_times,
     )
 
-    log_emissions = fix__log_emissions_from_system__at_event_boundaries(
-        log_emissions, VEZ_summaries.expected_regimes, IP, event_end_times
+    log_emissions = fix__log_emissions_from_system__at_example_boundaries(
+        log_emissions, VEZ_summaries.expected_regimes, IP, example_end_times
     )
 
     return compute_hmm_posterior_summary_JAX(
@@ -320,7 +320,7 @@ def run_VEZ_step_JAX(
     continuous_states: JaxNumpyArray3D,
     VES_expected_regimes: JaxNumpyArray2D,
     model: Model,
-    event_end_times: NumpyArray1D,
+    example_end_times: NumpyArray1D,
 ) -> HMM_Posterior_Summaries_JAX:
     """
     Arguments:
@@ -372,13 +372,13 @@ def run_VEZ_step_JAX(
         model,
     )
 
-    log_entity_transitions_expected = fix_log_entity_transitions_at_event_boundaries(
+    log_entity_transitions_expected = fix_log_entity_transitions_at_example_boundaries(
         log_entity_transitions_expected,
         IP,
-        event_end_times,
+        example_end_times,
     )
-    log_emissions_from_entities = fix__log_emissions_from_entities__at_event_boundaries(
-        log_emissions_from_entities, continuous_states, IP, model, event_end_times
+    log_emissions_from_entities = fix__log_emissions_from_entities__at_example_boundaries(
+        log_emissions_from_entities, continuous_states, IP, model, example_end_times
     )
     return compute_hmm_posterior_summaries_JAX(
         log_entity_transitions_expected, log_emissions_from_entities, IP.pi_entities

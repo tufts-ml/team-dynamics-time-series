@@ -1,3 +1,4 @@
+import datetime
 import warnings
 from typing import List, Tuple
 
@@ -247,3 +248,33 @@ def compute_cartesian_product_of_two_1d_arrays(x_vals: NumpyArray1D, y_vals: Num
     return np.column_stack(
         (x_for_grid.ravel(), y_for_grid.ravel())
     )  # has shape (len(x)*len(y), D=2)
+
+
+###
+# List manipulations
+###
+def construct_a_new_list_after_removing_multiple_items(
+    orig_list: List, indices_to_remove: List[int]
+) -> List:
+    """
+    Thanks Chat GPT!
+
+    Usage:
+        orig_list = [10, 20, 30, 40, 50, 60]
+        indices_to_remove = [1, 3, 5]
+
+        new_list=construct_a_new_list_after_removing_multiple_items(my_list, indices_to_remove)
+        print(new_list)  # Output: [10, 30, 50]
+        print(orig_list) # Output: [10, 20, 30, 40, 50, 60]
+
+    """
+    return [item for index, item in enumerate(orig_list) if index not in indices_to_remove]
+
+
+###
+# Datetime
+###
+
+
+def get_current_datetime_as_string():
+    return datetime.datetime.now().strftime("%m-%d-%Y_%Hh%Mm%Ss")

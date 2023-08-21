@@ -156,7 +156,7 @@ def fit_ARHMM_to_top_half_of_model(
     num_M_step_iterations_for_STP_gradient_descent: int,
     seed: int = 0,
     verbose: bool = True,
-    event_end_times: Optional[NumpyArray1D] = None,
+    example_end_times: Optional[NumpyArray1D] = None,
 ) -> ResultsFromTopHalfInit:
     """
     Arguments:
@@ -172,9 +172,9 @@ def fit_ARHMM_to_top_half_of_model(
     # force there to be a third array dimension for the D
     group_angles = group_angles.reshape((T, J, -1))
 
-    # make event_end_times have the right structure
-    if event_end_times is None:
-        event_end_times = np.array([-1, T])
+    # make example_end_times have the right structure
+    if example_end_times is None:
+        example_end_times = np.array([-1, T])
 
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
@@ -210,7 +210,7 @@ def fit_ARHMM_to_top_half_of_model(
             group_angles,
             EZ_summaries,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
 
@@ -228,7 +228,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_ETP_gradient_descent,
             model,
-            event_end_times,
+            example_end_times,
             verbose=verbose,
         )
 
@@ -244,7 +244,7 @@ def fit_ARHMM_to_top_half_of_model(
             iteration,
             num_M_step_iterations_for_STP_gradient_descent,
             model,
-            event_end_times,
+            example_end_times,
             system_covariates,
         )
 

@@ -30,15 +30,15 @@ Y_MAX_COURT = 50
 
 
 def normalize_coords(
-    coords_unnormalized: Union[NumpyArray2D, NumpyArray3D]
+    player_coords_unnormalized: Union[NumpyArray2D, NumpyArray3D]
 ) -> Union[NumpyArray2D, NumpyArray3D]:
     """
     Arguments:
-        coords_unnormalized: NumpyArray whose last axis has shape D=2, representing x and y
+        player_coords_unnormalized: NumpyArray whose last axis has shape D=2, representing x and y
         coordinates on the court
 
     """
-    coords_normalized = copy.copy(coords_unnormalized)
+    coords_normalized = copy.copy(player_coords_unnormalized)
     coords_normalized[..., 0] /= X_MAX_COURT
     coords_normalized[..., 1] /= Y_MAX_COURT
     return coords_normalized
@@ -52,10 +52,10 @@ def unnormalize_coords(
         coords_normalized: NumpyArray whose last axis has shape D=2, representing x and y
         coordinates on the court
     """
-    coords_unnormalized = copy.copy(coords_normalized)
-    coords_unnormalized[..., 0] *= X_MAX_COURT
-    coords_unnormalized[..., 1] *= Y_MAX_COURT
-    return coords_unnormalized
+    player_coords_unnormalized = copy.copy(coords_normalized)
+    player_coords_unnormalized[..., 0] *= X_MAX_COURT
+    player_coords_unnormalized[..., 1] *= Y_MAX_COURT
+    return player_coords_unnormalized
 
 
 ###
@@ -63,7 +63,7 @@ def unnormalize_coords(
 ###
 
 
-def flip_coords_unnormalized(coords_unnormalized: NumpyArray2D) -> NumpyArray2D:
+def flip_player_coords_unnormalized(player_coords_unnormalized: NumpyArray2D) -> NumpyArray2D:
     """
     We want to rotate the coordinates 180, where the center of the coordinate
     system is the center of the basketball court.
@@ -76,7 +76,7 @@ def flip_coords_unnormalized(coords_unnormalized: NumpyArray2D) -> NumpyArray2D:
     """
     CENTER_OF_NORMALIZED_COURT = np.array([0.5, 0.5])
 
-    coords_normalized = normalize_coords(coords_unnormalized)
+    coords_normalized = normalize_coords(player_coords_unnormalized)
     coords_normalized_and_centered = coords_normalized - CENTER_OF_NORMALIZED_COURT
     coords_normalized_and_centered_and_flipped = coords_normalized_and_centered * -1
     coords_normalized_and_flipped = (

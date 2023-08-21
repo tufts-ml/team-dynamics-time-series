@@ -97,7 +97,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "/Users/mwojno01/Desktop/REDO_fig8_after_fit_and_forecasting_backtrack/"
+save_dir = "results/fig8/analyses/RETRY_fig8_after_working_on_init_fix_for_basketball/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -179,7 +179,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     sample.xs,
-    sample.event_end_times,
+    sample.example_end_times,
     figure8_model_JAX,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
@@ -187,6 +187,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
+    save_dir=save_dir,
 )
 params_init = results_init.params
 
@@ -208,7 +209,7 @@ elbo_init = compute_elbo_from_initialization_results(
     system_transition_prior,
     sample.xs,
     model,
-    sample.event_end_times,
+    sample.example_end_times,
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
@@ -262,7 +263,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     n_cavi_iterations,
     results_init,
     model,
-    sample.event_end_times,
+    sample.example_end_times,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

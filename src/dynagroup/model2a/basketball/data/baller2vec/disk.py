@@ -15,7 +15,7 @@ from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Even
 from dynagroup.model2a.basketball.forecasts import (
     generate_random_context_times_for_events,
 )
-from dynagroup.types import NumpyArray3D
+from dynagroup.types import NumpyArray2D, NumpyArray3D
 
 
 """
@@ -50,7 +50,8 @@ class DataSamplingConfig:
 ### Data
 @dataclass
 class DataSplit:
-    xs: NumpyArray3D
+    player_coords: NumpyArray3D
+    ball_coords: NumpyArray2D
     example_stop_idxs: List[int]
     play_start_stop_idxs: List[Tuple[int]]
     events: Optional[List[Event]] = None
@@ -125,7 +126,8 @@ def write_processed_data_to_disk(
     ###
 
     data_train_dict = {}
-    xs_train_dict = {}
+    player_coords_train_dict = {}
+    ball_coords_train_dict = {}
 
     for n_train_games in n_train_games_list:
         # TODO: Factor out train better so we're not redundantly doing val and test.
@@ -133,17 +135,22 @@ def write_processed_data_to_disk(
             -(n_train_games + n_test_games + n_val_games) : -(n_test_games + n_val_games)
         ]
         data_train_dict[n_train_games] = make_basketball_data_from_games(games_train)
-        xs_train_dict[n_train_games] = normalize_coords(
+        player_coords_train_dict[n_train_games] = normalize_coords(
             data_train_dict[n_train_games].player_coords_unnormalized
+        )
+        ball_coords_train_dict[n_train_games] = normalize_coords(
+            data_train_dict[n_train_games].ball_coords_unnormalized
         )
 
     games_val = games[-(n_test_games + n_val_games) : -n_test_games]
     data_val = make_basketball_data_from_games(games_val)
-    xs_val = normalize_coords(data_val.player_coords_unnormalized)
+    player_coords_val = normalize_coords(data_val.player_coords_unnormalized)
+    ball_coords_val = normalize_coords(data_val.ball_coords_unnormalized)
 
     games_test = games[-n_test_games:]
     data_test = make_basketball_data_from_games(games_test)
-    xs_test = normalize_coords(data_test.player_coords_unnormalized)
+    player_coords_test = normalize_coords(data_test.player_coords_unnormalized)
+    ball_coords_test = normalize_coords(data_test.ball_coords_unnormalized)
 
     ###
     # Random context times
@@ -162,8 +169,12 @@ def write_processed_data_to_disk(
     ### Write Datasplits
     for n_train_games in n_train_games_list:
         np.save(
-            f"{processed_data_dir}/xs_train__with_{n_train_games}_games.npy",
-            xs_train_dict[n_train_games],
+            f"{processed_data_dir}/player_coords_train__with_{n_train_games}_games.npy",
+            player_coords_train_dict[n_train_games],
+        )
+        np.save(
+            f"{processed_data_dir}/ball_coords_train__with_{n_train_games}_games.npy",
+            ball_coords_train_dict[n_train_games],
         )
         np.save(
             f"{processed_data_dir}/example_stop_idxs_train__with_{n_train_games}_games.npy",
@@ -182,11 +193,13 @@ def write_processed_data_to_disk(
             data_train_dict[n_train_games].player_data,
         )
 
-    np.save(f"{processed_data_dir}/xs_test.npy", xs_test)
+    np.save(f"{processed_data_dir}/player_coords_val.npy", player_coords_val)
+    np.save(f"{processed_data_dir}/ball_coords_val.npy", ball_coords_val)
     np.save(f"{processed_data_dir}/example_stop_idxs_val.npy", data_val.example_stop_idxs)
     np.save(f"{processed_data_dir}/play_start_stop_idxs_val.npy", data_val.play_start_stop_idxs)
 
-    np.save(f"{processed_data_dir}/xs_val.npy", xs_val)
+    np.save(f"{processed_data_dir}/player_coords_test.npy", player_coords_test)
+    np.save(f"{processed_data_dir}/ball_coords_test.npy", ball_coords_test)
     np.save(f"{processed_data_dir}/example_stop_idxs_test.npy", data_test.example_stop_idxs)
     np.save(f"{processed_data_dir}/play_start_stop_idxs_test.npy", data_test.play_start_stop_idxs)
 
@@ -208,21 +221,27 @@ def load_processed_data_to_analyze(
     ###
     # Check if requested configs match those on disk.
     ###
-    data_sampling_config_dict = np.load(f"{processed_data_dir}/data_sampling_config_dict.npz")
-    data_split_config_dict = np.load(f"{processed_data_dir}/data_split_config_dict.npz")
-    forecast_config_dict = np.load(f"{processed_data_dir}/forecast_config_dict.npz")
+    data_exists = False
+    try:
+        data_sampling_config_dict = np.load(f"{processed_data_dir}/data_sampling_config_dict.npz")
+        data_split_config_dict = np.load(f"{processed_data_dir}/data_split_config_dict.npz")
+        forecast_config_dict = np.load(f"{processed_data_dir}/forecast_config_dict.npz")
+        data_exists = True
+    except FileNotFoundError:
+        print("The processed dir data directory is empty; will populate.")
 
-    data_sampling_config_loaded = DataSamplingConfig(**data_sampling_config_dict)
-    data_split_config_loaded = DataSplitConfig(**data_split_config_dict)
-    forecast_config_loaded = ForecastConfig(**forecast_config_dict)
+    if data_exists:
+        data_sampling_config_loaded = DataSamplingConfig(**data_sampling_config_dict)
+        data_split_config_loaded = DataSplitConfig(**data_split_config_dict)
+        forecast_config_loaded = ForecastConfig(**forecast_config_dict)
 
-    requested_config_match_those_on_disk = True
-    if not data_classes_match(data_sampling_config_loaded, data_sampling_config):
-        requested_config_match_those_on_disk = False
-    elif not data_classes_match(data_split_config_loaded, data_split_config):
-        requested_config_match_those_on_disk = False
-    elif not data_classes_match(forecast_config_loaded, forecast_config):
-        requested_config_match_those_on_disk = False
+        requested_config_match_those_on_disk = True
+        if not data_classes_match(data_sampling_config_loaded, data_sampling_config):
+            requested_config_match_those_on_disk = False
+        elif not data_classes_match(data_split_config_loaded, data_split_config):
+            requested_config_match_those_on_disk = False
+        elif not data_classes_match(forecast_config_loaded, forecast_config):
+            requested_config_match_those_on_disk = False
 
     ###
     # Write data if we don't already have data with those configs on disk.
@@ -231,7 +250,7 @@ def load_processed_data_to_analyze(
     # TODO: Currently we overwrite old configs.  Handle this better.
     # If nothing else, raise a warning or error when we overwrite old data.
 
-    if not requested_config_match_those_on_disk:
+    if not data_exists or (not requested_config_match_those_on_disk):
         print("Configs on disk don't match request. Writing new data to disk")
         write_processed_data_to_disk(
             data_sampling_config,
@@ -247,7 +266,12 @@ def load_processed_data_to_analyze(
     ###
     train_by_sample_dict = {}
     for n_train_games in data_split_config.n_train_games_list:
-        xs = np.load(f"{processed_data_dir}/xs_train__with_{n_train_games}_games.npy")
+        ball_coords = np.load(
+            f"{processed_data_dir}/ball_coords_train__with_{n_train_games}_games.npy"
+        )
+        player_coords = np.load(
+            f"{processed_data_dir}/player_coords_train__with_{n_train_games}_games.npy"
+        )
         example_stop_idxs = np.load(
             f"{processed_data_dir}/example_stop_idxs_train__with_{n_train_games}_games.npy"
         )
@@ -259,17 +283,19 @@ def load_processed_data_to_analyze(
         )
         player_data = np.load(f"{processed_data_dir}/player_data__with_{n_train_games}_games.npz")
         train_by_sample_dict[n_train_games] = DataSplit(
-            xs, example_stop_idxs, play_start_stop_idxs, events, player_data
+            player_coords, ball_coords, example_stop_idxs, play_start_stop_idxs, events, player_data
         )
 
     val_data = DataSplit(
-        xs=np.load(f"{processed_data_dir}/xs_val.npy"),
+        player_coords=np.load(f"{processed_data_dir}/player_coords_val.npy"),
+        ball_coords=np.load(f"{processed_data_dir}/ball_coords_val.npy"),
         example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_val.npy"),
         play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_val.npy"),
     )
 
     test_data = DataSplit(
-        xs=np.load(f"{processed_data_dir}/xs_test.npy"),
+        player_coords=np.load(f"{processed_data_dir}/player_coords_test.npy"),
+        ball_coords=np.load(f"{processed_data_dir}/ball_coords_test.npy"),
         example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_test.npy"),
         play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_test.npy"),
     )

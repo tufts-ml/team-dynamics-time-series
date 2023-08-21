@@ -131,7 +131,7 @@ if animate_raw_data:
         animate_event(event)
 
 plot_discrete_derivatives(
-    DATA_TRAIN.xs, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir
+    DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir
 )
 
 
@@ -141,7 +141,7 @@ plot_discrete_derivatives(
 
 #### Setup Dims
 
-J = np.shape(DATA_TRAIN.xs)[1]
+J = np.shape(DATA_TRAIN.player_coords)[1]
 D, D_t = 2, 2
 N = 0
 M_s, M_e = 0, 0  # for now!
@@ -159,7 +159,7 @@ print("Running smart initialization.")
 
 results_init = smart_initialize_model_2a(
     DIMS,
-    DATA_TRAIN.xs,
+    DATA_TRAIN.player_coords,
     DATA_TRAIN.example_stop_idxs,
     model_basketball,
     preinitialization_strategy_for_CSP,
@@ -179,7 +179,7 @@ most_likely_entity_states_after_init = results_init.record_of_most_likely_entity
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
     system_transition_prior,
-    DATA_TRAIN.xs,
+    DATA_TRAIN.player_coords,
     model_basketball,
     DATA_TRAIN.example_stop_idxs,
     system_covariates,
@@ -211,7 +211,7 @@ if animate_initialization:
 ####
 
 VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
-    jnp.asarray(DATA_TRAIN.xs),
+    jnp.asarray(DATA_TRAIN.player_coords),
     n_cavi_iterations,
     results_init,
     model_basketball,
@@ -242,7 +242,7 @@ random_context_times = generate_random_context_times_for_events(
 )
 
 forecast_MSEs_by_event = get_forecast_MSEs_by_event(
-    DATA_TEST.xs,
+    DATA_TEST.player_coords,
     DATA_TEST.example_stop_idxs,
     params_learned,
     model_basketball,

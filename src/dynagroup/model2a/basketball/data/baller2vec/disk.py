@@ -188,20 +188,44 @@ def write_processed_data_to_disk(
             f"{processed_data_dir}/events_train__with_{n_train_games}_games.npy",
             data_train_dict[n_train_games].events,
         )
-        np.savez(
-            f"{processed_data_dir}/player_data__with_{n_train_games}_games.npz",
-            data_train_dict[n_train_games].player_data,
-        )
 
-    np.save(f"{processed_data_dir}/player_coords_val.npy", player_coords_val)
-    np.save(f"{processed_data_dir}/ball_coords_val.npy", ball_coords_val)
-    np.save(f"{processed_data_dir}/example_stop_idxs_val.npy", data_val.example_stop_idxs)
-    np.save(f"{processed_data_dir}/play_start_stop_idxs_val.npy", data_val.play_start_stop_idxs)
+    np.save(
+        f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy", player_coords_val
+    )
+    np.save(f"{processed_data_dir}/ball_coords_val__with_{n_val_games}_games.npy", ball_coords_val)
+    np.save(
+        f"{processed_data_dir}/example_stop_idxs_val__with_{n_val_games}_games.npy",
+        data_val.example_stop_idxs,
+    )
+    np.save(
+        f"{processed_data_dir}/play_start_stop_idxs_val__with_{n_val_games}_games.npy",
+        data_val.play_start_stop_idxs,
+    )
+    np.save(f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", data_val.events)
 
-    np.save(f"{processed_data_dir}/player_coords_test.npy", player_coords_test)
-    np.save(f"{processed_data_dir}/ball_coords_test.npy", ball_coords_test)
-    np.save(f"{processed_data_dir}/example_stop_idxs_test.npy", data_test.example_stop_idxs)
-    np.save(f"{processed_data_dir}/play_start_stop_idxs_test.npy", data_test.play_start_stop_idxs)
+    np.save(
+        f"{processed_data_dir}/player_coords_test__with_{n_test_games}_games.npy",
+        player_coords_test,
+    )
+    np.save(
+        f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy", ball_coords_test
+    )
+    np.save(
+        f"{processed_data_dir}/example_stop_idxs_test__with_{n_test_games}_games.npy",
+        data_test.example_stop_idxs,
+    )
+    np.save(
+        f"{processed_data_dir}/play_start_stop_idxs_test__with_{n_test_games}_games.npy",
+        data_test.play_start_stop_idxs,
+    )
+    np.save(f"{processed_data_dir}/events_test__with_{n_test_games}_games.npy", data_test.events)
+
+    ### Write Player dataset data
+    # We could grab this from train, test or val, it doesn't matter because it's the same for all.
+    # The player data is given by `preprocessed/<*>/info/baller2vec_info.pydict`, and so is
+    # not a function of individual games, but of the whole dataset.  For more info, see the
+    # BasketballData class definition.
+    np.savez(f"{processed_data_dir}/player_data_from_all_games.npz", data_test.player_data)
 
     ### Write Random Context Times
     np.save(f"{processed_data_dir}/random_context_times.npy", random_context_times)
@@ -264,6 +288,9 @@ def load_processed_data_to_analyze(
     ###
     # Load Data
     ###
+
+    player_data_from_all_games = np.load(f"{processed_data_dir}/player_data_from_all_games.npz")
+
     train_by_sample_dict = {}
     for n_train_games in data_split_config.n_train_games_list:
         ball_coords = np.load(
@@ -281,23 +308,51 @@ def load_processed_data_to_analyze(
         events = np.load(
             f"{processed_data_dir}/events_train__with_{n_train_games}_games.npy", allow_pickle=True
         )
-        player_data = np.load(f"{processed_data_dir}/player_data__with_{n_train_games}_games.npz")
         train_by_sample_dict[n_train_games] = DataSplit(
-            player_coords, ball_coords, example_stop_idxs, play_start_stop_idxs, events, player_data
+            player_coords,
+            ball_coords,
+            example_stop_idxs,
+            play_start_stop_idxs,
+            events,
+            player_data_from_all_games,
         )
 
+    n_val_games = data_split_config.n_val_games
     val_data = DataSplit(
-        player_coords=np.load(f"{processed_data_dir}/player_coords_val.npy"),
-        ball_coords=np.load(f"{processed_data_dir}/ball_coords_val.npy"),
-        example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_val.npy"),
-        play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_val.npy"),
+        player_coords=np.load(
+            f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy"
+        ),
+        ball_coords=np.load(f"{processed_data_dir}/ball_coords_val__with_{n_val_games}_games.npy"),
+        example_stop_idxs=np.load(
+            f"{processed_data_dir}/example_stop_idxs_val__with_{n_val_games}_games.npy"
+        ),
+        play_start_stop_idxs=np.load(
+            f"{processed_data_dir}/play_start_stop_idxs_val__with_{n_val_games}_games.npy"
+        ),
+        events=np.load(
+            f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True
+        ),
+        player_data=player_data_from_all_games,
     )
 
+    n_test_games = data_split_config.n_test_games
     test_data = DataSplit(
-        player_coords=np.load(f"{processed_data_dir}/player_coords_test.npy"),
-        ball_coords=np.load(f"{processed_data_dir}/ball_coords_test.npy"),
-        example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_test.npy"),
-        play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_test.npy"),
+        player_coords=np.load(
+            f"{processed_data_dir}/player_coords_test__with_{n_test_games}_games.npy"
+        ),
+        ball_coords=np.load(
+            f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy"
+        ),
+        example_stop_idxs=np.load(
+            f"{processed_data_dir}/example_stop_idxs_test__with_{n_test_games}_games.npy"
+        ),
+        play_start_stop_idxs=np.load(
+            f"{processed_data_dir}/play_start_stop_idxs_test__with_{n_test_games}_games.npy"
+        ),
+        events=np.load(
+            f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True
+        ),
+        player_data=player_data_from_all_games,
     )
 
     ### Load Random Context Times

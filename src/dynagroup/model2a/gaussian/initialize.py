@@ -286,7 +286,6 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     As = jnp.asarray(As)
     bs = jnp.asarray(bs)
     Qs = jnp.asarray(Qs)
-    breakpoint()
     return ContinuousStateParameters_Gaussian_JAX(As, bs, Qs)
 
 
@@ -653,7 +652,6 @@ def smart_initialize_model_2a(
     # zhats = np.argmax(
     #    results_bottom.EZ_summaries.expected_regimes, axis=2
     # )  # zhats is (J,T) with each entry in {1,..K} (but zero-indexed)
-    breakpoint()
 
     ###
     # Top-level HMM

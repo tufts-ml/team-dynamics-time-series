@@ -56,7 +56,11 @@ class BasketballData:
         ball_coords_unnormalized: unnormalized coordinates for balls,
             array of shape (T_slice, D=3)
         player_data: Maps a player idx (in 0,..., N_Players) to a Dict containing the player's
-            name, playing time, and playerid (in the sense of the `NBA-Player-Movements`)
+            name, playing time (in the WHOLE dataset -- that is across ALL games in `preprocessed/<*>/games/`;
+            this is determined by the object in `preprocessed/<*>/info/baller2vec_info.pydict` written by
+            baller2vec), and playerid (in the sense of the `NBA-Player-Movements`; could be something like
+            201567).   So (1) the players contained may be a superset of those who appear in "events" and
+            (2) the playing times may be larger than what appears in "events".
     """
 
     # Rk: This is kind of a weird and redundant class since `play_start_stop_idxs` and `player_coords_unnormalized`

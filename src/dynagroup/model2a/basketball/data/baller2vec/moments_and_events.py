@@ -1,6 +1,6 @@
 import pickle
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import prettyprinter as pp
 
@@ -41,7 +41,7 @@ class Moment:
         30-39 = the player y values, players ordered as above
         40-49 = the player hoop sides, players ordered as above (0=left, 1=right)
         50 = event_id
-        53 = wall_clock
+        53 = wall_clock (in milliseconds)
     """
 
     game_time_elapsed_secs: float
@@ -104,7 +104,9 @@ def moment_from_game_slice(slice: NumpyArray1D) -> Moment:
     )
 
 
-def player_names_from_player_ids(PLAYER_DATA: Dict[int, Dict], player_ids: List[int]) -> List[str]:
+def player_names_from_player_ids(
+    PLAYER_DATA: Dict[int, Dict[str, Any]], player_ids: List[int]
+) -> List[str]:
     """
     Arguments:
         PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_info_path function here,
@@ -162,8 +164,9 @@ def grab_event(
         moments.append(moment)
 
     ### Get player names
-    # Probably safe to assume the names and order asre constant throughout a play.
-    # TODO: Confirm this
+    # Note: we CANNOT assume the names and order constant throughout a play ("Event")
+    # But we handle this later downstream by cleaning events with player substitutions.
+    # TODO: Find a better way to handle this scenario.
     player_names = player_names_from_player_ids(player_data, moments[0].player_ids)
 
     ### Get start and end times
@@ -295,3 +298,14 @@ def ball_coords_from_moments(moments: List[Moment]) -> Coords:
         ball_coords[t, 1] = moments[t].ball_y
         ball_coords[t, 2] = moments[t].ball_z
     return ball_coords
+
+
+def player_names_from_moments(
+    moments: List[Moment], player_data: Dict[int, Dict[str, Any]]
+) -> List[str]:
+    T = len(moments)
+    player_names = [None] * T
+    for t in range(T):
+        player_ids = moments[t].player_ids
+        player_names[t] = [player_data[id]["name"] for id in player_ids]
+    return player_names

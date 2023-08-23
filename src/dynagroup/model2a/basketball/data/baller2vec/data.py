@@ -20,6 +20,7 @@ from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     Event,
+    Moment,
     ball_coords_from_moments,
     get_event_in_baller2vec_format,
     get_num_events_in_game,
@@ -86,7 +87,7 @@ class BasketballData:
 
 
 ###
-# Single game (from disk)
+# Helper functions
 ###
 
 
@@ -147,6 +148,22 @@ def remove_events_with_player_substitutions(
     )
 
     return events_cleaned
+
+
+def player_identities_are_constant_throughout_examples(
+    moments: List[Moment], example_stop_idxs: List[int]
+):
+    for idx in range(len(example_stop_idxs) - 1):
+        start_idx, stop_idx = example_stop_idxs[idx] + 1, example_stop_idxs[idx + 1]
+        moments_in_example = moments[start_idx:stop_idx]
+        if not are_lists_identical([m.player_ids for m in moments_in_example]):
+            return False
+    return True
+
+
+###
+# Single game (from disk)
+###
 
 
 def load_basketball_data_from_single_game_file(
@@ -419,10 +436,17 @@ def load_basketball_data_from_single_game_file(
     # that each iterate through events and perform a fixed operation.
 
     events_processed = remove_events_with_player_substitutions(events_filtered_and_mutated)
+
     moments_processed = [moment for event in events_processed for moment in event.moments]
     player_coords_unnormalized = player_coords_from_moments(moments_processed)
     ball_coords_unnormalized = ball_coords_from_moments(moments_processed)
     player_names = player_names_from_moments(moments_processed, player_data)
+    example_stop_idxs = get_example_stop_idxs(events_processed, sampling_rate_Hz)
+    play_start_stop_idxs = get_play_start_stop_idxs(events_processed)
+
+    ###
+    # Some checks on the processed data
+    ###
 
     if (
         not len(player_names)
@@ -434,8 +458,10 @@ def load_basketball_data_from_single_game_file(
             "Somehow the number of player names, player coords, ball coords, and moments don't match.  Check implementation."
         )
 
-    example_stop_idxs = get_example_stop_idxs(events_processed, sampling_rate_Hz)
-    play_start_stop_idxs = get_play_start_stop_idxs(events_processed)
+    if not player_identities_are_constant_throughout_examples(moments_processed, example_stop_idxs):
+        raise ValueError(
+            "The player identities are not constant throughout examples. Check implementation."
+        )
 
     return BasketballData(
         events_processed,

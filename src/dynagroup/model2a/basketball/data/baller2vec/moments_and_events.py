@@ -104,7 +104,9 @@ def moment_from_game_slice(slice: NumpyArray1D) -> Moment:
     )
 
 
-def player_names_from_player_ids(PLAYER_DATA: Dict[int, Dict], player_ids: List[int]) -> List[str]:
+def player_names_from_player_ids(
+    PLAYER_DATA: Dict[int, Dict[str, Any]], player_ids: List[int]
+) -> List[str]:
     """
     Arguments:
         PLAYER_DATA: Constructed directly via the  load_player_data_from_pydict_info_path function here,

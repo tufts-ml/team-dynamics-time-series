@@ -26,12 +26,18 @@ from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
     load_event_label_decoder_from_pydict_info_path,
     load_player_data_from_pydict_info_path,
     player_coords_from_moments,
+    player_names_from_moments,
 )
 from dynagroup.model2a.basketball.data.baller2vec.positions import (
     get_player_name_2_position,
     make_opponent_names_2_entity_idxs,
 )
 from dynagroup.types import NumpyArray2D, NumpyArray3D
+from dynagroup.util import (
+    are_lists_identical,
+    construct_a_new_list_after_removing_multiple_items,
+    flatten_list_of_lists,
+)
 
 
 ###
@@ -50,6 +56,8 @@ class BasketballData:
             array of shape (T_slice, J=10, D=2)
         ball_coords_unnormalized: unnormalized coordinates for balls,
             array of shape (T_slice, D=3)
+        player_names: List of length T_slice of 10 names representing the name of the basketball player
+            who is playing at each index.
         play_start_stop_idxs: List of tuples, each tuple has form (start_idx, stop_idx)
             giving the location where a play starts and stops.
         example_stop_idxs:  List of ints, giving the location where an example starts and stops.
@@ -70,6 +78,7 @@ class BasketballData:
     events: List[Event]
     player_coords_unnormalized: NumpyArray3D
     ball_coords_unnormalized: NumpyArray2D
+    player_names: List[List[str]]
     play_start_stop_idxs: List[Tuple[int]]
     example_stop_idxs: List[int]
     player_data: Dict[int, Dict[str, Any]]
@@ -118,6 +127,28 @@ def rotate_court_180_degrees_for_one_moment_of_an_event(
     return event
 
 
+def remove_events_with_player_substitutions(
+    events: List[Event],
+    verbose: bool = True,
+) -> List[Event]:
+    event_idxs_to_remove = []
+    for event_idx, event in enumerate(events):
+        if not are_lists_identical([m.player_ids for m in event.moments]):
+            event_idxs_to_remove.append(event_idx)
+
+    if verbose:
+        print(
+            f"The number of events with player substitutions are {len(event_idxs_to_remove)}/{len(events)}."
+        )
+
+    # Remove moments whose wall clock diffs that are too big.
+    events_cleaned = construct_a_new_list_after_removing_multiple_items(
+        events, event_idxs_to_remove
+    )
+
+    return events_cleaned
+
+
 def load_basketball_data_from_single_game_file(
     path_to_game_data: str,
     path_to_event_label_data: str,
@@ -130,10 +161,11 @@ def load_basketball_data_from_single_game_file(
     verbose: bool = True,
 ) -> BasketballData:
     """
-    We only keep events with the starters for a given game.
+    We take the `preprocessed` NBA player data (which is baller2vec's output after transforming NBA-Player-Movements
+    data), and create `processed` data by adding some additional steps.
 
-    An incomplete list of steps along the way:
-        1. Filter out all plays where we don't have the focal team starters.
+    An incomplete list of our processing steps are:
+        1. Filter out all events (plays) where we don't have the focal team starters for the ENTIRE event (play).
         2. Run a preprocessing step to assign all available players in the game
         to position idxs.  The focal team starters are given indices [0,1,2,3,4], and the
         opponents are given indices [5,6,7,8,9] by mapping their positions to an index.
@@ -267,11 +299,12 @@ def load_basketball_data_from_single_game_file(
                 verbose=verbose,
             )
 
-            ### Filter out events that don't have all 5 TOR starters
+            ### Filter out events that don't have all 5 focal team starters
             current_player_names = set(event.player_names)
             has_focal_team_starters = focal_team_starters_for_this_game.issubset(
                 current_player_names
             )
+
             if not has_focal_team_starters:
                 n_events_without_focal_team_starters += 1
                 continue
@@ -377,17 +410,38 @@ def load_basketball_data_from_single_game_file(
         events_mutated, sampling_rate_Hz
     )
 
-    moments_filtered = [moment for event in events_filtered_and_mutated for moment in event.moments]
-    player_coords_unnormalized = player_coords_from_moments(moments_filtered)
-    ball_coords_unnormalized = ball_coords_from_moments(moments_filtered)
+    # TODO: The `remove_events_with_player_substitution` function performs a second filtering.
+    # Combine this with the first filtering, above, which extracts
+    # events that have the focal team as starters in the first moment.
+    # The aligning would be advantageous to reduce the complexity of the operations
+    # (filtering -> mutating -> another, related filtering).
+    # I think ideally we'd reduce the size of the huge try/catch above, and have separate functions
+    # that each iterate through events and perform a fixed operation.
 
-    example_stop_idxs = get_example_stop_idxs(events_filtered_and_mutated, sampling_rate_Hz)
-    play_start_stop_idxs = get_play_start_stop_idxs(events_filtered_and_mutated)
+    events_processed = remove_events_with_player_substitutions(events_filtered_and_mutated)
+    moments_processed = [moment for event in events_processed for moment in event.moments]
+    player_coords_unnormalized = player_coords_from_moments(moments_processed)
+    ball_coords_unnormalized = ball_coords_from_moments(moments_processed)
+    player_names = player_names_from_moments(moments_processed, player_data)
+
+    if (
+        not len(player_names)
+        == len(moments_processed)
+        == len(player_coords_unnormalized)
+        == len(ball_coords_unnormalized)
+    ):
+        raise ValueError(
+            "Somehow the number of player names, player coords, ball coords, and moments don't match.  Check implementation."
+        )
+
+    example_stop_idxs = get_example_stop_idxs(events_processed, sampling_rate_Hz)
+    play_start_stop_idxs = get_play_start_stop_idxs(events_processed)
 
     return BasketballData(
-        events_filtered_and_mutated,
+        events_processed,
         player_coords_unnormalized,
         ball_coords_unnormalized,
+        player_names,
         play_start_stop_idxs,
         example_stop_idxs,
         player_data,
@@ -433,14 +487,13 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     # RK: The games have already been constructed as Basketball Data; so we just need to concatentate
     # everything.
     sampling_rate_Hz = games[0].sampling_rate_Hz
-    events = get_flattened_events_from_games(games)
-    events_filtered = clean_events_of_moments_with_too_small_intervals(events, sampling_rate_Hz)
-    moments_filtered = [moment for event in events_filtered for moment in event.moments]
-    player_coords_unnormalized = player_coords_from_moments(moments_filtered)
-    ball_coords_unnormalized = ball_coords_from_moments(moments_filtered)
-
-    example_stop_idxs = get_example_stop_idxs(events_filtered, sampling_rate_Hz)
-    play_start_stop_idxs = get_play_start_stop_idxs(events_filtered)
+    events_flattened = get_flattened_events_from_games(games)
+    moments_flattened = [moment for event in events_flattened for moment in event.moments]
+    player_coords_unnormalized = player_coords_from_moments(moments_flattened)
+    ball_coords_unnormalized = ball_coords_from_moments(moments_flattened)
+    player_names = flatten_list_of_lists([game.player_names for game in games])
+    example_stop_idxs = get_example_stop_idxs(events_flattened, sampling_rate_Hz)
+    play_start_stop_idxs = get_play_start_stop_idxs(events_flattened)
 
     # TODO: I think that the player_data will be the same for all games, by upstream construction.
     # But we should handle this more carefully. E.g. we could just check it here and raise an error
@@ -450,9 +503,10 @@ def make_basketball_data_from_games(games: List[BasketballData]):
         f"From {len(player_coords_unnormalized)} timesteps, there are {len(play_start_stop_idxs)} provided events (plays) and {len(example_stop_idxs)} inferred events (examples)."
     )
     return BasketballData(
-        events,
+        events_flattened,
         player_coords_unnormalized,
         ball_coords_unnormalized,
+        player_names,
         play_start_stop_idxs,
         example_stop_idxs,
         player_data_from_all_games,

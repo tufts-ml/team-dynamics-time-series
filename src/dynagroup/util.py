@@ -271,6 +271,24 @@ def construct_a_new_list_after_removing_multiple_items(
     return [item for index, item in enumerate(orig_list) if index not in indices_to_remove]
 
 
+def are_lists_identical(list_of_lists):
+    # Check if the list_of_lists is empty
+    if not list_of_lists:
+        return True  # Empty lists are considered identical
+
+    # Compare each list to the first list
+    first_list = list_of_lists[0]
+    for other_list in list_of_lists[1:]:
+        if first_list != other_list:
+            return False
+
+    return True
+
+
+def flatten_list_of_lists(list_of_lists):
+    return [item for sublist in list_of_lists for item in sublist]
+
+
 ###
 # Datetime
 ###

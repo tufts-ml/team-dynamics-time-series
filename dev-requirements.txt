@@ -10,4 +10,5 @@ pytest
 pytest-cov
 pytest-watch
 pre-commit
+ruptures
 black; python_version >= '3.8'

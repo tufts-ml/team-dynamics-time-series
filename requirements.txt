@@ -1,18 +1,3 @@
-numpy
-statsmodels 
-scipy
-
-seaborn 
-matplotlib
-
-jax 
-jaxlib #jax requires jaxlib 
-jax_dataclasses
-
-tensorflow_probability
-dynamax
-
-pomegranate # just for Gaussian mixture models with sample weights (used to initialize vonMises AR-HMM)
 
 cython # for Linderman's ssm package 
 
@@ -22,3 +7,23 @@ cython # for Linderman's ssm package
 # requires that the below is installed manually.
 #
 # -e git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm 
+
+pomegranate # just for Gaussian mixture models with sample weights (used to initialize vonMises AR-HMM)
+
+numpy
+statsmodels 
+scipy
+
+seaborn 
+matplotlib
+
+prettyprinter
+requests 
+bs4
+
+jax 
+jaxlib #jax requires jaxlib 
+jax_dataclasses
+
+tensorflow_probability
+dynamax

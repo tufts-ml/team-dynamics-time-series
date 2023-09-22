@@ -45,6 +45,10 @@ from dynagroup.params import (
     ordinary_ETP_MetaSwitch_from_ETP_MetaSwitch_with_unconstrained_tpms,
     ordinary_STP_from_STP_with_unconstrained_tpms,
 )
+from dynagroup.sample_weights import (
+    make_sample_weights_which_mask_the_initial_timestep_for_each_event,
+)
+
 from dynagroup.sticky import (
     evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant,
 )
@@ -585,7 +589,6 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 # Run M-steps
 ###
 
-
 def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     VEZ_expected_regimes: JaxNumpyArray3D,
     continuous_states: JaxNumpyArray3D,
@@ -610,24 +613,16 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step.
     """
-    # Upfront
+    ### Upfront computations 
+    D = np.shape(continuous_states)[2]
     T, J, K = np.shape(VEZ_expected_regimes)
-    if use_continuous_states is None:
-        use_continuous_states = np.full((T, J), True)
-
-    # Preprocess based on the possible existence of event segmentation times
-    times_to_use = slice(None)
-    if not only_one_example(example_end_times, T):
-        times_to_use = get_non_initialization_times(example_end_times)
-
-    VEZ_expected_regimes_to_use = VEZ_expected_regimes[times_to_use]
-    continuous_states_to_use = continuous_states[times_to_use]
-    use_continuous_states_to_use = (
-        use_continuous_states[times_to_use] if use_continuous_states is not None else None
+   
+    ### Make sample weights (as a combo of `use_continuous_states`` and `example_end_times`).  Shape is (T,J)
+    sample_weights = make_sample_weights_which_mask_the_initial_timestep_for_each_event(
+        continuous_states,
+        example_end_times,
+        use_continuous_states,
     )
-
-    # Run the closed-form M-step.
-    D = np.shape(continuous_states_to_use)[2]
 
     As = np.zeros((J, K, D, D))
     bs = np.zeros((J, K, D))
@@ -635,31 +630,28 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
 
     MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 3.0
     for j in range(J):
-        xs = np.asarray(continuous_states_to_use[:, j, :])
+        xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):
-            weights = np.asarray(
-                VEZ_expected_regimes_to_use[:, j, k] * use_continuous_states_to_use[:, j]
-            )[
-                1:
-            ]  # (T-1)xJxK
-            sum_of_observation_weights = np.sum(weights)
-            if sum_of_observation_weights >= MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS:
+            response_weights = np.asarray(VEZ_expected_regimes[:, j, k] * sample_weights[:, j])[1:] 
+            sum_of_response_weights = np.sum(response_weights)
+            if sum_of_response_weights >= MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS:
                 responses = xs[1:]
                 predictors = add_constant(xs[:-1], prepend=False)
-                wls_model = WLS(responses, predictors, hasconst=True, weights=weights)
+                wls_model = WLS(responses, predictors, hasconst=True, weights=response_weights)
                 results = wls_model.fit()
                 # WLS returns parameters where the d-th column gives the weights for predicting d-th element of response vector.
                 # So we need to transpose to get a state transition matrix
                 As[j, k] = results.params[:-1].T
                 bs[j, k] = results.params[-1]
                 residuals = results.resid
-                # CONFIRM: I need a weighted estimate of covarince if I already used weights to create the wls model.
-                Qs[j, k] = np.cov(residuals.T, aweights=weights)
+                # CONFIRM: I need a weighted estimate of covariance if I already used weights to create the wls model.
+                Qs[j, k] = np.cov(residuals.T, aweights=response_weights)
             else:
                 print(
-                    f"\tState {k} for entity {j} has a summed observation weights of {sum_of_observation_weights:.02f} "
+                    f"\tState {k} for entity {j} has a summed response weights of {sum_of_response_weights:.02f} "
                     "which is insufficient for updating the CSP parameters."
                 )
+
     return ContinuousStateParameters_Gaussian_JAX(jnp.asarray(As), jnp.asarray(bs), jnp.asarray(Qs))
 
 

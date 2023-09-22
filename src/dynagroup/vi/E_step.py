@@ -271,6 +271,40 @@ def compute_log_entity_emissions_JAX(
     IP: InitializationParameters_JAX,
     continuous_states: JaxNumpyArray3D,
     model: Model,
+    example_end_times: Optional[NumpyArray1D] = None,
+):
+    """
+    Arguments:
+        example_end_times: optional, has shape (E+1,)
+            An `event` takes an ordinary sampled group time series of shape (T,J,:) and interprets it as (T_grand,J,:),
+            where T_grand is the sum of the number of timesteps across i.i.d "events".  An event might induce a large
+            time gap between timesteps, and a discontinuity in the continuous states x.
+
+            If there are E events, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th eveent ended.
+            So to get the timesteps for the e-th event, you can index from 1,…,T_grand by doing
+                    [end_times[e-1]+1 : end_times[e]].
+    """
+    if example_end_times is None:
+        T = len(continuous_states)
+        example_end_times = np.array([-1, T])
+
+    ### Compute log emissions assuming a single example.
+    log_entity_emissions = compute_log_entity_emissions_JAX__assuming_single_example(
+            CSP, IP, continuous_states, model
+    )
+
+    ### Patch emissions if there are separate examples.
+    return fix__log_emissions_from_entities__at_example_boundaries(
+            log_entity_emissions, continuous_states, IP, model, example_end_times
+        )    
+
+
+def compute_log_entity_emissions_JAX__assuming_single_example(
+    CSP: ContinuousStateParameters_JAX,
+    IP: InitializationParameters_JAX,
+    continuous_states: JaxNumpyArray3D,
+    model: Model,
 ):
     f"""
     Compute the log (autoregressive, switching) emissions for the continuous states, where we we must combine:
@@ -343,6 +377,15 @@ def run_VEZ_step_JAX(
         D: dimension of continuous states
     """
 
+    # log_emissions_from_entities  has shape (T,J,K)
+    log_emissions_from_entities = compute_log_entity_emissions_JAX(
+        CSP,
+        IP,
+        continuous_states,
+        model,
+        example_end_times, 
+    )
+
     # `transitions` has shape (T-1,J,K,K)
     log_entity_transitions_expected = (
         compute_expected_log_entity_transition_probability_matrices_wrt_system_regimes_JAX(
@@ -362,23 +405,10 @@ def run_VEZ_step_JAX(
     # But when I initialized q(z) uniformly, I got some sums very far from 1.  There may be an
     # overflow/underflow issue.
 
-    # TODO: Below this is where I left off.  It's copy pasta'd!
-
-    # log_emissions_from_entities  has shape (T,J,K)
-    log_emissions_from_entities = compute_log_entity_emissions_JAX(
-        CSP,
-        IP,
-        continuous_states,
-        model,
-    )
-
     log_entity_transitions_expected = fix_log_entity_transitions_at_example_boundaries(
         log_entity_transitions_expected,
         IP,
         example_end_times,
-    )
-    log_emissions_from_entities = fix__log_emissions_from_entities__at_example_boundaries(
-        log_emissions_from_entities, continuous_states, IP, model, example_end_times
     )
     return compute_hmm_posterior_summaries_JAX(
         log_entity_transitions_expected, log_emissions_from_entities, IP.pi_entities

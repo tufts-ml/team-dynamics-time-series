@@ -69,6 +69,7 @@ model_adjustment = None  # Options: None, "one_system_regime"
 
 # Initialization
 animate_initialization = False
+make_verbose_initialization_plots = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -169,6 +170,8 @@ results_init = smart_initialize_model_2a(
     system_covariates,
     use_continuous_states,
     save_dir * save_plots_of_initialization_diagnostics,
+    verbose = True, 
+    plotbose = make_verbose_initialization_plots,
 )
 params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[

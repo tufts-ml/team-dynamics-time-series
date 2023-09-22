@@ -301,9 +301,9 @@ def compute_log_continuous_state_emissions_NUMPY(
             log_emissions[0, j, k] = mvn(mu_0, Sigma_0).logpdf(continuous_states[0, j])
 
     # TODO: This triple-looping is kind of slow.  Vectorize?  I miss Julia. Sigh.
-    for t in range(1, T):
-        for j in range(J):
-            for k in range(K):
+    for j in range(J):
+        for k in range(K):
+            for t in range(1, T):
                 # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
                 mu_t = CSP.As[j, k] @ continuous_states[t - 1, j] + CSP.bs[j, k]
                 Sigma_t = CSP.Qs[j, k]

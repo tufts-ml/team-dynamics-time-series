@@ -51,7 +51,7 @@ def make_data_free_preinitialization_of_IP_JAX(
 ###
 
 
-def fit_ARHMM_to_bottom_half_of_model(
+def fit_rARHMM_to_bottom_half_of_model(
     team_angles: Union[NumpyArray2D, JaxNumpyArray2D],
     num_regimes: int,
     num_EM_iterations: int,
@@ -291,7 +291,7 @@ def smart_initialize_model_2a_for_circles(
     # Fit Bottom-level HMM
     ###
 
-    results_bottom = fit_ARHMM_to_bottom_half_of_model(
+    results_bottom = fit_rARHMM_to_bottom_half_of_model(
         group_angles,
         DIMS.K,
         bottom_half_num_EM_iterations,

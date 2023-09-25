@@ -1,20 +1,17 @@
 import warnings
 from enum import Enum
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Tuple, Union
 
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
-import sklearn 
+import sklearn
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 
 from dynagroup.diagnostics.kmeans import plot_kmeans_on_2d_data
 from dynagroup.diagnostics.steps_in_state import plot_steps_assigned_to_state
-from dynagroup.examples import (
-    example_end_times_are_proper,
-    only_one_example,
-)
+from dynagroup.examples import example_end_times_are_proper, only_one_example
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
@@ -48,10 +45,7 @@ from dynagroup.types import (
     NumpyArray3D,
 )
 from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step import (
-    run_VES_step_JAX,
-    run_VEZ_step_JAX
-)
+from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggle_Value,
     run_M_step_for_CSP_in_closed_form__Gaussian_case,
@@ -172,7 +166,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     save_dir: Optional[str] = None,
     verbose: bool = True,
-    plotbose: bool = False, 
+    plotbose: bool = False,
 ) -> Tuple[ContinuousStateParameters_Gaussian_JAX, sklearn.cluster._kmeans.KMeans]:
     """
     We assign the continuous_states to K regimes by applying k-means to either the locations (values)
@@ -219,7 +213,9 @@ def make_kmeans_preinitialization_of_CSP_JAX(
         weights_for_kmeans = sample_weights
     elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
         data_for_kmeans = continuous_state_diffs
-        weights_for_kmeans = sample_weights[1:, :] # if response is initial time step for event, then give the pair of obs zero weight.
+        weights_for_kmeans = sample_weights[
+            1:, :
+        ]  # if response is initial time step for event, then give the pair of obs zero weight.
     else:
         raise ValueError(
             f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
@@ -250,18 +246,15 @@ def make_kmeans_preinitialization_of_CSP_JAX(
 
     # TODO: Parallelize this for speed
     for j in range(J):
-        predictors_j = continuous_states[:-1, j, :]
-        outcomes_j = continuous_states[1:, j, :]
-        #tied_residuals_j = np.zeros((0, D))
         for k in range(K):
             ### find which samples to use
             # we only use samples which are in the cluster currently under consideration IF they got weighted
             # non-zero in the k-means calculation
             samples_are_in_cluster_jk = kms[j].labels_ == k
-            bools_use_pair_for_cluster_jk = samples_are_in_cluster_jk * weights_for_kmeans[:,j]
-            
+            bools_use_pair_for_cluster_jk = samples_are_in_cluster_jk * weights_for_kmeans[:, j]
+
             if strategy == PreInitialization_Strategy_For_CSP.LOCATION:
-                outcome_indices_jk = np.where(bools_use_pair_for_cluster_jk)[0] 
+                outcome_indices_jk = np.where(bools_use_pair_for_cluster_jk)[0]
                 predictor_indices_jk = outcome_indices_jk - 1
             elif strategy == PreInitialization_Strategy_For_CSP.DERIVATIVE:
                 outcome_indices_jk = np.where(bools_use_pair_for_cluster_jk)[0] + 1
@@ -271,8 +264,8 @@ def make_kmeans_preinitialization_of_CSP_JAX(
                     f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
                 )
 
-            outcomes_jk = continuous_states[outcome_indices_jk,j,:]
-            predictors_jk = continuous_states[predictor_indices_jk,j,:]
+            outcomes_jk = continuous_states[outcome_indices_jk, j, :]
+            predictors_jk = continuous_states[predictor_indices_jk, j, :]
             if plotbose:
                 plot_steps_assigned_to_state(outcomes_jk, predictors_jk, j, k, save_dir)
 
@@ -283,10 +276,9 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             bs[j, k] = lr.intercept_
             expectations_jk = (As[j, k] @ predictors_jk.T).T + bs[j, k]
             residuals_jk = outcomes_jk - expectations_jk
-            #tied_residuals_j = np.concatenate((tied_residuals_j, residuals_jk))
+            # tied_residuals_j = np.concatenate((tied_residuals_j, residuals_jk))
             Qs[j, k] = np.cov(residuals_jk, rowvar=False)
 
-    
     As = jnp.asarray(As)
     bs = jnp.asarray(bs)
     Qs = jnp.asarray(Qs)
@@ -352,8 +344,8 @@ def fit_rARHMM_to_bottom_half_of_model(
         # E-step
         ###
 
-        VES_expected_regimes__uniform=np.ones((T,L))/L 
-        EZ_summaries=run_VEZ_step_JAX(
+        VES_expected_regimes__uniform = np.ones((T, L)) / L
+        EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,
             ETP_JAX,
             IP_JAX,
@@ -361,7 +353,7 @@ def fit_rARHMM_to_bottom_half_of_model(
             VES_expected_regimes__uniform,
             model,
             example_end_times,
-        ) 
+        )
 
         for j in range(J):
             record_of_most_likely_states[:, j, i] = np.argmax(
@@ -391,9 +383,12 @@ def fit_rARHMM_to_bottom_half_of_model(
 
             ###
             # M-step (for CSP)
-            ###            
+            ###
             CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
-                EZ_summaries.expected_regimes, continuous_states, example_end_times
+                EZ_summaries.expected_regimes,
+                continuous_states,
+                example_end_times,
+                use_continuous_states,
             )
 
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
@@ -528,7 +523,7 @@ def smart_initialize_model_2a(
     save_dir: Optional[str] = None,
     params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
-    plotbose: bool = False, 
+    plotbose: bool = False,
 ) -> InitializationResults:
     """
     Arguments:
@@ -551,7 +546,7 @@ def smart_initialize_model_2a(
 
         params_frozen: Typically this will be None.  However, non-None values can be useful
             for test set inference, when we need to run the E-step on the (context) portion of new data.
-        
+
         plotbose: plot version of verbose.  Currently this just toggles whether or not we create the expensive
             set of plots where we show the steps (discrete derivatives) assigned to each entity state.
 
@@ -602,8 +597,8 @@ def smart_initialize_model_2a(
             example_end_times,
             use_continuous_states,
             save_dir,
-            verbose, 
-            plotbose, 
+            verbose,
+            plotbose,
         )
         # TODO: Support fixed or random draws from prior.
         ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)

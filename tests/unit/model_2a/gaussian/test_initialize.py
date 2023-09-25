@@ -229,7 +229,12 @@ def test_that_gaussian_initialization_diversely_assigns_entity_states_to_basketb
         assert _l1_distance_of_counts_from_uniform(counts_labels_post_E_step) <= THRESHOLD_l1_distance_of_counts_from_uniform
 
         ### ... according to M-step using the E-step probabilities
-        labels_emiss__post_M_step=np.array(np.argmax(log_entity_emissions__post_M_step[1:,j,:],1))
-        counts_emiss__post_M_step=Counter(labels_emiss__post_M_step)
-        print(f"Counts post-M-step: {counts_emiss__post_M_step}")
-        assert _l1_distance_of_counts_from_uniform(counts_emiss__post_M_step) <= THRESHOLD_l1_distance_of_counts_from_uniform
+        labels_post_M_step=np.array(np.argmax(log_entity_emissions__post_M_step[1:,j,:],1))
+        counts_post_M_step=Counter(labels_post_M_step)
+        print(f"Counts post-M-step: {counts_post_M_step}")
+        assert _l1_distance_of_counts_from_uniform(counts_post_M_step) <= THRESHOLD_l1_distance_of_counts_from_uniform
+
+        # TODO: In addition to checking that we don't have the "disappearing cluster" problem, check that assignments are internally
+        # consistent.  That is, if we compute the discrete derivatives from previous continuous_state to the one assigned to cluster k,
+        # we get things that look reasonable.   Find a way to do this quantitatively, e.g. perhaps using an anomaly score after
+        # applying a simple model to the cluster-specific derivatives.

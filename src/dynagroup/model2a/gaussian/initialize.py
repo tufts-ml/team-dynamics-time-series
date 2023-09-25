@@ -105,7 +105,7 @@ def make_data_free_preinitialization_of_STP_JAX(
 
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
-    Pi = jnp.asarray(tpm)
+    Pi = jnp.log(tpm)
 
     if method_for_Upsilon == "rnorm":
         Upsilon = jr.normal(key, (L, M_s))

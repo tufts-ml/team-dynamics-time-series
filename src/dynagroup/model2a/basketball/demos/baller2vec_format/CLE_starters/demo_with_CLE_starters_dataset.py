@@ -1,6 +1,9 @@
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.diagnostics.steps_in_state import (
+    plot_steps_within_examples_assigned_to_each_entity_state,
+)
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
@@ -170,14 +173,13 @@ results_init = smart_initialize_model_2a(
     system_covariates,
     use_continuous_states,
     save_dir * save_plots_of_initialization_diagnostics,
-    verbose = True, 
-    plotbose = make_verbose_initialization_plots,
+    verbose=True,
+    plotbose=make_verbose_initialization_plots,
 )
 params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
     :, :, -1
 ]  # TxJ
-
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -188,6 +190,18 @@ elbo_init = compute_elbo_from_initialization_results(
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
+
+if make_verbose_initialization_plots:
+    plot_steps_within_examples_assigned_to_each_entity_state(
+        continuous_states=jnp.asarray(DATA_TRAIN.player_coords),
+        continuous_state_labels=results_init.record_of_most_likely_entity_states[:, :, -1],
+        example_end_times=DATA_TRAIN.example_stop_idxs,
+        use_continuous_states=None,
+        K=DIMS.K,
+        save_dir=save_dir,
+        show_plot=False,
+        basename_prefix="post_init",
+    )
 
 
 ###

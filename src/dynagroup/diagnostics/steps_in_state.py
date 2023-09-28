@@ -127,7 +127,7 @@ def get_entity_data_within_examples_and_assigned_to_entity_state(
         responses_jk = np.array(continuous_states[timesteps_assigned_to_jk, j])
         predictors_jk = np.array(continuous_states[timesteps_assigned_to_jk - 1, j])
     else:
-        responses_jk, predictors_jk = [], []
+        responses_jk, predictors_jk = np.array([]), np.array([])
     return EntityDataInState(responses_jk, predictors_jk)
 
 
@@ -185,3 +185,51 @@ def plot_steps_within_examples_assigned_to_each_entity_state(
                 show_plot,
                 basename_prefix,
             )
+
+
+def get_mean_discrete_derivatives_for_each_entity_state(
+    continuous_states: NumpyArray3D,
+    continuous_state_labels: NumpyArray2D,
+    example_end_times: Optional[NumpyArray1D],
+    use_continuous_states: Optional[NumpyArray2D],
+    K: int,
+):
+    """
+    Arguments:
+        continuous_states: has shape (T,J,D)
+        continuous_state_labels:  has shape (T,J).
+            Gives a label to the continuous state for each (t,j).
+        example_end_times: optional, has shape (E+1,)
+            Provides `example` boundaries, which allows us to interpret a time series of shape (T,J,:)
+            as (T_grand,J,:), where T_grand is the sum of the number of timesteps across i.i.d "examples".
+            An example boundary might be induced by a large time gap between timesteps, and/or a discontinuity in the continuous states x.
+
+            If there are E examples, then along with the observations, we store
+                end_times=[-1, t_1, …, t_E], where t_e is the timestep at which the e-th example ended.
+            So to get the timesteps for the e-th example, you can index from 1,…,T_grand by doing
+                    [end_times[e-1]+1 : end_times[e]].
+
+        use_continuous_states: If None, we assume all states should be utilized in inference.
+            Otherwise, this is a (T,J) boolean vector such that
+            the (t,j)-th element  is True if continuous_states[t,j] should be utilized
+            and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
+            that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
+            We leave the VEZ steps as is, though.
+        K: number of possible labels
+    """
+
+    _, J, D = np.shape(continuous_states)
+    mean_steps_in_state = np.zeros((J, K, D))
+    for j in range(J):
+        for k in range(K):
+            entity_data_in_state = get_entity_data_within_examples_and_assigned_to_entity_state(
+                continuous_states,
+                continuous_state_labels,
+                example_end_times,
+                use_continuous_states,
+                j,
+                k,
+            )
+            diffs_jk = entity_data_in_state.responses_jk - entity_data_in_state.predictors_jk
+            mean_steps_in_state[j, k] = np.mean(diffs_jk, 0)
+    return mean_steps_in_state

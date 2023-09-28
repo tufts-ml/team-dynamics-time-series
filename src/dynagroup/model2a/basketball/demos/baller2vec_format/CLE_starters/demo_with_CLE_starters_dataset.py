@@ -80,6 +80,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 
 # Inference
 n_cavi_iterations = 1
+make_verbose_CAVI_plots = True
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -134,9 +135,7 @@ if animate_raw_data:
     for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(
-    DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir
-)
+plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir)
 
 
 ###
@@ -177,9 +176,7 @@ results_init = smart_initialize_model_2a(
     plotbose=make_verbose_initialization_plots,
 )
 params_init = results_init.params
-most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
-    :, :, -1
-]  # TxJ
+most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[:, :, -1]  # TxJ
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -244,6 +241,18 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     system_covariates,
     use_continuous_states,
 )
+
+if make_verbose_CAVI_plots:
+    plot_steps_within_examples_assigned_to_each_entity_state(
+        continuous_states=jnp.asarray(DATA_TRAIN.player_coords),
+        continuous_state_labels=np.array(np.argmax(VEZ_summaries.expected_regimes, 2), dtype=int),
+        example_end_times=DATA_TRAIN.example_stop_idxs,
+        use_continuous_states=None,
+        K=DIMS.K,
+        save_dir=save_dir,
+        show_plot=False,
+        basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
+    )
 
 
 ###

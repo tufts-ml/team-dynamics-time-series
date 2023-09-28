@@ -217,9 +217,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             1:, :
         ]  # if response is initial time step for event, then give the pair of obs zero weight.
     else:
-        raise ValueError(
-            f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
-        )
+        raise ValueError(f"I don't understand the requested preinitialization strategy for CSP, {strategy}.")
 
     kms = [None] * J
     for j in range(J):
@@ -260,16 +258,12 @@ def make_kmeans_preinitialization_of_CSP_JAX(
                 outcome_indices_jk = np.where(bools_use_pair_for_cluster_jk)[0] + 1
                 predictor_indices_jk = outcome_indices_jk - 1
             else:
-                raise ValueError(
-                    f"I don't understand the requested preinitialization strategy for CSP, {strategy}."
-                )
+                raise ValueError(f"I don't understand the requested preinitialization strategy for CSP, {strategy}.")
 
             outcomes_jk = continuous_states[outcome_indices_jk, j, :]
             predictors_jk = continuous_states[predictor_indices_jk, j, :]
             if plotbose:
-                plot_steps_assigned_to_state(
-                    outcomes_jk, predictors_jk, j, k, save_dir, basename_prefix="init_kmeans"
-                )
+                plot_steps_assigned_to_state(outcomes_jk, predictors_jk, j, k, save_dir, basename_prefix="init_kmeans")
 
             ### run vector autoregression
             lr = LinearRegression(fit_intercept=True)
@@ -333,14 +327,12 @@ def fit_rARHMM_to_bottom_half_of_model(
     T = len(continuous_states)
     J, L, K, _ = np.shape(ETP_JAX.Ps)
 
-    record_of_most_likely_states = np.zeros((T, J, num_EM_iterations))
+    record_of_most_likely_states = np.zeros((T, J, num_EM_iterations), dtype=int)
 
     print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
     for i in range(num_EM_iterations):
         if verbose:
-            print(
-                f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a."
-            )
+            print(f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a.")
 
         ###
         # E-step
@@ -358,8 +350,8 @@ def fit_rARHMM_to_bottom_half_of_model(
         )
 
         for j in range(J):
-            record_of_most_likely_states[:, j, i] = np.argmax(
-                EZ_summaries.expected_regimes[:, j, :], axis=1
+            record_of_most_likely_states[:, j, i] = np.array(
+                np.argmax(EZ_summaries.expected_regimes[:, j, :], axis=1), dtype=int
             )
 
         ###
@@ -379,9 +371,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 example_end_times,
             )
             Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
-            ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(
-                ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new
-            )
+            ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
 
             ###
             # M-step (for CSP)
@@ -437,9 +427,7 @@ def fit_ARHMM_to_top_half_of_model(
 
     for iteration in range(num_EM_iterations):
         if verbose:
-            print(
-                f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
-            )
+            print(f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a.")
 
         ###
         # E-step
@@ -458,7 +446,7 @@ def fit_ARHMM_to_top_half_of_model(
             use_continuous_states=use_continuous_states,
         )
 
-        record_of_most_likely_states[:, iteration] = np.argmax(ES_summary.expected_regimes, axis=1)
+        record_of_most_likely_states[:, iteration] = np.array(np.argmax(ES_summary.expected_regimes, axis=1), dtype=int)
 
         ###
         # M-step

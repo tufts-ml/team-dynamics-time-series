@@ -133,7 +133,6 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     """
 
     # TODO: Rewrite this function so it builds off `forecasts` module.
-
     ###
     # Constants
     ###
@@ -208,19 +207,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             Y_LIM_COURT,
             save_dir,
             figsize=figsize,
-            title_prefix="truth_for_forward_sim_clip",
-        )
-
-        plot_trajectory_slice(
-            unnormalize_coords(continuous_states[:, j]),
-            t_0_posterior_mean,
-            max_posterior_mean_window,
-            j,
-            X_LIM_COURT,
-            Y_LIM_COURT,
-            save_dir,
-            figsize=figsize,
-            title_prefix="truth_for_posterior_mean_clip",
+            title_prefix="truth_for_clip",
         )
 
         ###
@@ -280,10 +267,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             filename_prefix,
             DIMS.L,
         )
-        fig.savefig(
-            save_dir
-            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf"
-        )
+        fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf")
 
         ###
         # Compute forward simulations (useful for evaluating partial forecasts)
@@ -307,20 +291,12 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # A good model would be able to predict the above entity-level transitions in advance based
         # on all the continuous states, x_t^^{1:J}.
         fixed_init_continuous_states = np.tile(x_0_forward_sim, (DIMS.J, 1))
-        fixed_init_entity_regimes = np.argmax(
-            VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1
-        )
-        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[
-            t_0_forward_sim:t_end_forward_sim
-        ]
+        fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1)
+        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim:t_end_forward_sim]
 
-        had_masking = _had_masking_bool(
-            use_continuous_states, j, t_0_forward_sim, t_end_forward_sim
-        )
+        had_masking = _had_masking_bool(use_continuous_states, j, t_0_forward_sim, t_end_forward_sim)
 
-        warnings.warn(
-            "Forward simulations assume that there are NO system covariates. Is this correct?"
-        )
+        warnings.warn("Forward simulations assume that there are NO system covariates. Is this correct?")
         for s, forward_simulation_seed in enumerate(forward_simulation_seeds):
             print(
                 f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
@@ -342,9 +318,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
 
             # MSE
-            MSE_forward_sim = np.mean(
-                (ground_truth_forward_sim_unnorm - sample_ahead_xs_j_unnorm) ** 2
-            )
+            MSE_forward_sim = np.mean((ground_truth_forward_sim_unnorm - sample_ahead_xs_j_unnorm) ** 2)
             if had_masking:
                 MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
@@ -373,8 +347,14 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 alpha=0.25,
                 zorder=1,
             )
-            plt.ylim(Y_LIM_COURT)
-            plt.xlim(X_LIM_COURT)
+            plt.xlim(
+                np.min([X_LIM_COURT[0], np.min(sample_ahead_xs_j_unnorm[:, 0])]),
+                np.max([X_LIM_COURT[1], np.max(sample_ahead_xs_j_unnorm[:, 0])]),
+            )
+            plt.ylim(
+                np.min([Y_LIM_COURT[0], np.min(sample_ahead_xs_j_unnorm[:, 1])]),
+                np.max([Y_LIM_COURT[1], np.max(sample_ahead_xs_j_unnorm[:, 1])]),
+            )
             tag_forward_sim = _get_filename_tag(
                 use_continuous_states,
                 j,
@@ -393,9 +373,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # Compute velocity baseline
         ###
         # RK: We reuse the forward sim params for the velocity baseline
-        discrete_derivative = (
-            continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
-        )
+        discrete_derivative = continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
         velocity_baseline = np.zeros((T_slice_forward_sim, 2))
         velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
         for t in range(1, T_slice_forward_sim):
@@ -406,9 +384,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
 
         # MSE
-        MSE_velocity_baseline = np.mean(
-            (ground_truth_forward_sim_unnorm - velocity_baseline_unnorm) ** 2
-        )
+        MSE_velocity_baseline = np.mean((ground_truth_forward_sim_unnorm - velocity_baseline_unnorm) ** 2)
         if had_masking:
             MSEs_velocity_baseline[j] = MSE_velocity_baseline
 
@@ -432,8 +408,14 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             alpha=0.25,
             zorder=2,
         )
-        plt.ylim(Y_LIM_COURT)
-        plt.xlim(X_LIM_COURT)
+        plt.xlim(
+            np.min([X_LIM_COURT[0], np.min(velocity_baseline_unnorm[:, 0])]),
+            np.max([X_LIM_COURT[1], np.max(velocity_baseline_unnorm[:, 0])]),
+        )
+        plt.ylim(
+            np.min([Y_LIM_COURT[0], np.min(velocity_baseline_unnorm[:, 1])]),
+            np.max([Y_LIM_COURT[1], np.max(velocity_baseline_unnorm[:, 1])]),
+        )
 
         plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
         tag_velocity_baseline = _get_filename_tag(
@@ -445,8 +427,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             DIMS.L,
         )
         fig.savefig(
-            save_dir
-            + f"forecast_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+            save_dir + f"forecast_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
         )
 
     fig2 = plt.figure(figsize=(2, 6))

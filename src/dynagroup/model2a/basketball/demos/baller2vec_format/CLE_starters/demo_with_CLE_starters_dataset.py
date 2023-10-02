@@ -55,24 +55,26 @@ n_test_games = 5
 # Sampling rate
 sampling_rate_Hz = 5
 
-# Directories
-datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
-
-# Exploratory Data Analysis
-animate_raw_data = False
-save_plots_of_initialization_diagnostics = True
 
 # Model specification
 K = 10
 L = 5
 
+# Directories
+datetime_as_string = get_current_datetime_as_string()
+save_dir = f"results/basketball/analyses/CLE_training_with_L={L}_K={K}_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
+
+
 # Model adjustments
 model_adjustment = None  # Options: None, "one_system_regime"
+
+# Exploratory Data Analysis
+animate_raw_data = False
 
 # Initialization
 animate_initialization = False
 make_verbose_initialization_plots = True
+save_plots_of_initialization_diagnostics = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20

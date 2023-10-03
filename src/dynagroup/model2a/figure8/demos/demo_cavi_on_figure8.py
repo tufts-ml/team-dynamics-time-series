@@ -45,7 +45,10 @@ from dynagroup.plotting.entity_regime_changepoints import (
 )
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
-from dynagroup.util import normalize_log_potentials_by_axis
+from dynagroup.util import (
+    get_current_datetime_as_string,
+    normalize_log_potentials_by_axis,
+)
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
@@ -97,13 +100,15 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "results/fig8/analyses/RETRY_fig8_after_working_on_init_fix_for_basketball/"
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
 T_slice_for_forecasting = 70
 T_slice_for_old_forecasting = 70
 
+# Directories
+datetime_as_string = get_current_datetime_as_string()
+save_dir = f"results/fig8/analyses/RETRY_fig8_after_adding__use_continuous_states__argument_to_M_step_at_bottom_level_of_gaussian_init__{datetime_as_string}/"
 
 ###
 # PLOT SAMPLE

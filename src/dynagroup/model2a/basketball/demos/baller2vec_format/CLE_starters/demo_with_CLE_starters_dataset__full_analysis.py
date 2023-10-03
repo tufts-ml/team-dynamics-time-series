@@ -1,6 +1,9 @@
 import jax.numpy as jnp
 import numpy as np
 
+from dynagroup.diagnostics.steps_in_state import (
+    plot_steps_within_examples_assigned_to_each_entity_state,
+)
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
@@ -52,24 +55,26 @@ n_test_games = 5
 # Sampling rate
 sampling_rate_Hz = 5
 
-# Directories
-datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/DEVEL_CLE_training_with_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
-
-# Exploratory Data Analysis
-animate_raw_data = False
-save_plots_of_initialization_diagnostics = True
 
 # Model specification
 K = 10
 L = 5
 
+# Directories
+datetime_as_string = get_current_datetime_as_string()
+save_dir = f"results/basketball/analyses/CLE_training_with_L={L}_K={K}_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
+
+
 # Model adjustments
 model_adjustment = None  # Options: None, "one_system_regime"
+
+# Exploratory Data Analysis
+animate_raw_data = False
 
 # Initialization
 animate_initialization = False
 make_verbose_initialization_plots = True
+save_plots_of_initialization_diagnostics = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -77,6 +82,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 
 # Inference
 n_cavi_iterations = 1
+make_verbose_CAVI_plots = True
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -131,9 +137,7 @@ if animate_raw_data:
     for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(
-    DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir
-)
+plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir)
 
 
 ###
@@ -170,14 +174,11 @@ results_init = smart_initialize_model_2a(
     system_covariates,
     use_continuous_states,
     save_dir * save_plots_of_initialization_diagnostics,
-    verbose = True, 
-    plotbose = make_verbose_initialization_plots,
+    verbose=True,
+    plotbose=make_verbose_initialization_plots,
 )
 params_init = results_init.params
-most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[
-    :, :, -1
-]  # TxJ
-
+most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[:, :, -1]  # TxJ
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -188,6 +189,18 @@ elbo_init = compute_elbo_from_initialization_results(
     system_covariates,
 )
 print(f"ELBO after init: {elbo_init:.02f}")
+
+if make_verbose_initialization_plots:
+    plot_steps_within_examples_assigned_to_each_entity_state(
+        continuous_states=jnp.asarray(DATA_TRAIN.player_coords),
+        continuous_state_labels=results_init.record_of_most_likely_entity_states[:, :, -1],
+        example_end_times=DATA_TRAIN.example_stop_idxs,
+        use_continuous_states=None,
+        K=DIMS.K,
+        save_dir=save_dir,
+        show_plot=False,
+        basename_prefix="post_init",
+    )
 
 
 ###
@@ -230,6 +243,18 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
     system_covariates,
     use_continuous_states,
 )
+
+if make_verbose_CAVI_plots:
+    plot_steps_within_examples_assigned_to_each_entity_state(
+        continuous_states=jnp.asarray(DATA_TRAIN.player_coords),
+        continuous_state_labels=np.array(np.argmax(VEZ_summaries.expected_regimes, 2), dtype=int),
+        example_end_times=DATA_TRAIN.example_stop_idxs,
+        use_continuous_states=None,
+        K=DIMS.K,
+        save_dir=save_dir,
+        show_plot=False,
+        basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
+    )
 
 
 ###

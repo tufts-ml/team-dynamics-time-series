@@ -32,5 +32,6 @@ reports/*.toc
 data/basketball/baller2vec_format/preprocessed/CLE_starters/
 data/basketball/baller2vec_format/processed/
 
-
+#unit test outputs
+tests/outputs/
 

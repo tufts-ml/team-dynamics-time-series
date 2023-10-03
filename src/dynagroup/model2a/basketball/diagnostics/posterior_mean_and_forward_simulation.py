@@ -1,5 +1,6 @@
 import os
 import warnings
+from enum import Enum
 from typing import Callable, List, Optional, Tuple
 
 import matplotlib.image as mpimg
@@ -22,7 +23,7 @@ from dynagroup.model2a.basketball.court import (
 )
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 
 
 ###
@@ -34,6 +35,14 @@ from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 # so that I don't have to unnormalize all the time?!
 COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
 COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+
+
+###
+# STRUCTS
+###
+class ForecastType(Enum):
+    PARTIAL = 1
+    COMPLETE = 2
 
 
 ###
@@ -94,10 +103,12 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
+    forecast_type: ForecastType = ForecastType.PARTIAL,
 ) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     A helper function for write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice
@@ -131,8 +142,21 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
+    # TODO: Rewrite this function so it builds off the `forecasts` module, which has more up-to-date code.
+    # That code is better factored and returns nice objects for Forecasts, Forecast_MSEs, etc.
+    # This code also may have a bug such that the first timestep of fixed_velocity matches the truth,
+    # but the first timestep of forward_simulations does not.  Ideally, we would just destroy this code, and
+    # force all callers to use the new code.
 
-    # TODO: Rewrite this function so it builds off `forecasts` module.
+    # Another possible problme with this code: the system state and entity states
+    # knows what is happening in the future. See the error message below.  I think we CAN’T do complete forecasting
+    # using the old code, where we “pick up where we left off” in processing a long time series.
+    # Possibly this problem is handled though if we ablate all inputs (all entities) to the system state.
+    if forecast_type != ForecastType.PARTIAL:
+        raise ValueError(
+            f"We can't do complete forecasting with this strategy; the VES summary and VEZ summaries at timestep t use "
+            f"information from the future. "
+        )
 
     ###
     # Constants
@@ -208,19 +232,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             Y_LIM_COURT,
             save_dir,
             figsize=figsize,
-            title_prefix="truth_for_forward_sim_clip",
-        )
-
-        plot_trajectory_slice(
-            unnormalize_coords(continuous_states[:, j]),
-            t_0_posterior_mean,
-            max_posterior_mean_window,
-            j,
-            X_LIM_COURT,
-            Y_LIM_COURT,
-            save_dir,
-            figsize=figsize,
-            title_prefix="truth_for_posterior_mean_clip",
+            title_prefix="truth_for_clip",
         )
 
         ###
@@ -280,10 +292,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             filename_prefix,
             DIMS.L,
         )
-        fig.savefig(
-            save_dir
-            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf"
-        )
+        fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf")
 
         ###
         # Compute forward simulations (useful for evaluating partial forecasts)
@@ -307,34 +316,42 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # A good model would be able to predict the above entity-level transitions in advance based
         # on all the continuous states, x_t^^{1:J}.
         fixed_init_continuous_states = np.tile(x_0_forward_sim, (DIMS.J, 1))
-        fixed_init_entity_regimes = np.argmax(
-            VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1
-        )
-        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[
-            t_0_forward_sim:t_end_forward_sim
-        ]
+        fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1)
+        fixed_init_system_regime = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim]
+        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim:t_end_forward_sim]
 
-        had_masking = _had_masking_bool(
-            use_continuous_states, j, t_0_forward_sim, t_end_forward_sim
-        )
+        had_masking = _had_masking_bool(use_continuous_states, j, t_0_forward_sim, t_end_forward_sim)
 
-        warnings.warn(
-            "Forward simulations assume that there are NO system covariates. Is this correct?"
-        )
+        warnings.warn("Forward simulations assume that there are NO system covariates. Is this correct?")
         for s, forward_simulation_seed in enumerate(forward_simulation_seeds):
             print(
                 f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
             )
-            sample_ahead = sample_team_dynamics(
-                params,
-                T_slice_forward_sim,
-                model,
-                seed=forward_simulation_seed,
-                fixed_system_regimes=fixed_system_regimes,
-                fixed_init_entity_regimes=fixed_init_entity_regimes,
-                fixed_init_continuous_states=fixed_init_continuous_states,
-                system_covariates=None,
-            )
+
+            if forecast_type == ForecastType.PARTIAL:
+                sample_ahead = sample_team_dynamics(
+                    params,
+                    T_slice_forward_sim,
+                    model,
+                    seed=forward_simulation_seed,
+                    fixed_system_regimes=fixed_system_regimes,
+                    fixed_init_entity_regimes=fixed_init_entity_regimes,
+                    fixed_init_continuous_states=fixed_init_continuous_states,
+                    system_covariates=system_covariates,
+                )
+            elif forecast_type == ForecastType.COMPLETE:
+                sample_ahead = sample_team_dynamics(
+                    params,
+                    T_slice_forward_sim,
+                    model,
+                    seed=forward_simulation_seed,
+                    fixed_init_system_regime=fixed_init_system_regime,
+                    fixed_init_entity_regimes=fixed_init_entity_regimes,
+                    fixed_init_continuous_states=fixed_init_continuous_states,
+                    system_covariates=system_covariates,
+                )
+            else:
+                raise ValueError(f"I don't understand forecast type {forecast_type}.")
 
             # Unnorm
             sample_ahead_xs_j_unnorm = unnormalize_coords(sample_ahead.xs[:, j])
@@ -342,9 +359,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
 
             # MSE
-            MSE_forward_sim = np.mean(
-                (ground_truth_forward_sim_unnorm - sample_ahead_xs_j_unnorm) ** 2
-            )
+            MSE_forward_sim = np.mean((ground_truth_forward_sim_unnorm - sample_ahead_xs_j_unnorm) ** 2)
             if had_masking:
                 MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
@@ -373,8 +388,14 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 alpha=0.25,
                 zorder=1,
             )
-            plt.ylim(Y_LIM_COURT)
-            plt.xlim(X_LIM_COURT)
+            plt.xlim(
+                np.min([X_LIM_COURT[0], np.min(sample_ahead_xs_j_unnorm[:, 0])]),
+                np.max([X_LIM_COURT[1], np.max(sample_ahead_xs_j_unnorm[:, 0])]),
+            )
+            plt.ylim(
+                np.min([Y_LIM_COURT[0], np.min(sample_ahead_xs_j_unnorm[:, 1])]),
+                np.max([Y_LIM_COURT[1], np.max(sample_ahead_xs_j_unnorm[:, 1])]),
+            )
             tag_forward_sim = _get_filename_tag(
                 use_continuous_states,
                 j,
@@ -393,9 +414,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # Compute velocity baseline
         ###
         # RK: We reuse the forward sim params for the velocity baseline
-        discrete_derivative = (
-            continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
-        )
+        discrete_derivative = continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
         velocity_baseline = np.zeros((T_slice_forward_sim, 2))
         velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
         for t in range(1, T_slice_forward_sim):
@@ -406,9 +425,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         ground_truth_forward_sim_unnorm = unnormalize_coords(ground_truth_forward_sim)
 
         # MSE
-        MSE_velocity_baseline = np.mean(
-            (ground_truth_forward_sim_unnorm - velocity_baseline_unnorm) ** 2
-        )
+        MSE_velocity_baseline = np.mean((ground_truth_forward_sim_unnorm - velocity_baseline_unnorm) ** 2)
         if had_masking:
             MSEs_velocity_baseline[j] = MSE_velocity_baseline
 
@@ -432,8 +449,14 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             alpha=0.25,
             zorder=2,
         )
-        plt.ylim(Y_LIM_COURT)
-        plt.xlim(X_LIM_COURT)
+        plt.xlim(
+            np.min([X_LIM_COURT[0], np.min(velocity_baseline_unnorm[:, 0])]),
+            np.max([X_LIM_COURT[1], np.max(velocity_baseline_unnorm[:, 0])]),
+        )
+        plt.ylim(
+            np.min([Y_LIM_COURT[0], np.min(velocity_baseline_unnorm[:, 1])]),
+            np.max([Y_LIM_COURT[1], np.max(velocity_baseline_unnorm[:, 1])]),
+        )
 
         plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
         tag_velocity_baseline = _get_filename_tag(
@@ -445,8 +468,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             DIMS.L,
         )
         fig.savefig(
-            save_dir
-            + f"forecast_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+            save_dir + f"forecast_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
         )
 
     fig2 = plt.figure(figsize=(2, 6))
@@ -470,11 +492,13 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
+    forecast_type: ForecastType = ForecastType.PARTIAL,
 ) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     By posterior mean and forward simulation, we mean:
@@ -527,10 +551,12 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         entity_idxs,
         find_forward_sim_t0_for_entity_sample,
         max_forward_sim_window,
+        system_covariates,
         find_posterior_mean_t0_for_entity_sample,
         max_posterior_mean_window,
         filename_prefix,
         figsize,
+        forecast_type,
     )
 
     MMSE_posterior_mean = np.mean(MSEs_posterior_mean)

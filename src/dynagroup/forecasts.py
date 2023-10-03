@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as npr
 from jax import vmap
@@ -10,7 +12,13 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
 )
 from dynagroup.model import Model
-from dynagroup.model2a.basketball.court import unnormalize_coords
+from dynagroup.model2a.basketball.court import (
+    X_MAX_COURT,
+    X_MIN_COURT,
+    Y_MAX_COURT,
+    Y_MIN_COURT,
+    unnormalize_coords,
+)
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
 from dynagroup.types import (
@@ -20,6 +28,22 @@ from dynagroup.types import (
     NumpyArray2D,
     NumpyArray3D,
 )
+
+
+###
+# CONSTANTS
+###
+
+# TODO: Move this to `court` file.  It's reused both here and in animate.
+# TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
+# so that I don't have to unnormalize all the time?!
+COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
+COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+
+
+###
+# Structs
+###
 
 
 @dataclass
@@ -59,7 +83,12 @@ class Forecast_MSEs:
     raw_coords: bool
 
 
-def make_complete_forecasts_for_our_model_and_baselines(
+###
+# Make forecasts
+###
+
+
+def make_forecasts(
     continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
@@ -74,6 +103,8 @@ def make_complete_forecasts_for_our_model_and_baselines(
     verbose: bool = True,
 ) -> Forecasts:
     """
+    Makes (complete, not partial) forecasts for our model against baselines.
+
     Arguments:
         use_raw_coords: bool.  If True, we use raw (unnormalized) basketball coords
             in [0,94]x[0,50] rather than [0,1]x[0,1]
@@ -94,17 +125,13 @@ def make_complete_forecasts_for_our_model_and_baselines(
     ###
     # Ground truth
     ###
-    ground_truth_in_normalized_coords = (
-        continuous_states_during_forecast_window  # (forecast_window, J, D)
-    )
+    ground_truth_in_normalized_coords = continuous_states_during_forecast_window  # (forecast_window, J, D)
 
     ###
     # Forward simulations from our HSRDM model
     ###
 
-    forward_simulations_in_normalized_coords = np.zeros(
-        (n_forecasts_from_our_model, T_forecast, DIMS.J, DIMS.D)
-    )
+    forward_simulations_in_normalized_coords = np.zeros((n_forecasts_from_our_model, T_forecast, DIMS.J, DIMS.D))
 
     ### Sample s and z's for initialization, based on the VES and VEZ steps.
 
@@ -114,9 +141,7 @@ def make_complete_forecasts_for_our_model_and_baselines(
 
     fixed_init_entity_regimes = np.zeros(DIMS.J, dtype=int)
     for j in range(DIMS.J):
-        probs = np.asarray(VEZ_summaries_from_context_window.expected_regimes[-1, j]).astype(
-            "float64"
-        )
+        probs = np.asarray(VEZ_summaries_from_context_window.expected_regimes[-1, j]).astype("float64")
         probs /= np.sum(probs)
         fixed_init_entity_regimes[j] = npr.choice(range(DIMS.K), p=probs)
 
@@ -139,11 +164,8 @@ def make_complete_forecasts_for_our_model_and_baselines(
             fixed_init_continuous_states=fixed_init_continuous_states,
             system_covariates=system_covariates,
         )
-        forward_simulations_in_normalized_coords[
-            forecast_seed
-        ] = forward_sample_with_init_at_beginning.xs[
-            1:
-        ]  # (forecast_window, J, D)
+        forward_simulations_in_normalized_coords[forecast_seed] = forward_sample_with_init_at_beginning.xs[1:]
+        # ` forward_simulations_in_normalized_coord` has shape (forecast_window, J, D)
 
     ###
     # Compute velocity baseline
@@ -152,17 +174,12 @@ def make_complete_forecasts_for_our_model_and_baselines(
     velocity_baseline_in_normalized_coords_with_init_at_beginning = np.zeros(
         (T_forecast_plus_initialization_timestep_to_discard, DIMS.J, DIMS.D)
     )
-    velocity_baseline_in_normalized_coords_with_init_at_beginning[
-        0
-    ] = continuous_states_during_context_window[-1]
+    velocity_baseline_in_normalized_coords_with_init_at_beginning[0] = continuous_states_during_context_window[-1]
     for t in range(1, T_forecast_plus_initialization_timestep_to_discard):
         velocity_baseline_in_normalized_coords_with_init_at_beginning[t] = (
-            velocity_baseline_in_normalized_coords_with_init_at_beginning[t - 1]
-            + discrete_derivative
+            velocity_baseline_in_normalized_coords_with_init_at_beginning[t - 1] + discrete_derivative
         )
-    velocity_baseline_in_normalized_coords = (
-        velocity_baseline_in_normalized_coords_with_init_at_beginning[1:]
-    )
+    velocity_baseline_in_normalized_coords = velocity_baseline_in_normalized_coords_with_init_at_beginning[1:]
 
     ###
     # Prepare return object
@@ -186,42 +203,121 @@ def make_complete_forecasts_for_our_model_and_baselines(
     return Forecasts(forward_simulations, velocity_baseline, ground_truth, raw_coords)
 
 
-def compute_mse_over_matrix(matrix_estimated: NumpyArray2D, matrix_true: NumpyArray2D) -> float:
-    """
-    Arguments:
-        matrix_estimated: e.g. has shape (T,D)
-        matrix_true:e.g. has shape (T,D)
-    """
-    return np.mean((matrix_estimated - matrix_true) ** 2)
+###
+# Make Forecasting MSEs
+###
 
 
 def MSEs_from_forecasts(forecasts: Forecasts):
-    ###
-    # Set up vectorization functions
-    ###
-    compute_MSEs_under_one_forecast_JAX = vmap(compute_mse_over_matrix, 1)  # (t,j,d), (t,j,d) ->j
-    compute_MSEs_under_one_forecast = lambda x, y: np.array(
-        compute_MSEs_under_one_forecast_JAX(x, y)
-    )
+    def _compute_mse_over_matrix(matrix_estimated: NumpyArray2D, matrix_true: NumpyArray2D) -> float:
+        """
+        Arguments:
+            matrix_estimated: e.g. has shape (T,D)
+            matrix_true:e.g. has shape (T,D)
+        """
+        return np.mean((matrix_estimated - matrix_true) ** 2)
+
+    ### Set up vectorization functions
+    compute_MSEs_under_one_forecast_JAX = vmap(_compute_mse_over_matrix, 1)  # (t,j,d), (t,j,d) ->j
+    compute_MSEs_under_one_forecast = lambda x, y: np.array(compute_MSEs_under_one_forecast_JAX(x, y))
 
     # #TODO: Is there a way to do this using vmap?
     # compute_mse_under_many_forecasts_JAX = vmap(compute_mse_over_matrix, (0,2))  #(s,t,j,d), (t,j,d) ->(s,j)
     # compute_mse_under_many_forecasts = lambda x,y: np.array(compute_mse_under_many_forecasts_JAX(x,y))
-    def compute_MSEs_under_many_forecasts(many_forecasts, ground_truth):
+    def _compute_MSEs_under_many_forecasts(many_forecasts, ground_truth):
         S, T, J, D = np.shape(many_forecasts)
         MSEs = np.zeros((S, J))
         for s in range(S):
             MSEs[s] = compute_MSEs_under_one_forecast(many_forecasts[s], ground_truth)
         return MSEs
 
-    ###
-    # Compute MSEs
-    ###
-    velocity_MSEs = compute_MSEs_under_one_forecast(
-        forecasts.fixed_velocity, forecasts.ground_truth
-    )
-    forward_simulation_MSEs = compute_MSEs_under_many_forecasts(
-        forecasts.forward_simulations, forecasts.ground_truth
-    )
+    ### Compute MSEs
+    velocity_MSEs = compute_MSEs_under_one_forecast(forecasts.fixed_velocity, forecasts.ground_truth)
+    forward_simulation_MSEs = _compute_MSEs_under_many_forecasts(forecasts.forward_simulations, forecasts.ground_truth)
 
     return Forecast_MSEs(forward_simulation_MSEs, velocity_MSEs, forecasts.raw_coords)
+
+
+###
+# Plot forecasts
+###
+
+
+def plot_forecasts(
+    forecasts: Forecasts,
+    forecasting_MSEs: Forecast_MSEs,
+    save_dir: str,
+    filename_prefix: str = "",
+    figsize: Optional[Tuple[int]] = (8, 4),
+):
+    S, T_forecast, J, D = np.shape(forecasts.forward_simulations)
+
+    for j in range(J):
+        ### Fixed velocity plots
+        fig = plt.figure(figsize=figsize)
+        plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
+        plt.scatter(
+            forecasts.fixed_velocity[:, j, 0],
+            forecasts.fixed_velocity[:, j, 1],
+            c=[i for i in range(T_forecast)],
+            cmap="cool",
+            alpha=1.0,
+            zorder=1,
+        )
+        plt.scatter(
+            forecasts.ground_truth[:, j, 0],
+            forecasts.ground_truth[:, j, 1],
+            c=[i for i in range(T_forecast)],
+            cmap="cool",
+            marker="x",
+            alpha=0.25,
+            zorder=2,
+        )
+        plt.xlim(
+            np.min([X_MIN_COURT, np.min(forecasts.fixed_velocity[:, j, 0])]),
+            np.max([X_MAX_COURT, np.max(forecasts.fixed_velocity[:, j, 0])]),
+        )
+        plt.ylim(
+            np.min([Y_MIN_COURT, np.min(forecasts.fixed_velocity[:, j, 1])]),
+            np.max([Y_MAX_COURT, np.max(forecasts.fixed_velocity[:, j, 1])]),
+        )
+
+        plt.title(f"MSE: {forecasting_MSEs.fixed_velocity[j]:.03f}")
+        fig.savefig(
+            save_dir + f"{filename_prefix}_entity_{j}_fixed_velocity_MSE_{forecasting_MSEs.fixed_velocity[j]:.03f}.pdf"
+        )
+
+        for s in range(S):
+            ### Forward simulation
+            fig = plt.figure(figsize=figsize)
+            plt.imshow(COURT_IMAGE, extent=COURT_AXIS_UNNORM, zorder=0)
+            plt.scatter(
+                forecasts.forward_simulations[s, :, j, 0],
+                forecasts.forward_simulations[s, :, j, 1],
+                c=[i for i in range(T_forecast)],
+                cmap="cool",
+                alpha=1.0,
+                zorder=1,
+            )
+            plt.scatter(
+                forecasts.ground_truth[:, j, 0],
+                forecasts.ground_truth[:, j, 1],
+                c=[i for i in range(T_forecast)],
+                cmap="cool",
+                marker="x",
+                alpha=0.25,
+                zorder=2,
+            )
+            plt.xlim(
+                np.min([X_MIN_COURT, np.min(forecasts.forward_simulations[s, :, j, 0])]),
+                np.max([X_MAX_COURT, np.max(forecasts.forward_simulations[s, :, j, 0])]),
+            )
+            plt.ylim(
+                np.min([Y_MIN_COURT, np.min(forecasts.forward_simulations[s, :, j, 1])]),
+                np.max([Y_MAX_COURT, np.max(forecasts.forward_simulations[s, :, j, 1])]),
+            )
+            plt.title(f"MSE: {forecasting_MSEs.forward_simulation[s,j]:.03f}")
+            fig.savefig(
+                save_dir
+                + f"{filename_prefix}_entity_{j}_forward_sim_MSE_{forecasting_MSEs.forward_simulation[s,j]:.03f}.pdf"
+            )

@@ -103,12 +103,12 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
-    forecast_type: ForecastType,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
+    forecast_type: ForecastType = ForecastType.PARTIAL,
 ) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     A helper function for write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice
@@ -143,6 +143,12 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             The value is NaN if the entity was not masked.
     """
     # TODO: Rewrite this function so it builds off `forecasts` module.
+
+    if forecast_type != ForecastType.PARTIAL:
+        raise ValueError(
+            f"We can't do complete forecasting with this strategy; the VES summary and VEZ summaries at timestep t use "
+            f"information from the future. "
+        )
 
     ###
     # Constants
@@ -393,7 +399,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             plt.title(f"MSE: {MSE_forward_sim:.05f}.")
             fig1.savefig(
                 save_dir
-                + f"forward_simulation_{forecast_type.name}_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
+                + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
 
         ###
@@ -478,13 +484,13 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
-    forecast_type: ForecastType,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
+    forecast_type: ForecastType = ForecastType.PARTIAL,
 ) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
     """
     By posterior mean and forward simulation, we mean:
@@ -537,12 +543,12 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         entity_idxs,
         find_forward_sim_t0_for_entity_sample,
         max_forward_sim_window,
-        forecast_type,
         system_covariates,
         find_posterior_mean_t0_for_entity_sample,
         max_posterior_mean_window,
         filename_prefix,
         figsize,
+        forecast_type,
     )
 
     MMSE_posterior_mean = np.mean(MSEs_posterior_mean)

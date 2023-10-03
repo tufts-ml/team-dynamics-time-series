@@ -4,14 +4,14 @@ from typing import List
 
 import numpy as np
 
-from dynagroup.forecasts import Forecast_MSEs
+from dynagroup.forecasts import Forecast_MSEs, MSEs_from_forecasts
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     get_start_and_stop_timestep_idxs_from_event_idx,
 )
 from dynagroup.params import AllParameters_JAX
 from dynagroup.types import NumpyArray1D, NumpyArray3D
-from dynagroup.vi.vi_forecast import get_forecasting_MSEs_on_test_set
+from dynagroup.vi.vi_forecast import get_forecasts_on_test_set
 
 
 def generate_random_context_times_for_events(
@@ -79,15 +79,13 @@ def get_forecast_MSEs_by_event(
     num_events = len(example_stop_idxs_test) - 1
     for event_idx in range(num_events):
         print(f"--- --- Now making forecasts for event {event_idx+1}/{num_events}. --- ---")
-        start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(
-            example_stop_idxs_test, event_idx
-        )
+        start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(example_stop_idxs_test, event_idx)
         random_context_time_float = random_context_times[event_idx]
 
         if np.isnan(random_context_time_float):
             continue
 
-        forecasting_MSE = get_forecasting_MSEs_on_test_set(
+        forecasts = get_forecasts_on_test_set(
             xs_test[start_idx:stop_idx],
             params_learned,
             model_basketball,
@@ -97,7 +95,8 @@ def get_forecast_MSEs_by_event(
             n_forecasts,
             system_covariates,
         )
-        forecasting_MSEs_by_examples.append(forecasting_MSE)
+        forecasting_MSEs = MSEs_from_forecasts(forecasts)
+        forecasting_MSEs_by_examples.append(forecasting_MSEs)
 
     ### Summarize
     mean_over_J_median_forward_sims_by_example = []

@@ -3,8 +3,7 @@ from typing import Optional, Union
 import numpy as np
 
 from dynagroup.forecasts import (
-    Forecast_MSEs,
-    MSEs_from_forecasts,
+    Forecasts,
     make_complete_forecasts_for_our_model_and_baselines,
 )
 from dynagroup.model import Model
@@ -17,7 +16,7 @@ from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 
 
-def get_forecasting_MSEs_on_test_set(
+def get_forecasts_on_test_set(
     continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
@@ -27,14 +26,13 @@ def get_forecasting_MSEs_on_test_set(
     n_forecasts: int,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     seed: int = 0,
-) -> Forecast_MSEs:
+) -> Forecasts:
     """
     We partition the T timesteps in continuous_states into 3 cells:
         context window, forecasting window, unused window.
 
     For the context window, we run the E-steps (VEZ, VES) of CAVI.
     For the forecasting window, we make forecasts.
-
 
     Arguments:
         T_context: Number of timesteps for context period
@@ -129,5 +127,4 @@ def get_forecasting_MSEs_on_test_set(
         use_raw_coords=True,
         seed=seed,
     )
-    MSEs = MSEs_from_forecasts(forecasts)
-    return MSEs
+    return forecasts

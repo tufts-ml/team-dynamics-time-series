@@ -14,7 +14,6 @@ from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.diagnostics.posterior_mean_and_forward_simulation import (
-    ForecastType,
     write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.model2a.basketball.mask import (
@@ -217,7 +216,6 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
     use_continuous_states,
     forward_sim_and_posterior_mean_entity_idxs,
     find_forward_sim_t0_for_entity_sample,
-    forecast_type=ForecastType.PARTIAL,
     system_covariates=system_covariates,
     max_forward_sim_window=forecast_horizon,
     find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,
@@ -273,7 +271,6 @@ plot_vector_fields(params_learned.CSP, J=5)
     use_continuous_states,
     forward_sim_and_posterior_mean_entity_idxs,
     find_forward_sim_t0_for_entity_sample,
-    forecast_type=ForecastType.PARTIAL,
     system_covariates=system_covariates,
     max_forward_sim_window=forecast_horizon,
     find_posterior_mean_t0_for_entity_sample=find_forward_sim_t0_for_entity_sample,

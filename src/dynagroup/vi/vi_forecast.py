@@ -2,10 +2,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from dynagroup.forecasts import (
-    Forecasts,
-    make_complete_forecasts_for_our_model_and_baselines,
-)
+from dynagroup.forecasts import Forecasts, make_forecasts
 from dynagroup.model import Model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
@@ -33,6 +30,10 @@ def get_forecasts_on_test_set(
 
     For the context window, we run the E-steps (VEZ, VES) of CAVI.
     For the forecasting window, we make forecasts.
+
+    Warning:
+        The function assumes that the `continuous_states` argument does NOT
+        straddle an exmaple boundary.
 
     Arguments:
         T_context: Number of timesteps for context period
@@ -111,10 +112,11 @@ def get_forecasts_on_test_set(
             example_end_times,
         )
     print("")
+
     ###
     # Forecasting
     ###
-    forecasts = make_complete_forecasts_for_our_model_and_baselines(
+    forecasts = make_forecasts(
         continuous_states,
         params_learned,
         model,

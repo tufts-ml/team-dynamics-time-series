@@ -142,8 +142,16 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
-    # TODO: Rewrite this function so it builds off `forecasts` module.
+    # TODO: Rewrite this function so it builds off the `forecasts` module, which has more up-to-date code.
+    # That code is better factored and returns nice objects for Forecasts, Forecast_MSEs, etc.
+    # This code also may have a bug such that the first timestep of fixed_velocity matches the truth,
+    # but the first timestep of forward_simulations does not.  Ideally, we would just destroy this code, and
+    # force all callers to use the new code.
 
+    # Another possible problme with this code: the system state and entity states
+    # knows what is happening in the future. See the error message below.  I think we CAN’T do complete forecasting
+    # using the old code, where we “pick up where we left off” in processing a long time series.
+    # Possibly this problem is handled though if we ablate all inputs (all entities) to the system state.
     if forecast_type != ForecastType.PARTIAL:
         raise ValueError(
             f"We can't do complete forecasting with this strategy; the VES summary and VEZ summaries at timestep t use "

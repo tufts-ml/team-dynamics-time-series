@@ -9,6 +9,7 @@ from dynagroup.model2a.basketball.data.orig_format import (
     get_data_in_original_formatting,
 )
 from dynagroup.model2a.basketball.diagnostics.posterior_mean_and_forward_simulation import (
+    ForecastType,
     write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.model2a.basketball.diagnostics.team_slice import plot_TOR_team_slice
@@ -166,6 +167,8 @@ if do_init_plots:
         use_continuous_states=use_continuous_states,
         forward_sim_and_posterior_mean_entity_idxs=None,
         find_forward_sim_t0_for_entity_sample=lambda x: T_start,
+        forecast_type=ForecastType.PARTIAL,
+        system_covariates=system_covariates,
         max_forward_sim_window=forecast_horizon,
         filename_prefix=f"AFTER_INITIALIZATION_",
         figsize=(8, 4),
@@ -233,6 +236,8 @@ if do_post_inference_plots:
         use_continuous_states=use_continuous_states,
         entity_idxs=None,
         find_forward_sim_t0_for_entity_sample=lambda x: T_start,
+        forecast_type=ForecastType.PARTIAL,
+        system_covariates=system_covariates,
         max_forward_sim_window=forecast_horizon,
         filename_prefix=f"AFTER_CAVI_",
         figsize=(8, 4),

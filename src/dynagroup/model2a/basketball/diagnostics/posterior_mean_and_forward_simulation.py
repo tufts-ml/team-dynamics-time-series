@@ -1,5 +1,6 @@
 import os
 import warnings
+from enum import Enum
 from typing import Callable, List, Optional, Tuple
 
 import matplotlib.image as mpimg
@@ -22,7 +23,7 @@ from dynagroup.model2a.basketball.court import (
 )
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 
 
 ###
@@ -34,6 +35,14 @@ from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
 # so that I don't have to unnormalize all the time?!
 COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
 COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+
+
+###
+# STRUCTS
+###
+class ForecastType(Enum):
+    PARTIAL = 1
+    COMPLETE = 2
 
 
 ###
@@ -94,6 +103,8 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
+    forecast_type: ForecastType,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
@@ -131,8 +142,8 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
     """
-
     # TODO: Rewrite this function so it builds off `forecasts` module.
+
     ###
     # Constants
     ###
@@ -292,6 +303,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # on all the continuous states, x_t^^{1:J}.
         fixed_init_continuous_states = np.tile(x_0_forward_sim, (DIMS.J, 1))
         fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1)
+        fixed_init_system_regime = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim]
         fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim:t_end_forward_sim]
 
         had_masking = _had_masking_bool(use_continuous_states, j, t_0_forward_sim, t_end_forward_sim)
@@ -301,16 +313,31 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             print(
                 f"Plotting the forward simulation for entity {j} using forward_simulation_seed {forward_simulation_seed}."
             )
-            sample_ahead = sample_team_dynamics(
-                params,
-                T_slice_forward_sim,
-                model,
-                seed=forward_simulation_seed,
-                fixed_system_regimes=fixed_system_regimes,
-                fixed_init_entity_regimes=fixed_init_entity_regimes,
-                fixed_init_continuous_states=fixed_init_continuous_states,
-                system_covariates=None,
-            )
+
+            if forecast_type == ForecastType.PARTIAL:
+                sample_ahead = sample_team_dynamics(
+                    params,
+                    T_slice_forward_sim,
+                    model,
+                    seed=forward_simulation_seed,
+                    fixed_system_regimes=fixed_system_regimes,
+                    fixed_init_entity_regimes=fixed_init_entity_regimes,
+                    fixed_init_continuous_states=fixed_init_continuous_states,
+                    system_covariates=system_covariates,
+                )
+            elif forecast_type == ForecastType.COMPLETE:
+                sample_ahead = sample_team_dynamics(
+                    params,
+                    T_slice_forward_sim,
+                    model,
+                    seed=forward_simulation_seed,
+                    fixed_init_system_regime=fixed_init_system_regime,
+                    fixed_init_entity_regimes=fixed_init_entity_regimes,
+                    fixed_init_continuous_states=fixed_init_continuous_states,
+                    system_covariates=system_covariates,
+                )
+            else:
+                raise ValueError(f"I don't understand forecast type {forecast_type}.")
 
             # Unnorm
             sample_ahead_xs_j_unnorm = unnormalize_coords(sample_ahead.xs[:, j])
@@ -366,7 +393,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             plt.title(f"MSE: {MSE_forward_sim:.05f}.")
             fig1.savefig(
                 save_dir
-                + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
+                + f"forward_simulation_{forecast_type.name}_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
 
         ###
@@ -451,6 +478,8 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     entity_idxs: Optional[List[int]],
     find_forward_sim_t0_for_entity_sample: Callable,
     max_forward_sim_window: int,
+    forecast_type: ForecastType,
+    system_covariates: Optional[JaxNumpyArray2D] = None,
     find_posterior_mean_t0_for_entity_sample: Optional[Callable] = None,
     max_posterior_mean_window: Optional[int] = None,
     filename_prefix: Optional[str] = "",
@@ -508,6 +537,8 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         entity_idxs,
         find_forward_sim_t0_for_entity_sample,
         max_forward_sim_window,
+        forecast_type,
+        system_covariates,
         find_posterior_mean_t0_for_entity_sample,
         max_posterior_mean_window,
         filename_prefix,

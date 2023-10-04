@@ -83,6 +83,14 @@ class Forecast_MSEs:
     raw_coords: bool
 
 
+@dataclass
+class Forecast_MSEs_Summary:
+    mean_fixed_velocity: float
+    mean_forward_simulation: float
+    median_fixed_velocity: float
+    median_forward_simulation: float
+
+
 ###
 # Make forecasts
 ###
@@ -236,6 +244,15 @@ def MSEs_from_forecasts(forecasts: Forecasts):
     forward_simulation_MSEs = _compute_MSEs_under_many_forecasts(forecasts.forward_simulations, forecasts.ground_truth)
 
     return Forecast_MSEs(forward_simulation_MSEs, velocity_MSEs, forecasts.raw_coords)
+
+
+def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Summary:
+    return Forecast_MSEs_Summary(
+        np.mean(forecast_MSEs.fixed_velocity),
+        np.mean(forecast_MSEs.forward_simulation),
+        np.median(forecast_MSEs.fixed_velocity),
+        np.median(forecast_MSEs.forward_simulation),
+    )
 
 
 ###

@@ -21,7 +21,7 @@ from dynagroup.model2a.basketball.data.baller2vec.disk import (
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     get_start_and_stop_timestep_idxs_from_event_idx,
 )
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -57,18 +57,14 @@ n_test_games = 5
 # Sampling rate
 sampling_rate_Hz = 5
 
-
 # Model specification
+model_type = Model_Type.No_Recurrence
 K = 10
-L = 5
+L = 1
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_init_with_L={L}_K={K}_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
-
-
-# Model adjustments
-model_adjustment = None  # Options: None, "one_system_regime"
+save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_init_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -156,6 +152,9 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+
+### Setup Model Form
+model_basketball = get_basketball_model(model_type)
 
 print("Running smart initialization.")
 

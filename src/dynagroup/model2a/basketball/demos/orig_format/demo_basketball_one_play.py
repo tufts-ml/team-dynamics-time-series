@@ -7,7 +7,7 @@ from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
 )
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
@@ -48,6 +48,7 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Model specification
+model_type = Model_Type.Linear_Recurrence
 K = 3
 L = 5
 
@@ -95,6 +96,8 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
+### Setup Model Form
+model_basketball = get_basketball_model(model_type)
 
 ###
 # INITIALIZATION

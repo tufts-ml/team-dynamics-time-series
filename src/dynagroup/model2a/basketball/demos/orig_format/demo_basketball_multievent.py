@@ -12,7 +12,7 @@ from dynagroup.model2a.basketball.diagnostics.posterior_mean_and_forward_simulat
     write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.model2a.basketball.diagnostics.team_slice import plot_TOR_team_slice
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.diagnostics.mean_regime_trajectories import (
     get_deterministic_trajectories,
     plot_deterministic_trajectories,
@@ -43,6 +43,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 
 
 # Model specification
+model_type = Model_Type.Linear_Recurrence
 K = 5
 L = 5
 
@@ -84,6 +85,8 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
+### Setup Model Form
+model_basketball = get_basketball_model(model_type)
 
 ###
 # I/O

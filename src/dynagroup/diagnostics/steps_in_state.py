@@ -72,6 +72,7 @@ def plot_steps_assigned_to_state(
         plt.show()
     if save_dir is not None:
         plt.savefig(save_dir + f"{basename_prefix}_steps_assigned_to_state_for_entity_{j}_state_{k}.pdf")
+    plt.close()
 
 
 def get_entity_data_within_examples_and_assigned_to_entity_state(

@@ -474,7 +474,8 @@ def fit_ARHMM_to_top_half_of_model(
             system_transition_prior = None
 
             ### M-step (STP)
-            if only_one_example(example_end_times, T):
+            num_system_states = np.shape(STP_JAX.Pi)[0]
+            if only_one_example(example_end_times, T) or num_system_states == 1:
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
                 STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)

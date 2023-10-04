@@ -338,3 +338,4 @@ def plot_forecasts(
                 save_dir
                 + f"{filename_prefix}_entity_{j}_forward_sim_MSE_{forecasting_MSEs.forward_simulation[s,j]:.03f}.pdf"
             )
+            plt.close()

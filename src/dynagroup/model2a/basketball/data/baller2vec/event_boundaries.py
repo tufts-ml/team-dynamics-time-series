@@ -14,6 +14,17 @@ from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 ###
 @dataclass
 class Example_Boundary_Constants:
+    """
+    Stores information useful for determining that an example boundary exists.
+    Given a nominal sampling rate (in Hz), we compute the time we expect (in ms) between samples.
+    This is stored as `expected_time_in_ms_between_samples`.
+
+    However, it is normal for samples to have a bit of noise around that value.
+    So in practice, we conclude that two timesteps belong to the same example if
+
+        observed time (in ms) between samples \in [lower threshold, upper threhold]
+    """
+
     expected_time_in_ms_between_samples: float
     wall_clock_diff_lower_threshold: float
     wall_clock_diff_upper_threshold: float
@@ -66,9 +77,7 @@ def clean_events_of_moments_with_too_small_intervals(
             prev_wall_clock = curr_wall_clock
 
         # Remove moments whose wall clock diffs that are too big.
-        new_moments = construct_a_new_list_after_removing_multiple_items(
-            event.moments, moment_idxs_to_remove
-        )
+        new_moments = construct_a_new_list_after_removing_multiple_items(event.moments, moment_idxs_to_remove)
         events_cleaned[event_idx].moments = new_moments
 
     return events_cleaned
@@ -92,9 +101,7 @@ def get_example_stop_idxs(
 
             if wall_clock_diff > EBC.wall_clock_diff_upper_threshold:
                 if verbose:
-                    print(
-                        f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
-                    )
+                    print(f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}")
                 example_end_times.append(T_curr - 1)
             prev_wall_clock = curr_wall_clock
             T_curr += 1

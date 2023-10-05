@@ -7,7 +7,7 @@ pp.install_extras()
 
 from dynagroup.model2a.basketball.data.baller2vec.data import (
     BasketballData,
-    load_basketball_data_from_single_game_file,
+    construct_basketball_data_from_single_game_file,
 )
 
 
@@ -47,12 +47,8 @@ def get_basketball_data_for_TOR_vs_CHA(
     }
 
     PATH_TO_GAME_DATA = "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_X.npy"
-    PATH_TO_EVENT_LABEL_DATA = (
-        "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy"
-    )
-    PATH_TO_BALLER2VEC_INFO = (
-        "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict"
-    )
+    PATH_TO_EVENT_LABEL_DATA = "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/0021500492_y.npy"
+    PATH_TO_BALLER2VEC_INFO = "data/basketball/baller2vec_format/preprocessed/TOR_vs_CHA/baller2vec_config.pydict"
 
     ### Identify positions of all players in game
     PLAYER_NAMES_IN_DATASET_2_POSITIONS = {
@@ -86,7 +82,7 @@ def get_basketball_data_for_TOR_vs_CHA(
         "Delon Wright": "Point guard / shooting guard",
         "Nicolas Batum": "Power forward / small forward",
     }
-    return load_basketball_data_from_single_game_file(
+    return construct_basketball_data_from_single_game_file(
         PATH_TO_GAME_DATA,
         PATH_TO_EVENT_LABEL_DATA,
         PATH_TO_BALLER2VEC_INFO,

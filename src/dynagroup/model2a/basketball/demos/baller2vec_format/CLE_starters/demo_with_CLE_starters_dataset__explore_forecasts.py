@@ -30,7 +30,7 @@ from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.params import Dims
+from dynagroup.params import Dims, get_dim_of_recurrence_output
 from dynagroup.util import get_current_datetime_as_string
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
@@ -69,7 +69,7 @@ L = 5
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_init_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
+save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -147,19 +147,21 @@ plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs
 # Setup Model
 ###
 
-#### Setup Dims
-
-J = np.shape(DATA_TRAIN.player_coords)[1]
-D, D_t = 2, 2
-N = 0
-M_s, M_e = 0, 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
 ### Setup Model Form
 model_basketball = get_basketball_model(model_type)
+
+#### Setup Dims
+
+J = np.shape(DATA_TRAIN.player_coords)[1]
+D = np.shape(DATA_TRAIN.player_coords)[2]
+D_t = get_dim_of_recurrence_output(D, model_basketball)
+N = 0
+M_s, M_e = 0, 0  # for now!
+DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 print("Running smart initialization.")
 
@@ -321,5 +323,5 @@ for e, example_idx in enumerate(forecasting_examples_to_analyze):
                 forecasts,
                 forecast_MSEs,
                 save_dir,
-                filename_prefix=f"forecast_plot_start_idx_{start_idx}",
+                filename_prefix=f"forecast_plot_example_idx_{example_idx}_start_idx_{start_idx}",
             )

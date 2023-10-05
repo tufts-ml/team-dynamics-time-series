@@ -3,8 +3,12 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
+from scipy.stats import zscore
 
-from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
+from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
+    Event,
+    player_coords_from_moments,
+)
 from dynagroup.types import NumpyArray1D
 from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 
@@ -88,6 +92,18 @@ def get_example_stop_idxs(
     sampling_rate_Hz: float,
     verbose: bool = True,
 ) -> List[int]:
+    example_stop_idxs_from__large_time_deltas = get_example_stop_idxs__based_on_large_time_deltas(
+        events, sampling_rate_Hz, verbose
+    )
+    example_stop_idxs_from__anomalous_step_sizes = get_example_stop_idxs__based_on_anomalous_step_sizes(events)
+    return sorted(set(example_stop_idxs_from__large_time_deltas).union(example_stop_idxs_from__anomalous_step_sizes))
+
+
+def get_example_stop_idxs__based_on_large_time_deltas(
+    events: List[Event],
+    sampling_rate_Hz: float,
+    verbose: bool = True,
+) -> List[int]:
     EBC = example_boundary_constants_from_sampling_rate_Hz(sampling_rate_Hz)
 
     example_end_times = []
@@ -110,6 +126,28 @@ def get_example_stop_idxs(
     last_timestep = T_curr
     example_end_times.append(last_timestep)
     return example_end_times
+
+
+def get_example_stop_idxs__based_on_anomalous_step_sizes(
+    events: List[Event],
+) -> List[int]:
+    Z_SCORE_CUTOFF_FOR_STEP_SIZE_ON_COURT = 4.0
+    idxs_with_unusually_large_step_sizes = set()
+    moments_processed = [moment for event in events for moment in event.moments]
+    player_coords_unnormalized = player_coords_from_moments(moments_processed)
+
+    player_coord_diffs_unnormalized = player_coords_unnormalized[1:, :, :] - player_coords_unnormalized[:-1, :, :]
+    J = np.shape(player_coords_unnormalized)[1]
+    for j in range(J):
+        z_scores = zscore(player_coord_diffs_unnormalized[:, j])
+        abs_z_score_maxes = np.max(np.abs(z_scores), 1)
+        idxs_with_unusually_large_step_sizes_for_one_player = np.where(
+            abs_z_score_maxes > Z_SCORE_CUTOFF_FOR_STEP_SIZE_ON_COURT
+        )[0].tolist()
+        idxs_with_unusually_large_step_sizes = idxs_with_unusually_large_step_sizes.union(
+            idxs_with_unusually_large_step_sizes_for_one_player
+        )
+    return sorted(idxs_with_unusually_large_step_sizes)
 
 
 def get_play_start_stop_idxs(events: List[Event]) -> List[Tuple[int]]:

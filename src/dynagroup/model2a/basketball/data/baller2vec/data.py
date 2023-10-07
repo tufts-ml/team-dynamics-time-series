@@ -104,20 +104,14 @@ def rotate_court_180_degrees_for_one_moment_of_an_event(
     """
 
     ### Flip player coords
-    player_coords_unnormalized = np.vstack(
-        (event.moments[idx].player_xs, event.moments[idx].player_ys)
-    ).T
+    player_coords_unnormalized = np.vstack((event.moments[idx].player_xs, event.moments[idx].player_ys)).T
     player_coords_unnormalized_flipped = flip_player_coords_unnormalized(player_coords_unnormalized)
     event.moments[idx].player_xs = player_coords_unnormalized_flipped[:, 0]
     event.moments[idx].player_ys = player_coords_unnormalized_flipped[:, 1]
 
     ### Flip ball coords
-    ball_xy_player_coords_unnormalized = np.vstack(
-        (event.moments[idx].ball_x, event.moments[idx].ball_y)
-    ).T
-    ball_xy_player_coords_unnormalized_flipped = flip_player_coords_unnormalized(
-        ball_xy_player_coords_unnormalized
-    )
+    ball_xy_player_coords_unnormalized = np.vstack((event.moments[idx].ball_x, event.moments[idx].ball_y)).T
+    ball_xy_player_coords_unnormalized_flipped = flip_player_coords_unnormalized(ball_xy_player_coords_unnormalized)
     event.moments[idx].ball_x = ball_xy_player_coords_unnormalized_flipped[:, 0]
     event.moments[idx].ball_y = ball_xy_player_coords_unnormalized_flipped[:, 1]
 
@@ -137,21 +131,15 @@ def remove_events_with_player_substitutions(
             event_idxs_to_remove.append(event_idx)
 
     if verbose:
-        print(
-            f"The number of events with player substitutions are {len(event_idxs_to_remove)}/{len(events)}."
-        )
+        print(f"The number of events with player substitutions are {len(event_idxs_to_remove)}/{len(events)}.")
 
     # Remove moments whose wall clock diffs that are too big.
-    events_cleaned = construct_a_new_list_after_removing_multiple_items(
-        events, event_idxs_to_remove
-    )
+    events_cleaned = construct_a_new_list_after_removing_multiple_items(events, event_idxs_to_remove)
 
     return events_cleaned
 
 
-def player_identities_are_constant_throughout_examples(
-    moments: List[Moment], example_stop_idxs: List[int]
-):
+def player_identities_are_constant_throughout_examples(moments: List[Moment], example_stop_idxs: List[int]):
     for idx in range(len(example_stop_idxs) - 1):
         start_idx, stop_idx = example_stop_idxs[idx] + 1, example_stop_idxs[idx + 1]
         moments_in_example = moments[start_idx:stop_idx]
@@ -164,16 +152,12 @@ def get_player_names_by_example(
     moments: List[Moment], example_stop_idxs: List[int], player_data: Dict[int, Dict[str, Any]]
 ) -> List[List[str]]:
     if not player_identities_are_constant_throughout_examples(moments, example_stop_idxs):
-        raise ValueError(
-            "The player identities are not constant throughout examples. Check implementation."
-        )
+        raise ValueError("The player identities are not constant throughout examples. Check implementation.")
 
     player_names_by_example = []
     for idx in range(len(example_stop_idxs) - 1):
         example_start_idx = example_stop_idxs[idx] + 1
-        player_names_for_this_example = player_names_from_player_ids(
-            player_data, moments[example_start_idx].player_ids
-        )
+        player_names_for_this_example = player_names_from_player_ids(player_data, moments[example_start_idx].player_ids)
         player_names_by_example.append(player_names_for_this_example)
     return player_names_by_example
 
@@ -183,7 +167,7 @@ def get_player_names_by_example(
 ###
 
 
-def load_basketball_data_from_single_game_file(
+def construct_basketball_data_from_single_game_file(
     path_to_game_data: str,
     path_to_event_label_data: str,
     path_to_baller2vec_info: str,
@@ -303,11 +287,10 @@ def load_basketball_data_from_single_game_file(
             )
 
             current_player_names = set(event.player_names)
-            focal_team_starters_for_this_game = set(
-                [x for x in current_player_names if x in potential_starters]
-            )
+            focal_team_starters_for_this_game = set([x for x in current_player_names if x in potential_starters])
         except:
-            warnings.warn(f"Could not process event {event_idx} to identify focal team starters")
+            if verbose:
+                warnings.warn(f"Could not process event {event_idx} to identify focal team starters")
             continue
         if focal_team_starters_for_this_game is not None:
             break
@@ -335,9 +318,7 @@ def load_basketball_data_from_single_game_file(
 
             ### Filter out events that don't have all 5 focal team starters
             current_player_names = set(event.player_names)
-            has_focal_team_starters = focal_team_starters_for_this_game.issubset(
-                current_player_names
-            )
+            has_focal_team_starters = focal_team_starters_for_this_game.issubset(current_player_names)
 
             if not has_focal_team_starters:
                 n_events_without_focal_team_starters += 1
@@ -369,12 +350,8 @@ def load_basketball_data_from_single_game_file(
             ### Now we reorder any list-valued attributes within the `event` and `moment` objects
             # to match our new ordering for players.
             player_names_orig_order = event.player_names
-            player_names_new_order = sorted(
-                event.player_names, key=lambda name: player_names_2_entity_idxs[name]
-            )
-            permutation_indices = [
-                player_names_orig_order.index(elem) for elem in player_names_new_order
-            ]
+            player_names_new_order = sorted(event.player_names, key=lambda name: player_names_2_entity_idxs[name])
+            permutation_indices = [player_names_orig_order.index(elem) for elem in player_names_new_order]
 
             event_with_player_reindexing = copy.deepcopy(event)
             event_with_player_reindexing.player_names = player_names_new_order
@@ -405,16 +382,10 @@ def load_basketball_data_from_single_game_file(
             # both x and y coords w.r.t center of court). This controls for the effect of hoop
             # switches at half time on the court dynamics, in terms of both offense vs defense
             # direction, as well as in terms of player handedness.
-            event_with_player_reindexing_and_court_rotations_where_needed = copy.deepcopy(
-                event_with_player_reindexing
-            )
-            for idx_moment in range(
-                len(event_with_player_reindexing_and_court_rotations_where_needed.moments)
-            ):
+            event_with_player_reindexing_and_court_rotations_where_needed = copy.deepcopy(event_with_player_reindexing)
+            for idx_moment in range(len(event_with_player_reindexing_and_court_rotations_where_needed.moments)):
                 if (
-                    event_with_player_reindexing_and_court_rotations_where_needed.moments[
-                        idx_moment
-                    ].player_hoop_sides
+                    event_with_player_reindexing_and_court_rotations_where_needed.moments[idx_moment].player_hoop_sides
                     != NORMALIZED_HOOP_SIDES
                 ):
                     event_with_player_reindexing_and_court_rotations_where_needed = (
@@ -429,7 +400,8 @@ def load_basketball_data_from_single_game_file(
             events_mutated.extend([event_with_player_reindexing_and_court_rotations_where_needed])
 
         except:
-            warnings.warn(f"Could not process event idx {event_idx}")
+            if verbose:
+                warnings.warn(f"Could not process event idx {event_idx}")
             continue
 
     print(
@@ -441,7 +413,7 @@ def load_basketball_data_from_single_game_file(
         raise ValueError("This game had ZERO events retained. Check into this.")
 
     events_filtered_and_mutated = clean_events_of_moments_with_too_small_intervals(
-        events_mutated, sampling_rate_Hz
+        events_mutated, sampling_rate_Hz, verbose
     )
 
     # TODO: The `remove_events_with_player_substitution` function performs a second filtering.
@@ -456,21 +428,15 @@ def load_basketball_data_from_single_game_file(
     moments_processed = [moment for event in events_processed for moment in event.moments]
     player_coords_unnormalized = player_coords_from_moments(moments_processed)
     ball_coords_unnormalized = ball_coords_from_moments(moments_processed)
-    example_stop_idxs = get_example_stop_idxs(events_processed, sampling_rate_Hz)
+    example_stop_idxs = get_example_stop_idxs(events_processed, sampling_rate_Hz, verbose)
     play_start_stop_idxs = get_play_start_stop_idxs(events_processed)
-    player_names_by_example = get_player_names_by_example(
-        moments_processed, example_stop_idxs, player_data
-    )
+    player_names_by_example = get_player_names_by_example(moments_processed, example_stop_idxs, player_data)
 
     ###
     # Some checks on the processed data
     ###
 
-    if (
-        not len(moments_processed)
-        == len(player_coords_unnormalized)
-        == len(ball_coords_unnormalized)
-    ):
+    if not len(moments_processed) == len(player_coords_unnormalized) == len(ball_coords_unnormalized):
         raise ValueError(
             "Somehow the number of player coords, ball coords, and moments don't match.  Check implementation."
         )
@@ -512,16 +478,14 @@ def get_flattened_player_coords_unnormalized_from_games(
     # concatentate the player_coords_unnormalized
     player_coords_unnormalized_as_tuple = ()
     for game in games:
-        player_coords_unnormalized_as_tuple = player_coords_unnormalized_as_tuple + (
-            game.player_coords_unnormalized,
-        )
+        player_coords_unnormalized_as_tuple = player_coords_unnormalized_as_tuple + (game.player_coords_unnormalized,)
     player_coords_unnormalized = np.vstack(
         player_coords_unnormalized_as_tuple
     )  # T=total number of training samples about 4.5 hours..
     return player_coords_unnormalized
 
 
-def make_basketball_data_from_games(games: List[BasketballData]):
+def make_basketball_data_from_games(games: List[BasketballData], verbose: bool = True):
     # RK: The games have already been constructed as Basketball Data; so we just need to concatentate
     # everything.
     sampling_rate_Hz = games[0].sampling_rate_Hz
@@ -531,10 +495,8 @@ def make_basketball_data_from_games(games: List[BasketballData]):
     player_coords_unnormalized = player_coords_from_moments(moments_flattened)
     ball_coords_unnormalized = ball_coords_from_moments(moments_flattened)
     play_start_stop_idxs = get_play_start_stop_idxs(events_flattened)
-    example_stop_idxs = get_example_stop_idxs(events_flattened, sampling_rate_Hz)
-    player_names_by_example = flatten_list_of_lists(
-        [game.player_names_by_example for game in games]
-    )
+    example_stop_idxs = get_example_stop_idxs(events_flattened, sampling_rate_Hz, verbose)
+    player_names_by_example = flatten_list_of_lists([game.player_names_by_example for game in games])
 
     # TODO: I think that the player_data will be the same for all games, by upstream construction.
     # But we should handle this more carefully. E.g. we could just check it here and raise an error

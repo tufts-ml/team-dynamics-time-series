@@ -10,7 +10,7 @@ from dynagroup.model2a.basketball.court import normalize_coords
 from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -43,6 +43,7 @@ example_end_times_test = None
 
 
 # Model specification
+model_type = Model_Type.Linear_Recurrence
 K = 4
 L = 5
 
@@ -124,6 +125,7 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
+model_basketball = get_basketball_model(model_type)
 
 ###
 # INITIALIZATION

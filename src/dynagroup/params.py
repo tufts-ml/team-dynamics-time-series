@@ -11,6 +11,7 @@ from dynagroup.covariances import (
     cholesky_nzvals_from_covariance_JAX,
     covariance_from_cholesky_nzvals_JAX,
 )
+from dynagroup.model import Model
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -204,9 +205,7 @@ class EntityTransitionParameters_SystemBias_JAX:
     Xis: JaxNumpyArray3D
 
 
-EntityTransitionParameters = Union[
-    EntityTransitionParameters_SystemBias, EntityTransitionParameters_MetaSwitch
-]
+EntityTransitionParameters = Union[EntityTransitionParameters_SystemBias, EntityTransitionParameters_MetaSwitch]
 
 EntityTransitionParameters_JAX = Union[
     EntityTransitionParameters_SystemBias_JAX, EntityTransitionParameters_MetaSwitch_JAX
@@ -290,12 +289,8 @@ class ContinuousStateParameters_VonMises_JAX:
     kappas: JaxNumpyArray2D
 
 
-ContinuousStateParameters = Union[
-    ContinuousStateParameters_Gaussian, ContinuousStateParameters_VonMises
-]
-ContinuousStateParameters_JAX = Union[
-    ContinuousStateParameters_Gaussian_JAX, ContinuousStateParameters_VonMises_JAX
-]
+ContinuousStateParameters = Union[ContinuousStateParameters_Gaussian, ContinuousStateParameters_VonMises]
+ContinuousStateParameters_JAX = Union[ContinuousStateParameters_Gaussian_JAX, ContinuousStateParameters_VonMises_JAX]
 
 
 @dataclass
@@ -546,6 +541,16 @@ def dims_from_params(all_params: AllParameters) -> Dims:
     )
 
 
+def get_dim_of_recurrence_output(D: int, model: Model):
+    """
+    The recurrence output is called `D_t` above.
+    """
+    transformed_dim = model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
+        jnp.zeros(D)
+    )
+    return np.shape(transformed_dim)[0]
+
+
 ###
 # Conversions: Jax -> Numpy
 ###
@@ -657,9 +662,7 @@ def STP_with_unconstrained_tpms_from_ordinary_STP(
     STP: SystemTransitionParameters_JAX,
 ) -> SystemTransitionParameters_WithUnconstrainedTPMs_JAX:
     PiTilde_Unconstrained = unconstrained_tpm_from_tpm(jnp.exp(STP.Pi))
-    return SystemTransitionParameters_WithUnconstrainedTPMs_JAX(
-        STP.Gammas, STP.Upsilon, PiTilde_Unconstrained
-    )
+    return SystemTransitionParameters_WithUnconstrainedTPMs_JAX(STP.Gammas, STP.Upsilon, PiTilde_Unconstrained)
 
 
 def ordinary_STP_from_STP_with_unconstrained_tpms(
@@ -707,9 +710,7 @@ def ETP_MetaSwitch_with_unconstrained_tpms_from_ordinary_ETP_MetaSwitch(
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
 ) -> EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX:
     PTildes_Unconstrained = unconstrained_tpm_from_tpm(jnp.exp(ETP.Ps))
-    return EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX(
-        ETP.Psis, ETP.Omegas, PTildes_Unconstrained
-    )
+    return EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX(ETP.Psis, ETP.Omegas, PTildes_Unconstrained)
 
 
 def ordinary_ETP_MetaSwitch_from_ETP_MetaSwitch_with_unconstrained_tpms(
@@ -763,9 +764,7 @@ def CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(
     CSP: ContinuousStateParameters_Gaussian_JAX,
 ) -> ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX:
     cholesky_nzvals = cholesky_nzvals_from_covariances_with_two_mapping_axes_JAX(CSP.Qs)
-    return ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX(
-        CSP.As, CSP.bs, cholesky_nzvals
-    )
+    return ContinuousStateParameters_Gaussian_WithUnconstrainedCovariances_JAX(CSP.As, CSP.bs, cholesky_nzvals)
 
 
 def ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
@@ -783,9 +782,7 @@ def ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
 # to convert to simplex and back
 
 
-def normalize_log_tpms_within_parameter_group(
-    param_group, name_of_param_to_log_normalize: str, axis: int
-):
+def normalize_log_tpms_within_parameter_group(param_group, name_of_param_to_log_normalize: str, axis: int):
     """
     Takes a parameter group, e.g. `SystemTransitionParameters`, and normalizes (on a log scale)
     a parameter within that gorup.

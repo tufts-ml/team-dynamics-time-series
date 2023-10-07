@@ -3,8 +3,12 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
+from scipy.stats import zscore
 
-from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
+from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import (
+    Event,
+    player_coords_from_moments,
+)
 from dynagroup.types import NumpyArray1D
 from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 
@@ -14,6 +18,17 @@ from dynagroup.util import construct_a_new_list_after_removing_multiple_items
 ###
 @dataclass
 class Example_Boundary_Constants:
+    """
+    Stores information useful for determining that an example boundary exists.
+    Given a nominal sampling rate (in Hz), we compute the time we expect (in ms) between samples.
+    This is stored as `expected_time_in_ms_between_samples`.
+
+    However, it is normal for samples to have a bit of noise around that value.
+    So in practice, we conclude that two timesteps belong to the same example if
+
+        observed time (in ms) between samples \in [lower threshold, upper threhold]
+    """
+
     expected_time_in_ms_between_samples: float
     wall_clock_diff_lower_threshold: float
     wall_clock_diff_upper_threshold: float
@@ -66,15 +81,25 @@ def clean_events_of_moments_with_too_small_intervals(
             prev_wall_clock = curr_wall_clock
 
         # Remove moments whose wall clock diffs that are too big.
-        new_moments = construct_a_new_list_after_removing_multiple_items(
-            event.moments, moment_idxs_to_remove
-        )
+        new_moments = construct_a_new_list_after_removing_multiple_items(event.moments, moment_idxs_to_remove)
         events_cleaned[event_idx].moments = new_moments
 
     return events_cleaned
 
 
 def get_example_stop_idxs(
+    events: List[Event],
+    sampling_rate_Hz: float,
+    verbose: bool = True,
+) -> List[int]:
+    example_stop_idxs_from__large_time_deltas = get_example_stop_idxs__based_on_large_time_deltas(
+        events, sampling_rate_Hz, verbose
+    )
+    example_stop_idxs_from__anomalous_step_sizes = get_example_stop_idxs__based_on_anomalous_step_sizes(events)
+    return sorted(set(example_stop_idxs_from__large_time_deltas).union(example_stop_idxs_from__anomalous_step_sizes))
+
+
+def get_example_stop_idxs__based_on_large_time_deltas(
     events: List[Event],
     sampling_rate_Hz: float,
     verbose: bool = True,
@@ -92,9 +117,7 @@ def get_example_stop_idxs(
 
             if wall_clock_diff > EBC.wall_clock_diff_upper_threshold:
                 if verbose:
-                    print(
-                        f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}"
-                    )
+                    print(f"Constructing new event; wall_clock_diff between moments was {wall_clock_diff:.02f}")
                 example_end_times.append(T_curr - 1)
             prev_wall_clock = curr_wall_clock
             T_curr += 1
@@ -103,6 +126,28 @@ def get_example_stop_idxs(
     last_timestep = T_curr
     example_end_times.append(last_timestep)
     return example_end_times
+
+
+def get_example_stop_idxs__based_on_anomalous_step_sizes(
+    events: List[Event],
+) -> List[int]:
+    Z_SCORE_CUTOFF_FOR_STEP_SIZE_ON_COURT = 4.0
+    idxs_with_unusually_large_step_sizes = set()
+    moments_processed = [moment for event in events for moment in event.moments]
+    player_coords_unnormalized = player_coords_from_moments(moments_processed)
+
+    player_coord_diffs_unnormalized = player_coords_unnormalized[1:, :, :] - player_coords_unnormalized[:-1, :, :]
+    J = np.shape(player_coords_unnormalized)[1]
+    for j in range(J):
+        z_scores = zscore(player_coord_diffs_unnormalized[:, j])
+        abs_z_score_maxes = np.max(np.abs(z_scores), 1)
+        idxs_with_unusually_large_step_sizes_for_one_player = np.where(
+            abs_z_score_maxes > Z_SCORE_CUTOFF_FOR_STEP_SIZE_ON_COURT
+        )[0].tolist()
+        idxs_with_unusually_large_step_sizes = idxs_with_unusually_large_step_sizes.union(
+            idxs_with_unusually_large_step_sizes_for_one_player
+        )
+    return sorted(idxs_with_unusually_large_step_sizes)
 
 
 def get_play_start_stop_idxs(events: List[Event]) -> List[Tuple[int]]:

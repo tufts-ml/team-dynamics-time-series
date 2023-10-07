@@ -5,7 +5,11 @@ from dynagroup.diagnostics.steps_in_state import (
     plot_steps_within_examples_assigned_to_each_entity_state,
 )
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
-from dynagroup.forecasts import MSEs_from_forecasts, plot_forecasts
+from dynagroup.forecasts import (
+    MSEs_from_forecasts,
+    make_forecast_MSEs_summary,
+    plot_forecasts,
+)
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
@@ -21,14 +25,15 @@ from dynagroup.model2a.basketball.data.baller2vec.disk import (
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     get_start_and_stop_timestep_idxs_from_event_idx,
 )
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.params import Dims
+from dynagroup.params import Dims, get_dim_of_recurrence_output
 from dynagroup.util import get_current_datetime_as_string
-from dynagroup.vi.core import SystemTransitionPrior_JAX
+from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
+from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 from dynagroup.vi.vi_forecast import get_forecasts_on_test_set
 
 
@@ -57,18 +62,14 @@ n_test_games = 5
 # Sampling rate
 sampling_rate_Hz = 5
 
-
 # Model specification
+model_type = Model_Type.Linear_Recurrence
 K = 10
 L = 5
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_init_with_L={L}_K={K}_{n_train_games_to_use}_train_{n_val_games}_val_and_{n_test_games}_test_games__{datetime_as_string}/"
-
-
-# Model adjustments
-model_adjustment = None  # Options: None, "one_system_regime"
+save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -83,8 +84,8 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 1
-make_verbose_CAVI_plots = True
+n_cavi_iterations = 2
+make_verbose_CAVI_plots = False
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
@@ -97,7 +98,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 T_test_event_min = 50
 T_context_min = 20
 T_forecast = 20
-n_forecasts = 3
+
 
 ###
 # I/O
@@ -146,16 +147,21 @@ plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs
 # Setup Model
 ###
 
-#### Setup Dims
-
-J = np.shape(DATA_TRAIN.player_coords)[1]
-D, D_t = 2, 2
-N = 0
-M_s, M_e = 0, 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+
+### Setup Model Form
+model_basketball = get_basketball_model(model_type)
+
+#### Setup Dims
+
+J = np.shape(DATA_TRAIN.player_coords)[1]
+D = np.shape(DATA_TRAIN.player_coords)[2]
+D_t = get_dim_of_recurrence_output(D, model_basketball)
+N = 0
+M_s, M_e = 0, 0  # for now!
+DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 print("Running smart initialization.")
 
@@ -224,45 +230,98 @@ if animate_initialization:
         DATA_TRAIN.player_data,
     )
 
+####
+# Inference
+####
+
+VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+    jnp.asarray(DATA_TRAIN.player_coords),
+    n_cavi_iterations,
+    results_init,
+    model_basketball,
+    DATA_TRAIN.example_stop_idxs,
+    M_step_toggles_from_strings(
+        M_step_toggle_for_STP,
+        M_step_toggle_for_ETP,
+        M_step_toggle_for_continuous_state_parameters,
+        M_step_toggle_for_IP,
+    ),
+    num_M_step_iters,
+    system_transition_prior,
+    system_covariates,
+    use_continuous_states,
+)
+
+if make_verbose_CAVI_plots:
+    plot_steps_within_examples_assigned_to_each_entity_state(
+        continuous_states=jnp.asarray(DATA_TRAIN.player_coords),
+        continuous_state_labels=np.array(np.argmax(VEZ_summaries.expected_regimes, 2), dtype=int),
+        example_end_times=DATA_TRAIN.example_stop_idxs,
+        use_continuous_states=None,
+        K=DIMS.K,
+        save_dir=save_dir,
+        show_plot=False,
+        basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
+    )
+
 
 ###
-# Explore forecasts
+# Explore forecasts: Quantitative, with Plotting for all entities on Example 0.
 ###
+
+# additional configs; they are hidden down here for now.
+n_cavi_iterations_for_forecasting = 5
+n_forecasts_per_example = 25
+forecasting_examples_to_analyze = range(10)
+forecasting_examples_to_plot = range(10)
 
 xs_test = np.asarray(DATA_TEST.player_coords)
 example_end_times_test = DATA_TEST.example_stop_idxs
-params_learned = params_init
+params_for_forecasting = params_learned
 
-n_cavi_iterations_for_forecasting = 5
-n_forecasts = 3
+forecast_MSEs_summary_by_example_idx = {}
 
-# I'm manually determining the clip here...
-# Note: We are forecasting on the FINAL chunk of the example; could introduce biases (making it easier?)
-event_idx = 2
-start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(example_end_times_test, event_idx)
-T_example = stop_idx - start_idx
-T_context = int(0.8 * T_example)
-T_forecast = T_example - T_context
+for e, example_idx in enumerate(forecasting_examples_to_analyze):
+    start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(example_end_times_test, example_idx)
+    T_example = stop_idx - start_idx
+    T_context = int(0.8 * T_example)
+    T_forecast = T_example - T_context
 
+    MIN_T_IN_EXAMPLE_FOR_GENERATING_FORECASTS = 50
+    if T_example > MIN_T_IN_EXAMPLE_FOR_GENERATING_FORECASTS:
+        forecasts = get_forecasts_on_test_set(
+            xs_test[start_idx:stop_idx],
+            params_for_forecasting,
+            model_basketball,
+            T_context,
+            T_forecast,
+            n_cavi_iterations_for_forecasting,
+            n_forecasts_per_example,
+            system_covariates,
+        )
 
-T_EXAMPLE_MINIMUM = 50
-if T_example > T_EXAMPLE_MINIMUM:
-    forecasts = get_forecasts_on_test_set(
-        xs_test[start_idx:stop_idx],
-        params_learned,
-        model_basketball,
-        T_context,
-        T_forecast,
-        n_cavi_iterations_for_forecasting,
-        n_forecasts,
-        system_covariates,
-    )
+        forecast_MSEs = MSEs_from_forecasts(forecasts)
+        forecast_MSEs_summary = make_forecast_MSEs_summary(forecast_MSEs)
+        forecast_MSEs_summary_by_example_idx[example_idx] = forecast_MSEs_summary
 
-    forecasting_MSEs = MSEs_from_forecasts(forecasts)
+        print(f"---Results for example {example_idx}, with start time  {start_idx} and stop time  {stop_idx} ---")
 
-    plot_forecasts(
-        forecasts,
-        forecasting_MSEs,
-        save_dir,
-        filename_prefix=f"new_eval_start_idx_{start_idx}",
-    )
+        print(
+            f"Mean MSEs:  "
+            f"Fixed velocity: {forecast_MSEs_summary.mean_fixed_velocity:.03f}. "
+            f"Forward_simulation: {forecast_MSEs_summary.mean_forward_simulation:.03f}. "
+        )
+
+        print(
+            f"Median MSEs:  "
+            f"Fixed velocity: {forecast_MSEs_summary.median_fixed_velocity:.03f}. "
+            f"Forward_simulation: {forecast_MSEs_summary.median_forward_simulation:.03f}. "
+        )
+
+        if e in forecasting_examples_to_plot:
+            plot_forecasts(
+                forecasts,
+                forecast_MSEs,
+                save_dir,
+                filename_prefix=f"forecast_plot_example_idx_{example_idx}_start_idx_{start_idx}",
+            )

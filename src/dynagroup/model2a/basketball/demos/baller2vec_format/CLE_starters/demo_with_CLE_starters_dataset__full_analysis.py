@@ -21,7 +21,7 @@ from dynagroup.model2a.basketball.forecasts import (
     generate_random_context_times_for_events,
     get_forecast_MSEs_by_event,
 )
-from dynagroup.model2a.basketball.model import model_basketball
+from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -57,6 +57,7 @@ sampling_rate_Hz = 5
 
 
 # Model specification
+model_type = Model_Type.No_Recurrence
 K = 10
 L = 5
 
@@ -154,6 +155,9 @@ DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+
+### Setup Model Form
+model_basketball = get_basketball_model(model_type)
 
 print("Running smart initialization.")
 

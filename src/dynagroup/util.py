@@ -114,28 +114,18 @@ def random_rotation(n, theta=None):
 
 def make_fixed_sticky_tpm(self_transition_prob: float, num_states: int) -> np.array:
     if num_states == 1:
-        warnings.warn(
-            "Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix."
-        )
+        warnings.warn("Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix.")
         return np.array([[1]])
     external_transition_prob = (1.0 - self_transition_prob) / (num_states - 1)
-    return (
-        np.eye(num_states) * self_transition_prob
-        + (1.0 - np.eye(num_states)) * external_transition_prob
-    )
+    return np.eye(num_states) * self_transition_prob + (1.0 - np.eye(num_states)) * external_transition_prob
 
 
 def make_fixed_sticky_tpm_JAX(self_transition_prob: float, num_states: int) -> jnp.array:
     if num_states == 1:
-        warnings.warn(
-            "Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix."
-        )
+        warnings.warn("Sticky tpm has only 1 state; ignoring self transition prob and creating a `1` matrix.")
         return jnp.array([[1]])
     external_transition_prob = (1.0 - self_transition_prob) / (num_states - 1)
-    return (
-        jnp.eye(num_states) * self_transition_prob
-        + (1.0 - jnp.eye(num_states)) * external_transition_prob
-    )
+    return jnp.eye(num_states) * self_transition_prob + (1.0 - jnp.eye(num_states)) * external_transition_prob
 
 
 ###
@@ -245,17 +235,13 @@ def compute_cartesian_product_of_two_1d_arrays(x_vals: NumpyArray1D, y_vals: Num
     # `x_for_grid` has shape (len(x), len(x)), but all rows are identical.
     # `y_for_grid` has shape (len(y), len(y)), but all columns are identical.
     x_for_grid, y_for_grid = np.meshgrid(x_vals, y_vals)
-    return np.column_stack(
-        (x_for_grid.ravel(), y_for_grid.ravel())
-    )  # has shape (len(x)*len(y), D=2)
+    return np.column_stack((x_for_grid.ravel(), y_for_grid.ravel()))  # has shape (len(x)*len(y), D=2)
 
 
 ###
 # List manipulations
 ###
-def construct_a_new_list_after_removing_multiple_items(
-    orig_list: List, indices_to_remove: List[int]
-) -> List:
+def construct_a_new_list_after_removing_multiple_items(orig_list: List, indices_to_remove: List[int]) -> List:
     """
     Thanks Chat GPT!
 

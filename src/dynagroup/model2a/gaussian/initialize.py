@@ -67,11 +67,11 @@ from dynagroup.vi.M_step_and_ELBO import (
 # TODO: Make Enum: "random", "fixed", "tpm_only", etc.
 
 
-def make_data_free_preinitialization_of_IP_JAX(DIMS) -> InitializationParameters_Gaussian_JAX:
+def make_data_free_preinitialization_of_IP_JAX(DIMS, shared_variance=1.0) -> InitializationParameters_Gaussian_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
     pi_entities = np.ones((DIMS.J, DIMS.K)) / DIMS.K
     mu_0s = jnp.zeros((DIMS.J, DIMS.K, DIMS.D))
-    Sigma_0s = jnp.tile(jnp.eye(DIMS.D), (DIMS.J, DIMS.K, 1, 1))
+    Sigma_0s = jnp.tile(shared_variance * jnp.eye(DIMS.D), (DIMS.J, DIMS.K, 1, 1))
     return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, Sigma_0s)
 
 
@@ -474,7 +474,8 @@ def fit_ARHMM_to_top_half_of_model(
             system_transition_prior = None
 
             ### M-step (STP)
-            if only_one_example(example_end_times, T):
+            num_system_states = np.shape(STP_JAX.Pi)[0]
+            if only_one_example(example_end_times, T) or num_system_states == 1:
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
                 STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)

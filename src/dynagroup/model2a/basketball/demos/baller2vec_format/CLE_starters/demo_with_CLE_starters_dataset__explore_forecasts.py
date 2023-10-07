@@ -55,7 +55,7 @@ processed_data_dir = "data/basketball/baller2vec_format/processed/"
 
 # Data split
 n_train_games_list = [1, 5, 20]
-n_train_games_to_use = 20
+n_train_games_to_use = 1
 n_val_games = 4
 n_test_games = 5
 
@@ -271,7 +271,7 @@ if make_verbose_CAVI_plots:
 
 # additional configs; they are hidden down here for now.
 n_cavi_iterations_for_forecasting = 5
-n_forecasts_per_example = 3
+n_forecasts_per_example = 25
 forecasting_examples_to_analyze = range(10)
 forecasting_examples_to_plot = range(10)
 

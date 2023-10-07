@@ -20,7 +20,7 @@ from dynagroup.model2a.basketball.court import (
     unnormalize_coords,
 )
 from dynagroup.params import AllParameters_JAX, dims_from_params
-from dynagroup.sampler import sample_team_dynamics
+from dynagroup.sampler import get_multiple_samples_of_team_dynamics
 from dynagroup.types import (
     JaxNumpyArray2D,
     JaxNumpyArray3D,
@@ -155,26 +155,20 @@ def make_forecasts(
 
     fixed_init_continuous_states = continuous_states_during_context_window[-1]
 
-    for forecast_seed in range(seed, seed + n_forecasts_from_our_model):
-        if verbose:
-            print(
-                f"Now running forward sims for seed {forecast_seed+1}/{n_forecasts_from_our_model}.",
-                end="\r",
-            )
-
-        forward_sample_with_init_at_beginning = sample_team_dynamics(
-            params_learned,
-            T_forecast_plus_initialization_timestep_to_discard,
-            model,
-            seed=forecast_seed,
-            fixed_init_system_regime=fixed_init_system_regime,
-            fixed_init_entity_regimes=fixed_init_entity_regimes,
-            fixed_init_continuous_states=fixed_init_continuous_states,
-            system_covariates=system_covariates,
-        )
-        forward_simulations_in_normalized_coords[forecast_seed] = forward_sample_with_init_at_beginning.xs[1:]
-        # ` forward_simulations_in_normalized_coord` has shape (forecast_window, J, D)
-
+    forward_samples_with_init_at_beginning = get_multiple_samples_of_team_dynamics(
+        n_forecasts_from_our_model,
+        params_learned,
+        T_forecast_plus_initialization_timestep_to_discard,
+        model,
+        seed=seed,
+        fixed_init_system_regime=fixed_init_system_regime,
+        fixed_init_entity_regimes=fixed_init_entity_regimes,
+        fixed_init_continuous_states=fixed_init_continuous_states,
+        system_covariates=system_covariates,
+    )
+    for s in range(n_forecasts_from_our_model):
+        forward_simulations_in_normalized_coords[s] = forward_samples_with_init_at_beginning[s].xs[1:]
+        # ` forward_simulations_in_normalized_coords` has shape (n_forecasts_from_our_model, forecast_window, J, D)
     ###
     # Compute velocity baseline
     ###

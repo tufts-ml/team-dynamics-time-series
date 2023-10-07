@@ -55,7 +55,7 @@ processed_data_dir = "data/basketball/baller2vec_format/processed/"
 
 # Data split
 n_train_games_list = [1, 5, 20]
-n_train_games_to_use = 1
+n_train_games_to_use = 20
 n_val_games = 4
 n_test_games = 5
 

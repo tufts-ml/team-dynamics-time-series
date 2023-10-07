@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
+import jax
 import jax.numpy as jnp
 import jax_dataclasses as jdc
 import numpy as np
-import numpy.random as npr
-from numpy.random import multivariate_normal as mvn
 
 from dynagroup.model import Model
 from dynagroup.params import AllParameters, dims_from_params
@@ -96,6 +95,197 @@ def jax_sample_from_sample(sample: Sample) -> Sample_JAX:
     )
 
 
+def get_multiple_samples_of_team_dynamics(
+    S: int,
+    AP: AllParameters,
+    T: int,
+    model: Model,
+    seed: int = 0,
+    fixed_system_regimes: Optional[NumpyArray1D] = None,
+    fixed_init_system_regime: Optional[int] = None,
+    fixed_init_entity_regimes: Optional[NumpyArray1D] = None,
+    fixed_init_continuous_states: Optional[NumpyArray2D] = None,
+    system_covariates: Optional[np.array] = None,
+) -> List[Sample]:
+    """
+    Assumes we have a state space model on the bottom of the switches.
+
+    Arguments:
+        S: number of samples
+        T: length of time series
+        fixed_system_regimes: Optional, has shape (T,)
+            Each entry is in {1,...,L}.
+            If not None, `fixed_init_system_regime` must be None
+        fixed_init_system_regime: Optional, has type int
+            If not None, `fixed_system_regimes` must be None,
+        fixed_init_entity_regimes: Optional,  has shape (J,).
+            Each entry is in {1,...,K}.
+        fixed_init_continuous_states: Optional, has shape (J,D)
+            Each entry is in R^D
+
+
+    Notation:
+        J: number of entities
+        K: number of entity-level regimes
+        L: number of system-level regimes
+        D: dimensionality of latent continuous state, x
+        N : dimensionality of observation, y
+    """
+    ### Up-front material
+    if (fixed_init_system_regime is not None) and (fixed_system_regimes is not None):
+        raise ValueError(
+            f"At most ONE of `fixed_init_system_regime` and `fixed_system_regimes` can be non-None. "
+            f"You have set them BOTH to non-None, and so I don't know what to use for the system "
+            f"regime at the initial timestep, s[0]."
+        )
+
+    key = jax.random.PRNGKey(seed)
+
+    ### Pre-allocation
+    dims = dims_from_params(AP)
+
+    if S in (dims.K, dims.L, T, dims.J):
+        raise ValueError(
+            f"Pick a value for S that does not equal K, L, J or T, so that we don't get unexpected results "
+            f"from numpy broadcasting when making S samples in parallel"
+        )
+
+    s = np.zeros((S, T), dtype=int)
+    z_probs = np.zeros((S, T, dims.J, dims.K))
+    zs = np.zeros((S, T, dims.J), dtype=int)
+    xs = np.zeros((S, T, dims.J, dims.D))
+    ys = np.full((S, T, dims.J, dims.N), np.nan)
+
+    ### Initialize
+    if fixed_init_system_regime is not None:
+        s[:, 0] = fixed_init_system_regime
+    elif fixed_system_regimes is not None:
+        s[:, :] = fixed_system_regimes
+    else:
+        s[:, 0] = jax.random.choice(key, dims.L, shape=(S,), p=AP.IP.pi_system)
+        key, _ = jax.random.split(key)
+
+    if fixed_init_entity_regimes is None:
+        for j in range(dims.J):
+            z_probs[:, 0, j, :] = AP.IP.pi_entities[j]
+            zs[:, 0, j] = jax.random.choice(key, dims.K, shape=(S,), p=AP.IP.pi_entities[j])
+            key, _ = jax.random.split(key)
+
+    else:
+        z_probs[:, 0] = np.full_like(z_probs[:, 0], np.nan)
+        zs[:, 0] = fixed_init_entity_regimes
+
+    if fixed_init_continuous_states is None:
+        for j in range(dims.J):
+            # we get a separate entity state, k, for each sample s.
+            ks = zs[:, 0, j]
+            mu_0s, Sigma_0s = AP.IP.mu_0s[j, ks], AP.IP.Sigma_0s[j, ks]
+            xs[:, 0, j] = jax.random.multivariate_normal(key, mu_0s, Sigma_0s)
+            key, _ = jax.random.split(key)
+
+    else:
+        xs[:, 0] = fixed_init_continuous_states
+
+    for j in range(dims.J):
+        C = AP.EP.Cs[j]
+        d = AP.EP.ds[j]
+        R = AP.EP.Rs[j]
+        emissions_exist = C.any() or d.any() or R.any()
+        if emissions_exist:
+            raise NotImplementedError(
+                "Need to update multi-sample generation to handle emissions of y. See commit on 10/6/23."
+            )
+            # Rk: it should be something like
+            #   ys[:,0, j] = mvn(C @ xs[:,0, j] + d, R, size=S)
+            # but I probably need einsum rather than @.
+
+    ### Generate
+    for t in range(1, T):
+        # `dummy_time_index` allows us to use the model factors but apply them to the case
+        # where we're looking at a single time observation at a time
+        dummy_time_index = 0
+
+        ###
+        # Sample next system regime
+        ###
+        if fixed_system_regimes is None:
+            system_covariates_at_this_timestep = system_covariates[t] if system_covariates is not None else None
+            log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
+                AP.STP,
+                T_minus_1=1,
+                system_covariates=system_covariates_at_this_timestep,
+            )
+
+            # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
+            # TODO: To handle Model 1, the system transitions probabilities should depend
+            # on the previous entity regimes, zs[t-1].
+            s_probs = np.exp(log_probs_next_sys[dummy_time_index, s[:, t - 1]])
+
+            for sample in range(S):
+                # TODO: I want to do vectorized version of npr choice.
+                # I'm getting "ValueError: 'p' must be 1-dimensional
+                # On first glance, jax didn't help here
+                # s[sample,t] = npr.choice(range(dims.L), p=s_probs[sample])
+                s[sample, t] = jax.random.choice(key, dims.L, p=s_probs[sample])
+                key, _ = jax.random.split(key)
+
+        ###
+        # Sample next entity regimes
+        ###
+
+        #  Old way of doing it
+        #
+        # log_probs_next_entities = log_probs_for_one_step_ahead_entity_transitions(
+        #     AP.ETP, zs[t - 1], xs[t - 1], s[t]
+        # )
+
+        for sample in range(S):
+            log_probs_next_entities = model.compute_log_entity_transition_probability_matrices_JAX(
+                AP.ETP,
+                xs[sample, t - 1][None, :, :],
+                model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+            )
+            # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
+            z_probs[sample, t] = np.exp(
+                log_probs_next_entities[dummy_time_index, np.arange(dims.J), s[sample, t], zs[sample, t - 1], :]
+            )
+
+            for j in range(dims.J):
+                z_probs[sample, t, j] /= np.sum(z_probs[sample, t, j])
+                zs[sample, t, j] = jax.random.choice(key, dims.K, p=z_probs[sample, t, j])
+                key, _ = jax.random.split(key)
+
+        ###
+        # Sample next entity continuous states
+        ###
+        for j in range(dims.J):
+            As = AP.CSP.As[j, zs[:, t, j]]
+            bs = AP.CSP.bs[j, zs[:, t, j]]
+            Qs = AP.CSP.Qs[j, zs[:, t, j]]
+            xs[:, t, j] = jax.random.multivariate_normal(
+                key, mean=np.einsum("sde, se -> sd", As, xs[:, t - 1, j]) + bs, cov=Qs
+            )
+            key, _ = jax.random.split(key)
+
+        ###
+        # Sample next entity observations
+        ###
+        for j in range(dims.J):
+            C = AP.EP.Cs[j]
+            d = AP.EP.ds[j]
+            R = AP.EP.Rs[j]
+            emissions_exist = C.any() or d.any() or R.any()
+            if emissions_exist:
+                raise NotImplementedError(
+                    "Need to update multi-sample generation to handle emissions of y. See commit on 10/6/23."
+                )
+                # It should be something like
+                #   ys[t, j] = mvn(C @ xs[:,t, j] + d, R, size=S)
+                # but I probably need einsum rather than @.
+
+    return list(Sample(s[sample], z_probs[sample], zs[sample], xs[sample], ys[sample]) for sample in range(S))
+
+
 def sample_team_dynamics(
     AP: AllParameters,
     T: int,
@@ -129,124 +319,16 @@ def sample_team_dynamics(
         D: dimensionality of latent continuous state, x
         N : dimensionality of observation, y
     """
-    ### Up-front material
-    if (fixed_init_system_regime is not None) and (fixed_system_regimes is not None):
-        raise ValueError(
-            f"At most ONE of `fixed_init_system_regime` and `fixed_system_regimes` can be non-None. "
-            f"You have set them BOTH to non-None, and so I don't know what to use for the system "
-            f"regime at the initial timestep, s[0]."
-        )
-
-    np.random.seed(seed)
-
-    ### Pre-allocation
-    dims = dims_from_params(AP)
-
-    s = np.zeros(T, dtype=int)
-    z_probs = np.zeros((T, dims.J, dims.K))
-    zs = np.zeros((T, dims.J), dtype=int)
-    xs = np.zeros((T, dims.J, dims.D))
-    ys = np.full((T, dims.J, dims.N), np.nan)
-
-    ### Initialize
-    if fixed_init_system_regime is not None:
-        s[0] = fixed_init_system_regime
-    elif fixed_system_regimes is not None:
-        s = fixed_system_regimes
-    else:
-        s[0] = npr.choice(range(dims.L), p=AP.IP.pi_system)
-
-    if fixed_init_entity_regimes is None:
-        for j in range(dims.J):
-            z_probs[0, j, :] = AP.IP.pi_entities[j]
-            zs[0, j] = npr.choice(range(dims.K), p=AP.IP.pi_entities[j])
-    else:
-        z_probs[0] = np.full_like(z_probs[0], np.nan)
-        zs[0] = fixed_init_entity_regimes
-
-    if fixed_init_continuous_states is None:
-        for j in range(dims.J):
-            k = zs[0, j]
-            mu_0, Sigma_0 = AP.IP.mu_0s[j, k], AP.IP.Sigma_0s[j, k]
-            xs[0, j] = mvn(mu_0, Sigma_0)
-    else:
-        xs[0] = fixed_init_continuous_states
-
-    for j in range(dims.J):
-        C = AP.EP.Cs[j]
-        d = AP.EP.ds[j]
-        R = AP.EP.Rs[j]
-        emissions_exist = C.any() or d.any() or R.any()
-        if emissions_exist:
-            ys[0, j] = mvn(C @ xs[0, j] + d, R)
-
-    ### Generate
-    for t in range(1, T):
-        # `dummy_time_index` allows us to use the model factors but apply them to the case
-        # where we're looking at a single time observation at a time
-        dummy_time_index = 0
-
-        ###
-        # Sample next system regime
-        ###
-
-        if fixed_system_regimes is None:
-            system_covariates_at_this_timestep = (
-                system_covariates[t] if system_covariates is not None else None
-            )
-            log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
-                AP.STP,
-                T_minus_1=1,
-                system_covariates=system_covariates_at_this_timestep,
-            )
-
-            # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
-            # TODO: To handle Model 1, the system transitions probabilities should depend
-            # on the previous entity regimes, zs[t-1].
-            s_probs = np.exp(log_probs_next_sys[dummy_time_index, s[t - 1]])
-            s[t] = npr.choice(range(dims.L), p=s_probs)
-
-        ###
-        # Sample next entity regimes
-        ###
-
-        #  Old way of doing it
-        #
-        # log_probs_next_entities = log_probs_for_one_step_ahead_entity_transitions(
-        #     AP.ETP, zs[t - 1], xs[t - 1], s[t]
-        # )
-
-        log_probs_next_entities = model.compute_log_entity_transition_probability_matrices_JAX(
-            AP.ETP,
-            xs[t - 1][None, :, :],
-            model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
-        )
-        # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
-        z_probs = np.exp(
-            log_probs_next_entities[dummy_time_index, np.arange(dims.J), s[t], zs[t - 1], :]
-        )
-
-        for j in range(dims.J):
-            zs[t, j] = npr.choice(range(dims.K), p=z_probs[j])
-
-        ###
-        # Sample next entity continuous states
-        ###
-        for j in range(dims.J):
-            A = AP.CSP.As[j, zs[t, j]]
-            b = AP.CSP.bs[j, zs[t, j]]
-            Q = AP.CSP.Qs[j, zs[t, j]]
-            xs[t, j] = mvn(A @ xs[t - 1, j] + b, Q)
-
-        ###
-        # Sample next entity observations
-        ###
-        for j in range(dims.J):
-            C = AP.EP.Cs[j]
-            d = AP.EP.ds[j]
-            R = AP.EP.Rs[j]
-            emissions_exist = C.any() or d.any() or R.any()
-            if emissions_exist:
-                ys[t, j] = mvn(C @ xs[t, j] + d, R)
-
-    return Sample(s, z_probs, zs, xs, ys)
+    num_samples = 1
+    return get_multiple_samples_of_team_dynamics(
+        num_samples,
+        AP,
+        T,
+        model,
+        seed,
+        fixed_system_regimes,
+        fixed_init_system_regime,
+        fixed_init_entity_regimes,
+        fixed_init_continuous_states,
+        system_covariates,
+    )[0]

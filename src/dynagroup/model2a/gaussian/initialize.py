@@ -67,11 +67,11 @@ from dynagroup.vi.M_step_and_ELBO import (
 # TODO: Make Enum: "random", "fixed", "tpm_only", etc.
 
 
-def make_data_free_preinitialization_of_IP_JAX(DIMS) -> InitializationParameters_Gaussian_JAX:
+def make_data_free_preinitialization_of_IP_JAX(DIMS, shared_variance=1.0) -> InitializationParameters_Gaussian_JAX:
     pi_system = np.ones(DIMS.L) / DIMS.L
     pi_entities = np.ones((DIMS.J, DIMS.K)) / DIMS.K
     mu_0s = jnp.zeros((DIMS.J, DIMS.K, DIMS.D))
-    Sigma_0s = jnp.tile(jnp.eye(DIMS.D), (DIMS.J, DIMS.K, 1, 1))
+    Sigma_0s = jnp.tile(shared_variance * jnp.eye(DIMS.D), (DIMS.J, DIMS.K, 1, 1))
     return InitializationParameters_Gaussian_JAX(pi_system, pi_entities, mu_0s, Sigma_0s)
 
 

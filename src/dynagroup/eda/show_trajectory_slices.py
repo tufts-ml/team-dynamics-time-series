@@ -71,3 +71,8 @@ def plot_trajectory_slice(
         fig.savefig(save_dir + title_prefix + f"_entity_{entity_idx}.pdf")
     if show_plot:
         plt.show()
+    # An attempt to avoid inadventently retaining figures which consume too much memory.
+    # References:
+    # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+    # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+    plt.close(plt.gcf())

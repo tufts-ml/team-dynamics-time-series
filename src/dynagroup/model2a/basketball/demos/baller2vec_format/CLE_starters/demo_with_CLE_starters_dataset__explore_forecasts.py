@@ -63,13 +63,13 @@ n_test_games = 5
 sampling_rate_Hz = 5
 
 # Model specification
-model_type = Model_Type.Linear_Recurrence
+model_type = Model_Type.Linear_And_Out_Of_Bounds_Recurrence
 K = 10
-L = 5
+L = 1
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
+save_dir = f"results/basketball/analyses/CLE_ALL_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -325,3 +325,13 @@ for e, example_idx in enumerate(forecasting_examples_to_analyze):
                 save_dir,
                 filename_prefix=f"forecast_plot_example_idx_{example_idx}_start_idx_{start_idx}",
             )
+
+# summary metrics
+
+mean_ours = np.mean([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
+mean_fixed_velocity = np.mean([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
+print(f"Mean over examples.  Fixed velocity: {mean_fixed_velocity:.03f}. Ours: {mean_ours:.03f}.")
+
+median_ours = np.median([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
+median_fixed_velocity = np.median([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
+print(f"Median over examples.  Fixed velocity: {median_fixed_velocity:.03f}. Ours: {median_ours:.03f}.")

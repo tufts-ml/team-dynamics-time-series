@@ -72,7 +72,12 @@ def plot_steps_assigned_to_state(
         plt.show()
     if save_dir is not None:
         plt.savefig(save_dir + f"{basename_prefix}_steps_assigned_to_state_for_entity_{j}_state_{k}.pdf")
-    plt.close()
+
+    # An attempt to avoid inadventently retaining figures which consume too much memory.
+    # References:
+    # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+    # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+    plt.close(plt.gcf())
 
 
 def get_entity_data_within_examples_and_assigned_to_entity_state(

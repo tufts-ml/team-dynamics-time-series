@@ -144,11 +144,15 @@ def get_multiple_samples_of_team_dynamics(
     ### Pre-allocation
     dims = dims_from_params(AP)
 
-    if S in (dims.K, dims.L, T, dims.J):
-        raise ValueError(
-            f"Pick a value for S that does not equal K, L, J or T, so that we don't get unexpected results "
-            f"from numpy broadcasting when making S samples in parallel"
-        )
+    # Rk: Below is a 'safe mode' I tried to enforce, but it proved to be too restrictive in practice,
+    # especially since we may run forecasting on very many examples in the test set, so we might want to
+    # handle many, wildly varying T's.
+    #
+    # if S in (dims.K, dims.L, T, dims.J):
+    #     raise ValueError(
+    #         f"Pick a value for S that does not equal K, L, J or T, so that we don't get unexpected results "
+    #         f"from numpy broadcasting when making S samples in parallel"
+    #     )
 
     s = np.zeros((S, T), dtype=int)
     z_probs = np.zeros((S, T, dims.J, dims.K))

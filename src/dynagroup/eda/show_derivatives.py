@@ -37,19 +37,10 @@ def plot_discrete_derivatives(
     sample_weight_diffs = sample_weights[1:, :] * sample_weights[:-1, :]
 
     for j in range(J):
-        xs = [
-            x
-            for (t, x) in enumerate(continuous_state_diffs[:, j, 0])
-            if sample_weight_diffs[t, j] == True
-        ]
-        ys = [
-            y
-            for (t, y) in enumerate(continuous_state_diffs[:, j, 1])
-            if sample_weight_diffs[t, j] == True
-        ]
+        xs = [x for (t, x) in enumerate(continuous_state_diffs[:, j, 0]) if sample_weight_diffs[t, j] == True]
+        ys = [y for (t, y) in enumerate(continuous_state_diffs[:, j, 1]) if sample_weight_diffs[t, j] == True]
 
         # Create a hexbin plot
-        plt.close("all")
         plt.figure(figsize=(10, 8))
         plt.hexbin(xs, ys, gridsize=50, cmap="viridis", bins="log", mincnt=1)
         plt.colorbar(label="Log Count")
@@ -60,7 +51,9 @@ def plot_discrete_derivatives(
         if show_plot:
             plt.show()
         if save_dir is not None:
-            plt.savefig(
-                save_dir
-                + f"{basename_prefix}_hexbin_plot_of_discrete_derivatives_for_entity_{j}.pdf"
-            )
+            plt.savefig(save_dir + f"{basename_prefix}_hexbin_plot_of_discrete_derivatives_for_entity_{j}.pdf")
+        # An attempt to avoid inadventently retaining figures which consume too much memory.
+        # References:
+        # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+        # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+        plt.close(plt.gcf())

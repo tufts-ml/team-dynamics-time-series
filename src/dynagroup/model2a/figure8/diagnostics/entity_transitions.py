@@ -38,9 +38,7 @@ def investigate_entity_transition_probs_in_different_contexts(
         for system_state in [0, 1]:
             for close_to_origin in [False, True]:
                 input = large_closeness if close_to_origin else small_closeness
-                potentials = (
-                    ETP.Ps[j, system_state] + ETP.Psis[j, system_state, :, dummy_value] * input
-                )
+                potentials = ETP.Ps[j, system_state] + ETP.Psis[j, system_state, :, dummy_value] * input
                 entity_trans_probs = np.exp(normalize_log_potentials_by_axis(potentials, axis=1))
                 print(
                     f"For entity {j}, under system_state {system_state}, if close to origin is {close_to_origin}, the entity transition probs are \n {entity_trans_probs}"
@@ -81,3 +79,9 @@ def plot_tpm_as_heatmap(P: np.array, filename_to_save: str) -> None:
             )
     fig.tight_layout()
     fig.savefig(filename_to_save)
+
+    # An attempt to avoid inadventently retaining figures which consume too much memory.
+    # References:
+    # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+    # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+    plt.close(plt.gcf())

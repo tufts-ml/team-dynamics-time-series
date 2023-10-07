@@ -97,9 +97,7 @@ def plot_TOR_team_slice(
     # Create custom legend elements
     patches = [None] * J
     for j in range(J):
-        patches[j] = mpatches.Patch(
-            color=cm.get_cmap(colormap_names[j])(0.75), linestyle="-", label=PLAYER_NAMES[j]
-        )
+        patches[j] = mpatches.Patch(color=cm.get_cmap(colormap_names[j])(0.75), linestyle="-", label=PLAYER_NAMES[j])
 
     # Display the legend
     plt.legend(handles=patches, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -110,3 +108,9 @@ def plot_TOR_team_slice(
 
     if show_plot:
         plt.show()
+
+    # An attempt to avoid inadventently retaining figures which consume too much memory.
+    # References:
+    # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+    # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+    plt.close(plt.gcf())

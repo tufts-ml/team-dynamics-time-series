@@ -1,3 +1,5 @@
+logs/
+
 # alphabetically ordered
 *.egg-info
 *.ipynb

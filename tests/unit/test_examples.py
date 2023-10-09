@@ -69,9 +69,7 @@ def model():
     return figure8_model_JAX
 
 
-def test_fix_log_system_transitions_at_example_boundaries(
-    IP, log_system_transitions, example_end_times, T, DIMS
-):
+def test_fix_log_system_transitions_at_example_boundaries(IP, log_system_transitions, example_end_times, T, DIMS):
     log_system_transitions_fixed = fix_log_system_transitions_at_example_boundaries(
         log_system_transitions,
         IP,
@@ -86,9 +84,7 @@ def test_fix_log_system_transitions_at_example_boundaries(
             assert jnp.allclose(log_system_transitions_fixed[t], log_system_transitions[t])
 
 
-def test_fix_log_entity_transitions_at_example_boundaries(
-    IP, log_entity_transitions, example_end_times, T, DIMS
-):
+def test_fix_log_entity_transitions_at_example_boundaries(IP, log_entity_transitions, example_end_times, T, DIMS):
     log_entity_transitions_fixed = fix_log_entity_transitions_at_example_boundaries(
         log_entity_transitions,
         IP,
@@ -99,9 +95,7 @@ def test_fix_log_entity_transitions_at_example_boundaries(
             assert not jnp.allclose(log_entity_transitions_fixed[t], log_entity_transitions[t])
             for j in range(DIMS.J):
                 for k in range(DIMS.K):
-                    assert jnp.allclose(
-                        log_entity_transitions_fixed[t, j, k, :], jnp.log(IP.pi_entities[j])
-                    )
+                    assert jnp.allclose(log_entity_transitions_fixed[t, j, k, :], jnp.log(IP.pi_entities[j]))
         else:
             assert jnp.allclose(log_entity_transitions_fixed[t], log_entity_transitions[t])
 

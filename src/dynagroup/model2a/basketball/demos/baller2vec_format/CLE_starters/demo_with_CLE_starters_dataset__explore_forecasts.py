@@ -63,9 +63,9 @@ n_test_games = 5
 sampling_rate_Hz = 5
 
 # Model specification
-model_type = Model_Type.Linear_And_Out_Of_Bounds_Recurrence
+model_type = Model_Type.Out_of_Bounds_Recurrence
 K = 10
-L = 1
+L = 5
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()

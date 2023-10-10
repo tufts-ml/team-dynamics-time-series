@@ -101,8 +101,8 @@ def compute_log_system_transition_probability_matrices_JAX(
     These are time varying, but only if at least one of the following conditions are true:
         * system-level covariates exist (in which case the function signature needs to be updated).
             The covariate effect is governed by the parameters in STP.Upsilon
-        * there is recurrent feedback from the previous entities x_prev[t-1], as in Model 1.
-            The recurrence effect is governed by the parameters in STP.Gammas
+        * there is recurrent feedback from the previous entities (1:J) via x_prev[t-1], as in Model 2a.
+            The recurrence effect is also governed by the parameters in STP.Upsilon
 
     Arguments:
         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial

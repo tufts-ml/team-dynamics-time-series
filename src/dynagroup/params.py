@@ -41,7 +41,7 @@ class SystemTransitionParameters:
         Gammas: has shape (J, L, K)
             Set this to zero if there is no entity-to-system feedback.
         Upsilon: has shape (L, M_s):
-            Weights for covariates on system transitions
+            Weights the contribution to system transitions from covariate-informed recurrence
         Pi: has shape (L, L).
             Log of a LxL transition probability matrix
 
@@ -49,7 +49,9 @@ class SystemTransitionParameters:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        M_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
+
 
     Remarks:
         It may seem weird to represent Pi here, even though exp(Pi) is the transition probability matrix,
@@ -70,7 +72,7 @@ class SystemTransitionParameters_JAX:
         Gammas: has shape (J, L, K)
             Set this to zero if there is no entity-to-system feedback.
         Upsilon: has shape (L, M_s):
-            Weights for covariates on system transitions
+            Weights the contribution to system transitions from covariate-informed recurrence
         Pi: has shape (L, L).
             Log of a LxL transition probability matrix
 
@@ -78,7 +80,8 @@ class SystemTransitionParameters_JAX:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        M_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
 
     Remarks:
         It may seem weird to represent Pi here, even though exp(Pi) is the transition probability matrix,
@@ -512,9 +515,10 @@ class Dims:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t : dimensionality of transformed latent continuous state, x_tilde, before application of recurrence matrix
+        D_t : dimensionality of transformed latent continuous state, x_tilde, before application of entity-level recurrence matrix
         N : dimensionality of observation, y
-        M_s: dimensionality of system-level covariates
+        M_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
         M_e: dimensionality of entity-level covariates
     """
 
@@ -673,7 +677,8 @@ class SystemTransitionParameters_WithUnconstrainedTPMs_JAX:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        M_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
     """
 
     Gammas: JaxNumpyArray3D

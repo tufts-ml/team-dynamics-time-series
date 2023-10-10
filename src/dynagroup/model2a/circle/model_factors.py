@@ -40,6 +40,7 @@ def compute_log_system_transition_probability_matrices_JAX(
 ):
     """
     Compute log system transition probability matrices.
+
     These are time varying, but only if at least one of the following conditions are true:
         * system-level covariates exist (in which case the function signature needs to be updated).
             The covariate effect is governed by the parameters in STP.Upsilon
@@ -60,6 +61,8 @@ def compute_log_system_transition_probability_matrices_JAX(
         L: number of system-level regimes
     """
     # TODO: Check t vs t-1
+    # RK: In the gaussian model, Upsilon also handles recurrence, but we haven't updated the circle
+    # model to handle this yet.
     bias_from_system_covariates = jnp.einsum("ld,td->tl", STP.Upsilon, system_covariates[:-1])  # (T-1, L)
 
     # Pi: has shape (L, L)

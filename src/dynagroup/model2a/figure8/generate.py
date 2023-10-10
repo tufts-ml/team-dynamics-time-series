@@ -102,13 +102,9 @@ def make_bs_for_figure_8_experiment(
     for j in range(J):
         for k in range(K):
             if k == 0:
-                circle_center = np.array(
-                    [0, 1]
-                )  # in first entity regime, x rotation is centered around point (0,1)
+                circle_center = np.array([0, 1])  # in first entity regime, x rotation is centered around point (0,1)
             else:
-                circle_center = np.array(
-                    [0, -1]
-                )  # in first entity regime, x rotation is centered around point (0,1)
+                circle_center = np.array([0, -1])  # in first entity regime, x rotation is centered around point (0,1)
             bs[j, k] = (np.eye(D) - As[j, k]) @ circle_center
     return bs
 
@@ -130,9 +126,7 @@ def make_initialization_parameters_for_figure_8_experiment(
     # set pi_entities so that we very likely always start at the first regime.
     pi_entities = np.zeros((J, K))
     for j in range(J):
-        pi_entities[j] = np.array(
-            [prob_favored_regime] + [prob_unfavored_regimes / (K - 1)] * (K - 1)
-        )
+        pi_entities[j] = np.array([prob_favored_regime] + [prob_unfavored_regimes / (K - 1)] * (K - 1))
 
     # set mu_0's so that initial x will be at (1,1) with very high probability
     mu_0s = np.zeros((J, K, D))
@@ -161,13 +155,12 @@ SEED = 10
 J = 3
 N = 5
 T = 400
-M_s, M_e = 0, 0  # number of covariates for system and entity
+M_e = 0  # number of covariates for entity
+M_s = 0  # dimensionality of contribution to system-level transitions from skip-level recurrence and system-level covariates
 
 # system transition parameters (stickiness)
 alpha_system, kappa_system = 1.0, 50.0  # only needed if fixed_system_regimes=None
-fixed_system_regimes = np.array(
-    [0] * int(T / 4) + [1] * int(T / 4) + [0] * int(T / 4) + [1] * int(T / 4)
-)
+fixed_system_regimes = np.array([0] * int(T / 4) + [1] * int(T / 4) + [0] * int(T / 4) + [1] * int(T / 4))
 # TODO: derive `idxs_of_system_regime_transitions` and `idxs_of_system_regime_transitions`
 # from `fixed_system_regimes` programtically
 times_of_system_regime_changepoints = [int(x) for x in np.arange(1, 4) * T / 4]

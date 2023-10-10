@@ -129,7 +129,7 @@ def run_VES_step_JAX(
             May come from a list of J HMM_Posterior_Summary instances created by the VEZ step.
         transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
-        system_covariates : An optional array of shape (T, M_s)
+        system_covariates : An optional array of shape (T, dim_of_covariates)
         use_continuous_states: If None, we assume all states should be utilized in inference.
             Otherwise, this is a (T,J) boolean vector such that
             the (t,j)-th element  is True if continuous_states[t,j] should be utilized

@@ -13,7 +13,7 @@ from dynagroup.params import (
     AllParameters_JAX,
     ContinuousStateParameters_JAX,
     EmissionsParameters_JAX,
-    EntityTransitionParameters_MetaSwitch_JAX,
+    EntityTransitionParameters_JAX,
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
@@ -49,11 +49,15 @@ class ResultsFromBottomHalfInit:
         record_of_most_likely_states:  Has shape (T,J,num_EM_iterations).
             Note that this is NOT most likely in the Viterbi sense,
             it's just the argmax from the expected unary marginals.
+        ETP: Entity transition parameters.  They're optional for backwards compatibility;
+            the original initialization code for circles didn't store these, even though
+            they are learned by the EM algorithm for the bottom-level HMM.
     """
 
     CSP: ContinuousStateParameters_JAX
     EZ_summaries: HMM_Posterior_Summaries_JAX
     record_of_most_likely_states: NumpyArray3D  # TxJx num_EM_iterations
+    ETP: Optional[EntityTransitionParameters_JAX] = None
 
 
 @dataclass
@@ -66,7 +70,7 @@ class ResultsFromTopHalfInit:
     """
 
     STP: SystemTransitionParameters_JAX
-    ETP: EntityTransitionParameters_MetaSwitch_JAX
+    ETP: EntityTransitionParameters_JAX
     ES_summary: HMM_Posterior_Summary_JAX
     record_of_most_likely_states: NumpyArray2D  # Txnum_EM_iterations
 
@@ -124,16 +128,12 @@ def inspect_entity_level_segmentations_over_EM_iterations(
     """
     _, J, num_EM_iterations = np.shape(record_of_most_likely_states)
 
-    print(
-        "\n---Now inspecting the learning (during initialization) of the entity-level segmentations.---"
-    )
+    print("\n---Now inspecting the learning (during initialization) of the entity-level segmentations.---")
     for j in range(J):
         print(f"\n\nNow investigating entity {j}....")
         for i in range(num_EM_iterations):
             most_likely_states = record_of_most_likely_states[:, j, i]
-            count_dups_estimated = [
-                sum(1 for _ in group) for _, group in groupby(most_likely_states)
-            ]
+            count_dups_estimated = [sum(1 for _ in group) for _, group in groupby(most_likely_states)]
             count_dups_true = [sum(1 for _ in group) for _, group in groupby(zs_true[:, j])]
             print(
                 f"For entity {j}, after EM it {i+1}, number of consecutive duplications for estimated: {count_dups_estimated}. For true: {count_dups_true}"
@@ -153,9 +153,7 @@ def inspect_system_level_segmentations_over_EM_iterations(
     """
     _, num_EM_iterations = np.shape(record_of_most_likely_states)
 
-    print(
-        "\n---Now inspecting the learning (during initialization) of the system-level segmentations.---"
-    )
+    print("\n---Now inspecting the learning (during initialization) of the system-level segmentations.---")
     for i in range(num_EM_iterations):
         most_likely_states = record_of_most_likely_states[:, i]
         count_dups_estimated = [sum(1 for _ in group) for _, group in groupby(most_likely_states)]

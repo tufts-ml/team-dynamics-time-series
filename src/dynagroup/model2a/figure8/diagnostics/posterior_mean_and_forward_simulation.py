@@ -251,10 +251,13 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             filename_prefix,
             DIMS.L,
         )
-        fig.savefig(
-            save_dir
-            + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf"
-        )
+        fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf")
+
+        # An attempt to avoid inadventently retaining figures which consume too much memory.
+        # References:
+        # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+        # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+        plt.close(plt.gcf())
 
         ###
         # Compute forward simulations (useful for evaluating partial forecasts)
@@ -278,16 +281,10 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         # A good model would be able to predict the above entity-level transitions in advance based
         # on all the continuous states, x_t^^{1:J}.
         fixed_init_continuous_states = np.tile(x_0_forward_sim, (DIMS.J, 1))
-        fixed_init_entity_regimes = np.argmax(
-            VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1
-        )
-        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[
-            t_0_forward_sim:t_end_forward_sim
-        ]
+        fixed_init_entity_regimes = np.argmax(VEZ_summaries.expected_regimes[t_0_forward_sim], axis=1)
+        fixed_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)[t_0_forward_sim:t_end_forward_sim]
 
-        had_masking = _had_masking_bool(
-            use_continuous_states, j, t_0_forward_sim, t_end_forward_sim
-        )
+        had_masking = _had_masking_bool(use_continuous_states, j, t_0_forward_sim, t_end_forward_sim)
 
         for s, forward_simulation_seed in enumerate(forward_simulation_seeds):
             print(
@@ -348,13 +345,17 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
 
+            # An attempt to avoid inadventently retaining figures which consume too much memory.
+            # References:
+            # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+            # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+            plt.close(plt.gcf())
+
         ###
         # Compute velocity baseline
         ###
         # RK: We reuse the forward sim params for the velocity baseline
-        discrete_derivative = (
-            continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
-        )
+        discrete_derivative = continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
         velocity_baseline = np.zeros((T_slice_forward_sim, 2))
         velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
         for t in range(1, T_slice_forward_sim):
@@ -397,9 +398,14 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             DIMS.L,
         )
         fig.savefig(
-            save_dir
-            + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+            save_dir + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
         )
+
+        # An attempt to avoid inadventently retaining figures which consume too much memory.
+        # References:
+        # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+        # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+        plt.close(plt.gcf())
 
     fig2 = plt.figure(figsize=(2, 6))
     cax = fig2.add_subplot()
@@ -407,6 +413,13 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     cbar.set_label("Timesteps", rotation=90)
     plt.tight_layout()
     fig2.savefig(save_dir + "colorbar_clip.pdf")
+
+    # An attempt to avoid inadventently retaining figures which consume too much memory.
+    # References:
+    # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+    # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+    plt.close(plt.gcf())
+
     return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline
 
 

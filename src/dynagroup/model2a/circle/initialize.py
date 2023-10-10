@@ -198,9 +198,7 @@ def fit_ARHMM_to_top_half_of_model(
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
     for iteration in range(num_EM_iterations):
-        print(
-            f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a."
-        )
+        print(f"Now running EM iteration {iteration+1}/{num_EM_iterations} for AR-HMM on top half of Model 2a.")
 
         ###  E-step
         ES_summary = run_VES_step_JAX(
@@ -246,6 +244,7 @@ def fit_ARHMM_to_top_half_of_model(
             model,
             example_end_times,
             system_covariates,
+            group_angles,
         )
 
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
@@ -315,6 +314,7 @@ def smart_initialize_model_2a_for_circles(
         DIMS,
         results_bottom.EZ_summaries,
         system_covariates,
+        group_angles,
         model,
         IP_JAX,
         top_half_num_EM_iterations,

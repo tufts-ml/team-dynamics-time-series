@@ -117,7 +117,7 @@ K, L = 4, 3
 D = 4
 N = 10
 T = 500
-M_s, M_e = 0, 0  # number of covariates for system and entity
+D_s, M_e = 0, 0  # number of covariates for system and entity
 
 # stickiness parameters
 alpha_system, kappa_system = 1.0, 50.0
@@ -137,16 +137,14 @@ np.random.seed(SEED)
 exp_Pi = sample_sticky_transition_matrix(L, alpha=alpha_system, kappa=kappa_system, seed=SEED)
 Pi = np.log(exp_Pi)
 Gammas = np.zeros((J, L, K))  # Gammas must be zero for no feedback.
-Upsilon = np.zeros((L, M_s))
+Upsilon = np.zeros((L, D_s))
 STP = SystemTransitionParameters(Gammas, Upsilon, Pi)
 
 # Entity Transition Parameters
 Ps = np.zeros((J, L, K, K))
 for j in range(J):
     exp_Ps = [
-        sample_sticky_transition_matrix(
-            K, alpha=alpha_entity, kappa=kappa_entity, seed=SEED + j + 1
-        )
+        sample_sticky_transition_matrix(K, alpha=alpha_entity, kappa=kappa_entity, seed=SEED + j + 1)
         for ell in range(L)
     ]
     Ps[j] = np.array([np.log(exp_P) for exp_P in exp_Ps])

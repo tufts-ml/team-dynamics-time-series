@@ -105,9 +105,7 @@ def run_CAVI_with_JAX(
     T, J = np.shape(continuous_states)[:2]
 
     if continuous_states.ndim == 2:
-        print(
-            "Continuous states has only two array dimensions; now adding a third array dimension with 1 element."
-        )
+        print("Continuous states has only two array dimensions; now adding a third array dimension with 1 element.")
         continuous_states = continuous_states[:, :, None]
 
     if use_continuous_states is None:
@@ -141,7 +139,7 @@ def run_CAVI_with_JAX(
         )
 
     if system_covariates is None:
-        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
@@ -186,12 +184,8 @@ def run_CAVI_with_JAX(
             print(f"\nVES step's log normalizer: {VES_summary.log_normalizer:.02f}")
             if true_system_regimes is not None:
                 most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
-                pct_correct_system = compute_regime_labeling_accuracy(
-                    most_likely_system_regimes, true_system_regimes
-                )
-                print(
-                    f"Percent correct classifications for system segmentations {pct_correct_system:.02f}"
-                )
+                pct_correct_system = compute_regime_labeling_accuracy(most_likely_system_regimes, true_system_regimes)
+                print(f"Percent correct classifications for system segmentations {pct_correct_system:.02f}")
 
         VEZ_summaries = run_VEZ_step_JAX(
             all_params.CSP,
@@ -210,15 +204,11 @@ def run_CAVI_with_JAX(
             if true_entity_regimes is not None:
                 pct_corrects_entities = np.empty(J)
                 for j in range(J):
-                    most_likely_system_regimes = np.argmax(
-                        VEZ_summaries.expected_regimes[:, j, :], axis=1
-                    )
+                    most_likely_system_regimes = np.argmax(VEZ_summaries.expected_regimes[:, j, :], axis=1)
                     pct_corrects_entities[j] = compute_regime_labeling_accuracy(
                         most_likely_system_regimes, true_entity_regimes[:, j]
                     )
-                print(
-                    f"Percent correct classifications for entity-level segmentations {pct_corrects_entities}"
-                )
+                print(f"Percent correct classifications for entity-level segmentations {pct_corrects_entities}")
 
             elbo_decomposed = compute_elbo_decomposed(
                 all_params,
@@ -285,6 +275,7 @@ def run_CAVI_with_JAX(
             model,
             example_end_times,
             system_covariates,
+            continuous_states,
             verbose,
         )
 
@@ -346,9 +337,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             example_end_times,
         )
-        all_params = AllParameters_JAX(
-            all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new
-        )
+        all_params = AllParameters_JAX(all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new)
         # TODO: Make all `run_M_step[...]` have consistent call signatures.
         # I think the current more compact one is better; otherwise we have to construct
         # a full all parameters instance (with lots of extraneous info) when all we want to do is an operation

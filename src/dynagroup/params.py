@@ -40,8 +40,8 @@ class SystemTransitionParameters:
     Attributes:
         Gammas: has shape (J, L, K)
             Set this to zero if there is no entity-to-system feedback.
-        Upsilon: has shape (L, M_s):
-            Weights for covariates on system transitions
+        Upsilon: has shape (L, D_s):
+            Weights the contribution to system transitions from covariate-informed recurrence
         Pi: has shape (L, L).
             Log of a LxL transition probability matrix
 
@@ -49,7 +49,9 @@ class SystemTransitionParameters:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        D_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
+
 
     Remarks:
         It may seem weird to represent Pi here, even though exp(Pi) is the transition probability matrix,
@@ -69,8 +71,8 @@ class SystemTransitionParameters_JAX:
     Attributes:
         Gammas: has shape (J, L, K)
             Set this to zero if there is no entity-to-system feedback.
-        Upsilon: has shape (L, M_s):
-            Weights for covariates on system transitions
+        Upsilon: has shape (L, D_s):
+            Weights the contribution to system transitions from covariate-informed recurrence
         Pi: has shape (L, L).
             Log of a LxL transition probability matrix
 
@@ -78,7 +80,8 @@ class SystemTransitionParameters_JAX:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        D_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
 
     Remarks:
         It may seem weird to represent Pi here, even though exp(Pi) is the transition probability matrix,
@@ -96,10 +99,10 @@ class SystemTransitionParameters_JAX:
 class EntityTransitionParameters_MetaSwitch:
     """
     Attributes:
-        Psis : has shape (J, L, K, D_t)
+        Psis : has shape (J, L, K, D_e)
             Each Psis[j] gives recurrence weights from the continuous states,
-            after we've transformed the continuous states from dim D to dim D_t.
-            The L dimension is to switch between different matrices with shape (K,D_t).
+            after we've transformed the continuous states from dim D to dim D_e.
+            The L dimension is to switch between different matrices with shape (K,D_e).
         Omegas : has shape (J, L, K, M_e)
             Each Omegas[j] gives covariance weights.
             The L dimension is to switch between different KxL matrices
@@ -111,7 +114,7 @@ class EntityTransitionParameters_MetaSwitch:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
         M_e: dimensionality of entity-level covariates
     """
 
@@ -124,10 +127,10 @@ class EntityTransitionParameters_MetaSwitch:
 class EntityTransitionParameters_MetaSwitch_JAX:
     """
     Attributes:
-        Psis : has shape (J, L, K, D_t)
+        Psis : has shape (J, L, K, D_e)
             Each Psis[j] gives recurrence weights from the continuous states,
-            after we've transformed the continuous states from dim D to dim D_t.
-            The L dimension is to switch between different matrices with shape (K,D_t).
+            after we've transformed the continuous states from dim D to dim D_e.
+            The L dimension is to switch between different matrices with shape (K,D_e).
         Omegas : has shape (J, L, K, M_e)
             Each Omegas[j] gives covariance weights.
             The L dimension is to switch between different KxL matrices
@@ -139,7 +142,7 @@ class EntityTransitionParameters_MetaSwitch_JAX:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
         M_e: dimensionality of entity-level covariates
     """
 
@@ -152,9 +155,9 @@ class EntityTransitionParameters_MetaSwitch_JAX:
 class EntityTransitionParameters_SystemBias:
     """
     Attributes:
-        Psis : has shape (J, K, D_t)
+        Psis : has shape (J, K, D_e)
             Each Psis[j] gives recurrence weights from the continuous states,
-            after we've transformed the continuous states from dim D to dim D_t.
+            after we've transformed the continuous states from dim D to dim D_e.
         Omegas : has shape (J, K, M_e)
             Each Omegas[j] gives covariance weights.
         Ps : has shape (J, K, K)
@@ -166,7 +169,7 @@ class EntityTransitionParameters_SystemBias:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
         M_e: dimensionality of entity-level covariates
     """
 
@@ -181,9 +184,9 @@ class EntityTransitionParameters_SystemBias_JAX:
     """
 
     Attributes:
-        Psis : has shape (J, K, D_t)
+        Psis : has shape (J, K, D_e)
             Each Psis[j] gives recurrence weights from the continuous states,
-            after we've transformed the continuous states from dim D to dim D_t.
+            after we've transformed the continuous states from dim D to dim D_e.
         Omegas : has shape (J, K, M_e)
             Each Omegas[j] gives covariance weights.
         Ps : has shape (J, K, K)
@@ -195,7 +198,7 @@ class EntityTransitionParameters_SystemBias_JAX:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
         M_e: dimensionality of entity-level covariates
     """
 
@@ -512,9 +515,10 @@ class Dims:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t : dimensionality of transformed latent continuous state, x_tilde, before application of recurrence matrix
+        D_e : dimensionality of transformed latent continuous state, x_tilde, before application of entity-level recurrence matrix
         N : dimensionality of observation, y
-        M_s: dimensionality of system-level covariates
+        D_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
         M_e: dimensionality of entity-level covariates
     """
 
@@ -522,9 +526,9 @@ class Dims:
     K: int
     L: int
     D: int
-    D_t: int
+    D_e: int
     N: int
-    M_s: int
+    D_s: int
     M_e: int
 
 
@@ -534,21 +538,44 @@ def dims_from_params(all_params: AllParameters) -> Dims:
         K=np.shape(all_params.STP.Gammas)[2],
         L=np.shape(all_params.STP.Gammas)[1],
         D=np.shape(all_params.EP.Cs)[2],
-        D_t=np.shape(all_params.ETP.Psis)[3],
+        D_e=np.shape(all_params.ETP.Psis)[3],
         N=np.shape(all_params.EP.Cs)[1],
-        M_s=np.shape(all_params.STP.Upsilon)[1],
+        D_s=np.shape(all_params.STP.Upsilon)[1],
         M_e=np.shape(all_params.ETP.Omegas)[3],
     )
 
 
-def get_dim_of_recurrence_output(D: int, model: Model):
+def get_dim_of_entity_recurrence_output(D: int, model: Model):
     """
-    The recurrence output is called `D_t` above.
+    The recurrence output is called `D_e` above.
     """
-    transformed_dim = model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
-        jnp.zeros(D)
-    )
-    return np.shape(transformed_dim)[0]
+    if model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX is None:
+        return 0
+    else:
+        transformed_dim = (
+            model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX(
+                jnp.zeros(D)
+            )
+        )
+        return np.shape(transformed_dim)[0]
+
+
+def get_dim_of_system_recurrence_output(D: int, J: int, system_covariates: jnp.array, model: Model):
+    """
+    The recurrence output is called `D_e` above.
+    """
+    if (
+        model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX
+        is None
+    ):
+        return 0
+    else:
+        transformed_dim = (
+            model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX(
+                jnp.zeros(D * J), system_covariates
+            )
+        )
+        return np.shape(transformed_dim)[0]
 
 
 ###
@@ -635,7 +662,7 @@ class SystemTransitionParameters_WithUnconstrainedTPMs_JAX:
     Attributes:
         Gammas: has shape (J, L, K)
             Set this to zero if there is no entity-to-system feedback.
-        Upsilon: has shape (L, M_s):
+        Upsilon: has shape (L, D_s):
             Weights for covariates on system transitions
         PiTilde_Unconstrained: has shape (L, L-1).
             Whereas Pi is the log of a LxL transition probability matrix
@@ -650,7 +677,8 @@ class SystemTransitionParameters_WithUnconstrainedTPMs_JAX:
         J: number of entities
         K: number of entity-level regimes
         L: number of system-level regimes
-        M_s: dimensionality of system-level covariates
+        D_s: dimensionality of contribution to the system level transitions of system-level covariates and skip-level recurrence
+            after appropriate transformation
     """
 
     Gammas: JaxNumpyArray3D
@@ -676,10 +704,10 @@ def ordinary_STP_from_STP_with_unconstrained_tpms(
 class EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX:
     """
     Attributes:
-        Psis : has shape (J, L, K, D_t)
+        Psis : has shape (J, L, K, D_e)
             Each Psis[j] gives recurrence weights from the continuous states,
-            after we've transformed the continuous states from dim D to dim D_t.
-            The L dimension is to switch between different matrices with shape (K,D_t).
+            after we've transformed the continuous states from dim D to dim D_e.
+            The L dimension is to switch between different matrices with shape (K,D_e).
         Omegas : has shape (J, L, K, M_e)
             Each Omegas[j] gives covariance weights.
             The L dimension is to switch between different KxL matrices
@@ -697,7 +725,7 @@ class EntityTransitionParameters_MetaSwitch_WithUnconstrainedTPMs_JAX:
         K: number of entity-level regimes
         L: number of system-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
         M_e: dimensionality of entity-level covariates
     """
 

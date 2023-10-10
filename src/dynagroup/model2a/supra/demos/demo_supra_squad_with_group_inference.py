@@ -54,7 +54,9 @@ ending_minute = 1
 num_entity_regimes = 4
 num_system_regimes = 3
 alpha_system_prior, kappa_system_prior = 1.0, 50.0
-system_covariate_type = "running_vulnerability_to_north"  # ["four_security", "north_security", "running_vulnerablity_to_north"]
+system_covariate_type = (
+    "running_vulnerability_to_north"  # ["four_security", "north_security", "running_vulnerablity_to_north"]
+)
 
 ### Initialization
 show_plots_after_init = False
@@ -101,16 +103,12 @@ time_snippet = make_time_snippet_based_on_desired_elapsed_secs(
 
 snip = make_data_snippet(df, time_snippet)
 
-polar_plot_the_squad_headings(
-    snip.squad_angles, snip.clock_times, save_dir, show_plot=show_plots_of_data
-)
+polar_plot_the_squad_headings(snip.squad_angles, snip.clock_times, save_dir, show_plot=show_plots_of_data)
 
 
 if system_covariate_type == "north_security":
     INDEX_OF_NORTH_DIRECTION = 0
-    system_covariates_to_plot = snip.system_covariates_zero_to_hundred[:, INDEX_OF_NORTH_DIRECTION][
-        :, None
-    ]
+    system_covariates_to_plot = snip.system_covariates_zero_to_hundred[:, INDEX_OF_NORTH_DIRECTION][:, None]
     system_covariates = normalize_matrix_by_mean_and_std_of_columns(system_covariates_to_plot)
     system_covariates_dim_labels = ["N"]
 elif system_covariate_type == "four_security":
@@ -132,8 +130,8 @@ elif system_covariate_type == "running_vulnerability_to_north":
 
 # Setup DIMS
 J = np.shape(snip.squad_angles)[1]
-D, D_t, N, M_s, M_e = 1, 1, 0, 4, 0
-DIMS = Dims(J, num_entity_regimes, num_system_regimes, D, D_t, N, M_s, M_e)
+D, D_e, N, D_s, M_e = 1, 1, 0, 4, 0
+DIMS = Dims(J, num_entity_regimes, num_system_regimes, D, D_e, N, D_s, M_e)
 
 # Initialization
 results_init = smart_initialize_model_2a_for_circles(
@@ -187,20 +185,14 @@ if show_plots_after_init:
 
 for compass_direction in range(4):
     # Compute the point-biserial correlation coefficient
-    corr, pval = stats.pointbiserialr(
-        s_hat_init, snip.system_covariates_zero_to_hundred[:, compass_direction]
-    )
+    corr, pval = stats.pointbiserialr(s_hat_init, snip.system_covariates_zero_to_hundred[:, compass_direction])
     # Print the correlation coefficient and p-value
-    print(
-        f"Compass dir: {compass_direction}. Correlation coefficient: {corr:.02f}, P-value: {pval:.03f}"
-    )
+    print(f"Compass dir: {compass_direction}. Correlation coefficient: {corr:.02f}, P-value: {pval:.03f}")
 
 
 ### Solder-level segmentations
 
-likely_soldier_regimes_init = compute_likely_soldier_regimes(
-    results_init.EZ_summaries.expected_regimes
-)
+likely_soldier_regimes_init = compute_likely_soldier_regimes(results_init.EZ_summaries.expected_regimes)
 polar_plot_the_soldier_headings_with_learned_segmentations(
     snip.squad_angles,
     snip.clock_times,

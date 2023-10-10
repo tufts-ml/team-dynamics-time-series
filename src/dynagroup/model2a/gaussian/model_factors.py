@@ -1,5 +1,7 @@
+import functools
 from typing import Callable, Optional
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.scipy.stats import multivariate_normal as mvn_JAX
@@ -86,53 +88,28 @@ def compute_log_system_transition_probability_matrices_NUMPY(
 # TODO: For Model 2a, this function needs to use covariates and Upsilon!.
 
 
-# def compute_log_system_transition_probability_matrices_JAX(
-#     STP: SystemTransitionParameters_JAX,
-#     T_minus_1: int,
-#     system_covariates: Optional[jnp.array] = None,
-# ):
-#     """
-#     Compute log system transition probability matrices.
-#     These are time varying, but only if at least one of the following conditions are true:
-#         * system-level covariates exist (in which case the function signature needs to be updated).
-#             The covariate effect is governed by the parameters in STP.Upsilon
-#         * there is recurrent feedback from the previous entities zs[t-1], as in Model 1.
-#             The recurrence effect is governed by the parameters in STP.Gammas
-
-#     Arguments:
-#         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
-#             system regime probabilities are governed by the initial parameters.
-#         system_covariates: An optional array of shape (T, M_s).
-
-#     Returns:
-#         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
-#             from regime l to regime l' when transitioning into time t+1.
-
-#     Notation:
-#         T: number of timesteps
-#         L: number of system-level regimes
-#     """
-#     # TODO: Incorporate covariates
-#     return jnp.tile(STP.Pi, (T_minus_1, 1, 1))  # (T-1, J, K, K)
-
-
 def compute_log_system_transition_probability_matrices_JAX(
     STP: SystemTransitionParameters_JAX,
     T_minus_1: int,
     system_covariates: Optional[jnp.array] = None,
+    x_prevs: Optional[JaxNumpyArray3D] = None,
+    system_recurrence_transformation: Callable = None,
 ):
     """
     Compute log system transition probability matrices.
+
     These are time varying, but only if at least one of the following conditions are true:
         * system-level covariates exist (in which case the function signature needs to be updated).
             The covariate effect is governed by the parameters in STP.Upsilon
-        * there is recurrent feedback from the previous entities zs[t-1], as in Model 1.
-            The recurrence effect is governed by the parameters in STP.Gammas
+        * there is recurrent feedback from the previous entities (1:J) via x_prev[t-1], as in Model 2a.
+            The recurrence effect is also governed by the parameters in STP.Upsilon
 
     Arguments:
         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
             system regime probabilities are governed by the initial parameters.
-        system_covariates: An optional array of shape (T, M_s).
+        x_prevs: np.array of shape (T-1,J,D) where the (t,j)-th entry is
+            in R^D.  These are the previous continuous_states
+        system_covariates_prevs: An optional array of shape (T-1, D_s).
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -142,19 +119,43 @@ def compute_log_system_transition_probability_matrices_JAX(
         T: number of timesteps
         L: number of system-level regimes
     """
-    if system_covariates is None:
-        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
-        T = T_minus_1 + 1
-        system_covariates = np.zeros((T, 0))
 
-    # TODO: Check t vs t-1
-    bias_from_system_covariates = jnp.einsum(
-        "ld,td->tl", STP.Upsilon, system_covariates[:-1]
-    )  # (T-1, L)
+    if system_covariates is not None and np.prod(np.shape(system_covariates)) != 0:
+        raise NotImplementedError("Currently assuming no covariates for skip-level (x-to-s) recurrence.")
+
+    if system_recurrence_transformation is not None and x_prevs is not None:
+        system_recurrence_transformation__with_no_covariates = functools.partial(
+            system_recurrence_transformation, system_covariates=None
+        )
+
+        ### Flatten (T-1,J,D) array to (T-1,JD), where we scroll through j's first, and then d's.
+        x_prevs_transposed = jnp.transpose(x_prevs, (0, 2, 1))
+        x_prevs_flattened = jax.lax.reshape(
+            x_prevs_transposed, (x_prevs_transposed.shape[0], x_prevs_transposed.shape[1] * x_prevs_transposed.shape[2])
+        )
+
+        ### Contruct transformation of the above, mapping each (JD,) array to a transformed (D_s,) array.
+        # To this, we pre-multiply by the parameter weight matrix Upsilon, which has shape (L, D_s,)
+        # In other words, the contribution here biases each of the L destinations differently
+        # depending on the values of the (D_s, ) vectors of transfomed skip-level recurrent inputs.
+
+        # x_prevs are (T-1,J,D)... first we flattened to (T-1,JD). Then x_prevs_tildes should be (T-1, D_s)
+        x_prevs_tildes = jnp.apply_along_axis(
+            system_recurrence_transformation__with_no_covariates,
+            1,
+            x_prevs_flattened,
+        )
+        if x_prevs_tildes.ndim == 1:
+            x_prevs_tildes = x_prevs_tildes[:, None]
+
+        bias_from_system_recurrence_and_covariates = jnp.einsum("lm,tm->tl", STP.Upsilon, x_prevs_tildes)  # (T-1, L)
+    else:
+        L = np.shape(STP.Upsilon)[0]
+        bias_from_system_recurrence_and_covariates = jnp.zeros((T_minus_1, L))
 
     # Pi: has shape (L, L)
     log_potentials = (
-        bias_from_system_covariates[:, None, :] + STP.Pi[None, :, :]
+        bias_from_system_recurrence_and_covariates[:, None, :] + STP.Pi[None, :, :]
     )  # (T-1, None, L) + (None,L,L) = (T-1, L,L)
     return normalize_log_potentials_by_axis_JAX(log_potentials, axis=2)
 
@@ -187,9 +188,7 @@ def compute_log_entity_transition_probability_matrices_NUMPY(
     """
 
     if transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix is None:
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix = (
-            lambda x: x
-        )
+        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix = lambda x: x
     func = transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix
 
     # TODO: Add covariates
@@ -212,7 +211,7 @@ def compute_log_entity_transition_probability_matrices_NUMPY(
 def compute_log_entity_transition_probability_matrices_JAX(
     ETP_JAX: EntityTransitionParameters_JAX,
     x_prevs: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX: Callable = None,
 ) -> JaxNumpyArray5D:
     """
     Compute log entity transition probability matrices.
@@ -240,22 +239,16 @@ def compute_log_entity_transition_probability_matrices_JAX(
         K: number of entity-level regimes
         D: dimension of continuous states
     """
-    if transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX is None:
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (
-            lambda x: x
-        )
+    if transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX is None:
+        transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = lambda x: x
     # TODO: Add covariates
     x_prev_tildes = jnp.apply_along_axis(
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
         2,
         x_prevs,
     )
-    bias_from_recurrence = jnp.einsum(
-        "jlkd,tjd->tjkl", ETP_JAX.Psis, x_prev_tildes
-    )  # (T-1, J, K, L)
-    bias_from_recurrence_reordered_axes = jnp.moveaxis(
-        bias_from_recurrence, [2, 3], [3, 2]
-    )  # (T-1, J, L, K)
+    bias_from_recurrence = jnp.einsum("jlkd,tjd->tjkl", ETP_JAX.Psis, x_prev_tildes)  # (T-1, J, K, L)
+    bias_from_recurrence_reordered_axes = jnp.moveaxis(bias_from_recurrence, [2, 3], [3, 2])  # (T-1, J, L, K)
     log_potentials = (
         bias_from_recurrence_reordered_axes[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
     )  # (T-1, J, L, None, K) + (1,J,L, K,K ) = (T-1, J, L, K, K)
@@ -347,9 +340,7 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
     #### Remaining times
     # We have x_t^j ~ N(A[j,k] @ x_{t-1}^j + b[j,k], Q[j,k])
     # TODO: DO I need to tile the covs and the continuous states?
-    means_after_initial_timestep = jnp.einsum(
-        "jkde,tje->tjkd", CSP.As, continuous_states[:-1]
-    )  # (T-1,J,K,D)
+    means_after_initial_timestep = jnp.einsum("jkde,tje->tjkd", CSP.As, continuous_states[:-1])  # (T-1,J,K,D)
     means_after_initial_timestep += CSP.bs[None, :, :, :]
     covs_after_initial_timestep = jnp.tile(CSP.Qs, (T - 1, 1, 1, 1, 1))  # (T-1,J,K,D, D)
     continuous_states_after_initial_timestep_axes_poorly_ordered = jnp.tile(
@@ -419,9 +410,7 @@ def compute_log_initial_continuous_state_emissions_JAX(
     ### Initial times <- Not computed
     # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
     means_init_time, covs_init_time = IP.mu_0s, IP.Sigma_0s
-    log_pdfs_init_time = mvn_JAX.logpdf(
-        initial_continuous_states[:, None, :], means_init_time, covs_init_time
-    )
+    log_pdfs_init_time = mvn_JAX.logpdf(initial_continuous_states[:, None, :], means_init_time, covs_init_time)
     # Pre-vectorized version of initial times...for clarity
     # for j in range(J):
     #     for k in range(K):

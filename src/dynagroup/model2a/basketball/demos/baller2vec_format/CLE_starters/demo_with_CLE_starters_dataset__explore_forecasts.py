@@ -30,7 +30,11 @@ from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.params import Dims, get_dim_of_recurrence_output
+from dynagroup.params import (
+    Dims,
+    get_dim_of_entity_recurrence_output,
+    get_dim_of_system_recurrence_output,
+)
 from dynagroup.util import get_current_datetime_as_string
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
@@ -63,21 +67,21 @@ n_test_games = 5
 sampling_rate_Hz = 5
 
 # Model specification
-model_type = Model_Type.Linear_Recurrence
+model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence
 K = 10
 L = 5
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_explore_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
+save_dir = f"results/basketball/analyses/CLE_ALL_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
 
 # Exploratory Data Analysis
 animate_raw_data = False
 
 # Initialization
 animate_initialization = False
-make_verbose_initialization_plots = True
-save_plots_of_initialization_diagnostics = True
+make_verbose_initialization_plots = False  # True
+save_plots_of_initialization_diagnostics = False  # True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -86,7 +90,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 # Inference
 n_cavi_iterations = 2
 make_verbose_CAVI_plots = False
-M_step_toggle_for_STP = "closed_form_tpm"
+M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
@@ -158,10 +162,11 @@ model_basketball = get_basketball_model(model_type)
 
 J = np.shape(DATA_TRAIN.player_coords)[1]
 D = np.shape(DATA_TRAIN.player_coords)[2]
-D_t = get_dim_of_recurrence_output(D, model_basketball)
+D_e = get_dim_of_entity_recurrence_output(D, model_basketball)
+D_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model_basketball)
+M_e = 0  # for now!
 N = 0
-M_s, M_e = 0, 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
+DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 print("Running smart initialization.")
 
@@ -325,3 +330,13 @@ for e, example_idx in enumerate(forecasting_examples_to_analyze):
                 save_dir,
                 filename_prefix=f"forecast_plot_example_idx_{example_idx}_start_idx_{start_idx}",
             )
+
+# summary metrics
+
+mean_ours = np.mean([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
+mean_fixed_velocity = np.mean([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
+print(f"Mean over examples.  Fixed velocity: {mean_fixed_velocity:.03f}. Ours: {mean_ours:.03f}.")
+
+median_ours = np.median([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
+median_fixed_velocity = np.median([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
+print(f"Median over examples.  Fixed velocity: {median_fixed_velocity:.03f}. Ours: {median_ours:.03f}.")

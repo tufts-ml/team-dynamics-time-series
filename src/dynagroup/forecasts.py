@@ -241,6 +241,14 @@ def MSEs_from_forecasts(forecasts: Forecasts):
 
 
 def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Summary:
+    """
+    Here the MSE summary characterizes a single example.
+
+    it is taken across (S,J) elements for the forward simulations,
+    and (J,) elements for the fixed velocity, where
+        S : number of samples in forward simulation
+        J : number of entities
+    """
     return Forecast_MSEs_Summary(
         np.mean(forecast_MSEs.fixed_velocity),
         np.mean(forecast_MSEs.forward_simulation),
@@ -297,6 +305,11 @@ def plot_forecasts(
         fig.savefig(
             save_dir + f"{filename_prefix}_entity_{j}_fixed_velocity_MSE_{forecasting_MSEs.fixed_velocity[j]:.03f}.pdf"
         )
+        # An attempt to avoid inadventently retaining figures which consume too much memory.
+        # References:
+        # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+        # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+        plt.close(plt.gcf())
 
         for s in range(S):
             ### Forward simulation
@@ -330,6 +343,10 @@ def plot_forecasts(
             plt.title(f"MSE: {forecasting_MSEs.forward_simulation[s,j]:.03f}")
             fig.savefig(
                 save_dir
-                + f"{filename_prefix}_entity_{j}_forward_sim_MSE_{forecasting_MSEs.forward_simulation[s,j]:.03f}.pdf"
+                + f"{filename_prefix}_entity_{j}_forward_sim_MSE_{forecasting_MSEs.forward_simulation[s,j]:.03f}_sim_{s}.pdf"
             )
-            plt.close()
+            # An attempt to avoid inadventently retaining figures which consume too much memory.
+            # References:
+            # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
+            # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+            plt.close(plt.gcf())

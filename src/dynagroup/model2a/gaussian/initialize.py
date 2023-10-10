@@ -11,9 +11,10 @@ from sklearn.linear_model import LinearRegression
 
 from dynagroup.diagnostics.kmeans import plot_kmeans_on_2d_data
 from dynagroup.diagnostics.steps_in_state import plot_steps_assigned_to_state
-from dynagroup.examples import example_end_times_are_proper, only_one_example
+from dynagroup.examples import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
+    HMM_Posterior_Summary_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
 )
 from dynagroup.initialize import (
@@ -79,12 +80,12 @@ def make_tpm_only_preinitialization_of_STP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> SystemTransitionParameters_JAX:
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
+    L, J, K, D_s = DIMS.L, DIMS.J, DIMS.K, DIMS.D_s
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
     Pi = jnp.log(tpm)
     Gammas = jnp.zeros((J, L, K))  # Gammas must be zero for no feedback.
-    Upsilon = jnp.zeros((L, M_s))
+    Upsilon = jnp.zeros((L, D_s))
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
@@ -99,7 +100,7 @@ def make_data_free_preinitialization_of_STP_JAX(
     """
     key = jr.PRNGKey(seed)
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
+    L, J, K, D_s = DIMS.L, DIMS.J, DIMS.K, DIMS.D_s
 
     Gammas = jnp.zeros((J, L, K))
 
@@ -108,9 +109,9 @@ def make_data_free_preinitialization_of_STP_JAX(
     Pi = jnp.log(tpm)
 
     if method_for_Upsilon == "rnorm":
-        Upsilon = jr.normal(key, (L, M_s))
+        Upsilon = jr.normal(key, (L, D_s))
     elif method_for_Upsilon == "zeros":
-        Upsilon = jnp.zeros((L, M_s))
+        Upsilon = jnp.zeros((L, D_s))
     else:
         raise ValueError("What is the method for Upsilon?")
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
@@ -120,20 +121,21 @@ def make_data_free_preinitialization_of_ETP_JAX(
     DIMS: Dims,
     method_for_Psis: str,
     seed: int,
+    fixed_self_transition_prob: float = 0.90,
 ) -> EntityTransitionParameters_MetaSwitch_JAX:
     """
     method_for_Psis : zeros or rnorm
     """
     key = jr.PRNGKey(seed)
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
+    L, J, K, M_e, D_e = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_e
     # make a tpm
-    tpm = make_fixed_sticky_tpm_JAX(0.95, num_states=K)
+    tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
     if method_for_Psis == "rnorm":
-        Psis = jr.normal(key, (J, L, K, D_t))
+        Psis = jr.normal(key, (J, L, K, D_e))
     elif method_for_Psis == "zeros":
-        Psis = jnp.zeros((J, L, K, D_t))
+        Psis = jnp.zeros((J, L, K, D_e))
     else:
         raise ValueError("What is the method for Psis?")
     Omegas = jnp.zeros((J, L, K, M_e))
@@ -144,11 +146,11 @@ def make_tpm_only_preinitialization_of_ETP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> EntityTransitionParameters_MetaSwitch_JAX:
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
+    L, J, K, M_e, D_e = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_e
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
-    Psis = jnp.zeros((J, L, K, D_t))
+    Psis = jnp.zeros((J, L, K, D_e))
     Omegas = jnp.zeros((J, L, K, M_e))
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 
@@ -306,6 +308,7 @@ def fit_rARHMM_to_bottom_half_of_model(
     IP_JAX: InitializationParameters_Gaussian_JAX,
     model: Model,
     num_EM_iterations: int,
+    treat_ETP_params_as_tpm: bool = False,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
@@ -362,16 +365,42 @@ def fit_rARHMM_to_bottom_half_of_model(
             ETP_JAX = params_frozen.ETP
             CSP_JAX = params_frozen.CSP
         else:
-            # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
-            # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
-            # work when we have J tpms, and then
-            tpms = compute_closed_form_M_step_on_posterior_summaries(
-                EZ_summaries,
-                use_continuous_states,
-                example_end_times,
-            )
-            Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
-            ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
+            ###
+            # M-step (for ETP)
+            ###
+
+            if treat_ETP_params_as_tpm:
+                # We need it to have shape (J,L,K,K).  So just do it with (J,K,K), then tile it over L.
+                # TODO: This is rewriting the logic of "compute_closed_form_M_step."  Be sure that that can
+                # work when we have J tpms, and then
+                tpms = compute_closed_form_M_step_on_posterior_summaries(
+                    EZ_summaries,
+                    use_continuous_states,
+                    example_end_times,
+                )
+                Ps_new = jnp.tile(jnp.log(tpms[:, None, :, :]), (1, L, 1, 1))
+                ETP_JAX = EntityTransitionParameters_MetaSwitch_JAX(ETP_JAX.Psis, ETP_JAX.Omegas, Ps_new)
+
+            else:
+                ### New way: update ETP_JAX by using gradient descent
+                num_M_step_iterations_for_ETP_gradient_descent = 5
+                ES_summary_uniform = HMM_Posterior_Summary_JAX(
+                    expected_regimes=jnp.ones((T, L)) / L,
+                    expected_joints=jnp.ones((T - 1, L, L)) / L,
+                    log_normalizer=jnp.nan,
+                )
+                ETP_JAX = run_M_step_for_ETP_via_gradient_descent(
+                    ETP_JAX,
+                    ES_summary_uniform,
+                    EZ_summaries,
+                    continuous_states,
+                    i,
+                    num_M_step_iterations_for_ETP_gradient_descent,
+                    model,
+                    example_end_times,
+                    use_continuous_states,
+                    verbose,
+                )
 
             ###
             # M-step (for CSP)
@@ -383,7 +412,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 use_continuous_states,
             )
 
-    return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states)
+    return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states, ETP_JAX)
 
 
 ###
@@ -420,7 +449,7 @@ def fit_ARHMM_to_top_half_of_model(
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
     if system_covariates is None:
-        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
@@ -475,7 +504,7 @@ def fit_ARHMM_to_top_half_of_model(
 
             ### M-step (STP)
             num_system_states = np.shape(STP_JAX.Pi)[0]
-            if only_one_example(example_end_times, T) or num_system_states == 1:
+            if num_system_states == 1:
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
                 STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)
@@ -490,6 +519,8 @@ def fit_ARHMM_to_top_half_of_model(
                     model,
                     example_end_times,
                     system_covariates,
+                    continuous_states,
+                    verbose,
                 )
 
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
@@ -512,6 +543,7 @@ def smart_initialize_model_2a(
     system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     save_dir: Optional[str] = None,
+    treat_ETP_params_as_tpm_during_bottom_half_inference: bool = True,
     params_frozen: Optional[AllParameters_JAX] = None,
     verbose: bool = True,
     plotbose: bool = False,
@@ -534,6 +566,13 @@ def smart_initialize_model_2a(
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step (on STP, ETP, or CSP), nor the VES step.
             We leave the VEZ steps as is, though.
+
+        treat_ETP_params_as_tpm_during_bottom_half_inference: If True, the ETP (entity transition parameters) parameters
+            will be treated as a transition probability matrix during the initialization step of the bottom-half rAR-HMMs.
+            This is True by default for backwards compatibility.  I think the original motivation for this was that the ETP
+            parameters would get overriden anyhow during the top-half ARHMM initialization.  Still, it might be useful to get a better
+            estimate due to the fact that the top-half ARHMM initialization starts with a VES step, which requires parameter
+            values for ETP.
 
         params_frozen: Typically this will be None.  However, non-None values can be useful
             for test set inference, when we need to run the E-step on the (context) portion of new data.
@@ -592,7 +631,9 @@ def smart_initialize_model_2a(
             plotbose,
         )
         # TODO: Support fixed or random draws from prior.
-        ETP_JAX = make_tpm_only_preinitialization_of_ETP_JAX(DIMS, fixed_self_transition_prob=0.90)
+        ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
+            DIMS, method_for_Psis="rnorm", fixed_self_transition_prob=0.90, seed=seed
+        )  # Psis is (J, L, K, D_e)
         # TODO: Support fixed or random draws from prior.
         IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
         # EP_JAX is a placeholder; not used for Figure 8.
@@ -609,6 +650,7 @@ def smart_initialize_model_2a(
         IP_JAX,
         model,
         num_em_iterations_for_bottom_half,
+        treat_ETP_params_as_tpm_during_bottom_half_inference,
         use_continuous_states,
         params_frozen,
         verbose,
@@ -622,14 +664,9 @@ def smart_initialize_model_2a(
     ###
 
     if params_frozen:
-        ETP_JAX = params_frozen.ETP
         STP_JAX = params_frozen.STP
-
     else:
         ### Initialization
-        ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
-            DIMS, method_for_Psis="rnorm", seed=seed
-        )  # Psis is (J, L, K, D_t)
         STP_JAX = make_data_free_preinitialization_of_STP_JAX(
             DIMS,
             method_for_Upsilon="rnorm",
@@ -649,7 +686,7 @@ def smart_initialize_model_2a(
         system_covariates,
         example_end_times,
         STP_JAX,
-        ETP_JAX,
+        results_bottom.ETP,
         IP_JAX,
         results_bottom.EZ_summaries,
         model,

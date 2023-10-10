@@ -213,19 +213,21 @@ def get_multiple_samples_of_team_dynamics(
         # Sample next system regime
         ###
         if fixed_system_regimes is None:
-            system_covariates_at_this_timestep = system_covariates[t] if system_covariates is not None else None
-            log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
-                AP.STP,
-                T_minus_1=1,
-                system_covariates=system_covariates_at_this_timestep,
-            )
-
-            # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
-            # TODO: To handle Model 1, the system transitions probabilities should depend
-            # on the previous entity regimes, zs[t-1].
-            s_probs = np.exp(log_probs_next_sys[dummy_time_index, s[:, t - 1]])
-
             for sample in range(S):
+                system_covariates_at_this_timestep = system_covariates[t] if system_covariates is not None else None
+                log_probs_next_sys = model.compute_log_system_transition_probability_matrices_JAX(
+                    AP.STP,
+                    T_minus_1=1,
+                    system_covariates=system_covariates_at_this_timestep,
+                    x_prevs=xs[sample, t - 1][None, :, :],
+                    system_recurrence_transformation=model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX,
+                )
+
+                # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
+                # TODO: To handle Model 1, the system transitions probabilities should depend
+                # on the previous entity regimes, zs[t-1].
+                s_probs = np.exp(log_probs_next_sys[dummy_time_index, s[:, t - 1]])
+
                 # TODO: I want to do vectorized version of npr choice.
                 # I'm getting "ValueError: 'p' must be 1-dimensional
                 # On first glance, jax didn't help here
@@ -247,7 +249,7 @@ def get_multiple_samples_of_team_dynamics(
             log_probs_next_entities = model.compute_log_entity_transition_probability_matrices_JAX(
                 AP.ETP,
                 xs[sample, t - 1][None, :, :],
-                model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+                model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
             )
             # select the probabilities that are relevant to the current system regime s_t and previous entity regimes zs[t-1]
             z_probs[sample, t] = np.exp(

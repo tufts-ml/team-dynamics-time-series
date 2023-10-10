@@ -48,7 +48,6 @@ from dynagroup.params import (
 from dynagroup.sample_weights import (
     make_sample_weights_which_mask_the_initial_timestep_for_each_event,
 )
-
 from dynagroup.sticky import (
     evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant,
 )
@@ -92,27 +91,21 @@ def compute_energy_from_init(
 ) -> float:
     init_times = get_initialization_times(example_end_times)
 
-    expected_system_init_probs = jnp.sum(
-        VES_summary.expected_regimes[init_times], axis=0
-    )  # shape (L,)
+    expected_system_init_probs = jnp.sum(VES_summary.expected_regimes[init_times], axis=0)  # shape (L,)
     energy_init_system = jnp.sum(expected_system_init_probs * jnp.log(IP.pi_system))
 
     J, K = np.shape(IP.pi_entities)
     energy_init_entities = 0.0
     for j in range(J):
-        expected_entity_init_probs = jnp.sum(
-            VEZ_summaries.expected_regimes[init_times, j], axis=0
-        )  # shape (K,)
+        expected_entity_init_probs = jnp.sum(VEZ_summaries.expected_regimes[init_times, j], axis=0)  # shape (K,)
         energy_init_entities += jnp.sum(expected_entity_init_probs * jnp.log(IP.pi_entities[j]))
 
     energy_init_continuous_states = 0.0
     for j in range(J):
         for k in range(K):
             for t_init in init_times:
-                log_pdfs_at_some_init_time = (
-                    model.compute_log_initial_continuous_state_emissions_JAX(
-                        IP, continuous_states[t_init]
-                    )
+                log_pdfs_at_some_init_time = model.compute_log_initial_continuous_state_emissions_JAX(
+                    IP, continuous_states[t_init]
                 )
                 energy_init_continuous_states += (
                     VEZ_summaries.expected_regimes[t_init, j, k] * log_pdfs_at_some_init_time[j, k]
@@ -134,29 +127,24 @@ def compute_energy(
     example_end_times: JaxNumpyArray2D,
     system_covariates: Optional[JaxNumpyArray2D],
 ) -> float:
-    energy_init = compute_energy_from_init(
-        IP, VES_summary, VEZ_summaries, continuous_states, model, example_end_times
-    )
+    energy_init = compute_energy_from_init(IP, VES_summary, VEZ_summaries, continuous_states, model, example_end_times)
     energy_post_init_negated_and_divided_by_num_timesteps = 0.0
-    energy_post_init_negated_and_divided_by_num_timesteps += (
-        compute_cost_for_system_transition_parameters_JAX(
-            STP,
-            VES_summary,
-            system_transition_prior,
-            model,
-            example_end_times,
-            system_covariates,
-        )
+    energy_post_init_negated_and_divided_by_num_timesteps += compute_cost_for_system_transition_parameters_JAX(
+        STP,
+        VES_summary,
+        system_transition_prior,
+        model,
+        example_end_times,
+        system_covariates,
+        continuous_states,
     )
-    energy_post_init_negated_and_divided_by_num_timesteps += (
-        compute_cost_for_entity_transition_parameters_JAX(
-            ETP,
-            continuous_states,
-            VES_summary,
-            VEZ_summaries,
-            model,
-            example_end_times,
-        )
+    energy_post_init_negated_and_divided_by_num_timesteps += compute_cost_for_entity_transition_parameters_JAX(
+        ETP,
+        continuous_states,
+        VES_summary,
+        VEZ_summaries,
+        model,
+        example_end_times,
     )
 
     energy_post_init_negated_and_divided_by_num_timesteps += (
@@ -286,10 +274,7 @@ def compute_variational_posterior_on_regime_triplets_JAX(
 
     # VES_summary.expected_regimes has shape (T,L)
     # VEZ_summaries.expected_joints has shape (T-1,J,K,K)
-    return (
-        VES_summary.expected_regimes[1:, None, :, None, None]
-        * VEZ_summaries.expected_joints[:, :, None, :, :]
-    )
+    return VES_summary.expected_regimes[1:, None, :, None, None] * VEZ_summaries.expected_joints[:, :, None, :, :]
 
 
 def compute_expected_log_entity_transitions_JAX(
@@ -311,14 +296,12 @@ def compute_expected_log_entity_transitions_JAX(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
-    variational_probs = compute_variational_posterior_on_regime_triplets_JAX(
-        VES_summary, VEZ_summaries
-    )
+    variational_probs = compute_variational_posterior_on_regime_triplets_JAX(VES_summary, VEZ_summaries)
     # `log_transition_matrices` has shape (T-1,J,L,K,K)
     log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states[:-1],
-        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
     )
     log_transition_matrices_weighted = (
         log_transition_matrices
@@ -350,9 +333,7 @@ def compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
     # log_continuous_state_dynamics is (T-1,J,K)
 
     log_continuous_state_dynamics_weighted = (
-        log_continuous_state_dynamics_after_time_zero[
-            non_initialization_times_shifted_one_index_lower
-        ]
+        log_continuous_state_dynamics_after_time_zero[non_initialization_times_shifted_one_index_lower]
         * use_continuous_states[non_initialization_times, :, None]
     )
     return jnp.sum(variational_probs * log_continuous_state_dynamics_weighted)
@@ -364,6 +345,7 @@ def compute_expected_log_system_transitions_JAX(
     model: Model,
     example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
+    continuous_states: Optional[JaxNumpyArray3D],
 ) -> float:
     """
     Arguments:
@@ -378,11 +360,11 @@ def compute_expected_log_system_transitions_JAX(
         STP,
         T_minus_1,
         system_covariates=system_covariates,
+        x_prevs=continuous_states[:-1],
+        system_recurrence_transformation=model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX,
     )
     return jnp.sum(
-        variational_probs
-        * log_transition_matrices
-        * eligible_transitions_to_next(example_end_times)[:, None, None]
+        variational_probs * log_transition_matrices * eligible_transitions_to_next(example_end_times)[:, None, None]
     )
 
 
@@ -463,6 +445,7 @@ def compute_cost_for_system_transition_parameters_JAX(
     model: Model,
     example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
+    continuous_states: Optional[JaxNumpyArray3D],
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -478,6 +461,7 @@ def compute_cost_for_system_transition_parameters_JAX(
         model,
         example_end_times,
         system_covariates,
+        continuous_states,
     )
     if system_transition_prior is not None:
         log_prior = evaluate_log_probability_density_of_sticky_transition_matrix_up_to_constant(
@@ -499,6 +483,7 @@ def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
     model: Model,
     example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
+    continuous_states: Optional[JaxNumpyArray3D],
 ) -> float:
     """
     The cost function is the negative of the energy, where the energy is the
@@ -515,6 +500,7 @@ def compute_cost_for_system_transition_parameters_with_unconstrained_tpms_JAX(
         model,
         example_end_times,
         system_covariates,
+        continuous_states,
     )
 
 
@@ -544,15 +530,13 @@ def compute_cost_for_continuous_state_parameters_after_initial_timestep_JAX(
     if use_continuous_states is None:
         use_continuous_states = np.full((T, J), True)
 
-    expected_log_state_dynamics = (
-        compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
-            CSP,
-            continuous_states,
-            VEZ_summaries,
-            model,
-            example_end_times,
-            use_continuous_states,
-        )
+    expected_log_state_dynamics = compute_expected_log_continuous_state_dynamics_after_initial_timestep_JAX(
+        CSP,
+        continuous_states,
+        VEZ_summaries,
+        model,
+        example_end_times,
+        use_continuous_states,
     )
     log_prior = 0.0
     energy = expected_log_state_dynamics + log_prior
@@ -589,6 +573,7 @@ def compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_
 # Run M-steps
 ###
 
+
 def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     VEZ_expected_regimes: JaxNumpyArray3D,
     continuous_states: JaxNumpyArray3D,
@@ -613,10 +598,10 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
             and False otherwise.  For any (t,j) that shouldn't be utilized, we don't use
             that info to do the M-step.
     """
-    ### Upfront computations 
+    ### Upfront computations
     D = np.shape(continuous_states)[2]
     T, J, K = np.shape(VEZ_expected_regimes)
-   
+
     ### Make sample weights (as a combo of `use_continuous_states`` and `example_end_times`).  Shape is (T,J)
     sample_weights = make_sample_weights_which_mask_the_initial_timestep_for_each_event(
         continuous_states,
@@ -632,7 +617,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     for j in range(J):
         xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):
-            response_weights = np.asarray(VEZ_expected_regimes[:, j, k] * sample_weights[:, j])[1:] 
+            response_weights = np.asarray(VEZ_expected_regimes[:, j, k] * sample_weights[:, j])[1:]
             sum_of_response_weights = np.sum(response_weights)
             if sum_of_response_weights >= MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS:
                 responses = xs[1:]
@@ -722,9 +707,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
 
     else:
         # Parallelize the loop using joblib
-        results = Parallel(n_jobs=-1)(
-            delayed(estimate_params)(j, k) for j in range(J) for k in range(K)
-        )
+        results = Parallel(n_jobs=-1)(delayed(estimate_params)(j, k) for j in range(J) for k in range(K))
 
         # Unpack the results
         ar_coefs = np.empty((J, K))
@@ -737,9 +720,7 @@ def run_M_step_for_CSP_in_closed_form__VonMises_case(
             drifts[j, k] = drift
             kappas[j, k] = kappa
 
-    return ContinuousStateParameters_VonMises_JAX(
-        jnp.asarray(ar_coefs), jnp.asarray(drifts), jnp.asarray(kappas)
-    )
+    return ContinuousStateParameters_VonMises_JAX(jnp.asarray(ar_coefs), jnp.asarray(drifts), jnp.asarray(kappas))
 
 
 def run_M_step_for_ETP_via_gradient_descent(
@@ -823,9 +804,7 @@ def run_M_step_for_ETP(
         print("Skipping M-step for ETP, as requested.")
         return all_params
     elif M_step_toggles_ETP == M_Step_Toggle_Value.CLOSED_FORM_TPM:
-        raise ValueError(
-            "Closed-form solution to the M-step for Entity Transition parameters is not available."
-        )
+        raise ValueError("Closed-form solution to the M-step for Entity Transition parameters is not available.")
     elif M_step_toggles_ETP == M_Step_Toggle_Value.GRADIENT_DESCENT:
         ### Do gradient descent on unconstrained parameters.
         ETP_new = run_M_step_for_ETP_via_gradient_descent(
@@ -843,9 +822,7 @@ def run_M_step_for_ETP(
     else:
         raise ValueError("I do not know what to do with ETP for the M-step.")
 
-    all_params = AllParameters_JAX(
-        all_params.STP, ETP_new, all_params.CSP, all_params.EP, all_params.IP
-    )
+    all_params = AllParameters_JAX(all_params.STP, ETP_new, all_params.CSP, all_params.EP, all_params.IP)
 
     return all_params
 
@@ -861,12 +838,10 @@ def run_M_step_for_STP_in_closed_form(
     # then the tpm is [[1]], and the log of that is [[0]], so the check fails.
     # Thus, we change the condition to simply
     #     STP_gives_a_TPM = not STP.Gammas.any() and not STP.Upsilon.any()
+    warnings.warn("Running closed-form M-step for STP.  Note that this ignores the prior specification.")
     STP_gives_a_TPM = not STP.Gammas.any() and not STP.Upsilon.any()
     if not STP_gives_a_TPM:
-        raise ValueError("Closed-form M step is available for STP only if STP gives a TPM.")
-    warnings.warn(
-        "Running closed-form M-step for STP.  Note that this ignores the prior specification."
-    )
+        warnings.warn("Using closed-form M step for STP even though STP does not give a TPM!!!")
     exp_Pi = compute_closed_form_M_step(VES_summary, example_end_times=example_end_times)
     Pi_new = jnp.asarray(np.log(exp_Pi))
     return SystemTransitionParameters_JAX(STP.Gammas, STP.Upsilon, Pi_new)
@@ -881,6 +856,7 @@ def run_M_step_for_STP_via_gradient_descent(
     model: Model,
     example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
+    continuous_states: Optional[JaxNumpyArray3D],
     verbose: bool = True,
 ) -> SystemTransitionParameters_JAX:
     ### Do gradient descent on unconstrained parameters.
@@ -892,6 +868,7 @@ def run_M_step_for_STP_via_gradient_descent(
         model=model,
         example_end_times=example_end_times,
         system_covariates=system_covariates,
+        continuous_states=continuous_states,
     )
 
     # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
@@ -927,6 +904,7 @@ def run_M_step_for_STP(
     model: Model,
     example_end_times: NumpyArray1D,
     system_covariates: Optional[JaxNumpyArray2D],
+    continuous_states: Optional[JaxNumpyArray3D],
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_STP == M_Step_Toggle_Value.OFF:
@@ -944,6 +922,7 @@ def run_M_step_for_STP(
             model,
             example_end_times,
             system_covariates,
+            continuous_states,
             verbose,
         )
     else:
@@ -951,9 +930,7 @@ def run_M_step_for_STP(
             "I don't understand the specification for how to do the M-step with system transition parameters."
         )
 
-    all_params = AllParameters_JAX(
-        STP_new, all_params.ETP, all_params.CSP, all_params.EP, all_params.IP
-    )
+    all_params = AllParameters_JAX(STP_new, all_params.ETP, all_params.CSP, all_params.EP, all_params.IP)
     return all_params
 
 
@@ -993,9 +970,7 @@ def run_M_step_for_CSP(
             f"that is, we should rely upon tensorflow.probability to convert covariance parameters to unconstrained representation and back."
         )
 
-        CSP_WUC = CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(
-            all_params.CSP
-        )
+        CSP_WUC = CSP_Gaussian_with_unconstrained_covariances_from_ordinary_CSP_Gaussian(all_params.CSP)
 
         cost_function_CSP = functools.partial(
             compute_cost_for_continuous_state_parameters_with_unconstrained_covariances_after_initial_timestep_JAX,
@@ -1018,9 +993,7 @@ def run_M_step_for_CSP(
             num_mstep_iters=num_M_step_iters,
         )
 
-        CSP_new = ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(
-            CSP_WUC_new
-        )
+        CSP_new = ordinary_CSP_Gaussian_from_CSP_Gaussian_with_unconstrained_covariances(CSP_WUC_new)
 
         print(
             f"For iteration {iteration+1} of the M-step with continuous state dynamics, First 5 Losses are {losses_for_state_dynamics[:5]}. Last 5 losses are {losses_for_state_dynamics[-5:]}"
@@ -1030,9 +1003,7 @@ def run_M_step_for_CSP(
             "I don't understand the specification for how to do the M-step with continuous state parameters."
         )
 
-    all_params = AllParameters_JAX(
-        all_params.STP, all_params.ETP, CSP_new, all_params.EP, all_params.IP
-    )
+    all_params = AllParameters_JAX(all_params.STP, all_params.ETP, CSP_new, all_params.EP, all_params.IP)
     return all_params
 
 
@@ -1054,14 +1025,10 @@ def run_M_step_for_IP_in_closed_form__Gaussian_case(
     EPSILON = 1e-3
     # These are set to be the values that minimize the cross-entropy, plus some noise
     expected_system_regime_init_probs = jnp.mean(VES_summary.expected_regimes[init_times], axis=0)
-    pi_system = normalize_potentials_by_axis_JAX(
-        expected_system_regime_init_probs + EPSILON, axis=0
-    )
+    pi_system = normalize_potentials_by_axis_JAX(expected_system_regime_init_probs + EPSILON, axis=0)
 
     expected_entity_regime_init_probs = jnp.mean(VEZ_summaries.expected_regimes[init_times], axis=0)
-    pi_entities = normalize_potentials_by_axis_JAX(
-        expected_entity_regime_init_probs + EPSILON, axis=1
-    )
+    pi_entities = normalize_potentials_by_axis_JAX(expected_entity_regime_init_probs + EPSILON, axis=1)
 
     J, K = jnp.shape(pi_entities)
 
@@ -1106,15 +1073,12 @@ def run_M_step_for_IP_in_closed_form__VonMises_case(
 ) -> InitializationParameters_VonMises_JAX:
     if not only_one_example(example_end_times, T=len(group_angles)):
         raise NotImplementedError(
-            f"Haven't yet implemented M-step for init params in von mises case when there are "
-            f"multiple events."
+            f"Haven't yet implemented M-step for init params in von mises case when there are " f"multiple events."
         )
     EPSILON = 1e-3
     # These are set to be the values that minimize the cross-entropy, plus some noise
     pi_system = normalize_potentials_by_axis_JAX(VES_summary.expected_regimes[0] + EPSILON, axis=0)
-    pi_entities = normalize_potentials_by_axis_JAX(
-        VEZ_summaries.expected_regimes[0] + EPSILON, axis=1
-    )
+    pi_entities = normalize_potentials_by_axis_JAX(VEZ_summaries.expected_regimes[0] + EPSILON, axis=1)
 
     K = jnp.shape(pi_entities)[1]
 
@@ -1154,9 +1118,7 @@ def run_M_step_for_IP(
             example_end_times,
         )
     elif M_step_toggles_IP == M_Step_Toggle_Value.GRADIENT_DESCENT:
-        raise ValueError(
-            f"Learning the IP parameters by gradient descent is not currently supported.  Try closed-form"
-        )
+        raise ValueError(f"Learning the IP parameters by gradient descent is not currently supported.  Try closed-form")
     else:
         raise ValueError(
             "I don't understand the specification for how to do the M-step with continuous state parameters."

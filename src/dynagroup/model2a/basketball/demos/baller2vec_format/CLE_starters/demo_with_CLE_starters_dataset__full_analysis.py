@@ -26,7 +26,11 @@ from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.params import Dims
+from dynagroup.params import (
+    Dims,
+    get_dim_of_entity_recurrence_output,
+    get_dim_of_system_recurrence_output,
+)
 from dynagroup.util import get_current_datetime_as_string
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
@@ -145,19 +149,23 @@ plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs
 # Setup Model
 ###
 
-#### Setup Dims
-
-J = np.shape(DATA_TRAIN.player_coords)[1]
-D, D_t = 2, 2
-N = 0
-M_s, M_e = 0, 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
-
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
 ### Setup Model Form
 model_basketball = get_basketball_model(model_type)
+
+#### Setup Dims
+
+J = np.shape(DATA_TRAIN.player_coords)[1]
+D = np.shape(DATA_TRAIN.player_coords)[2]
+D_e = get_dim_of_entity_recurrence_output(D, model_basketball)
+D_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model_basketball)
+M_e = 0  # for now!
+N = 0
+
+DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
+
 
 print("Running smart initialization.")
 

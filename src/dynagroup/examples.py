@@ -70,9 +70,11 @@ def example_end_times_are_proper(example_end_times: NumpyArray1D, T: int) -> Opt
 
 
 def only_one_example(example_end_times: Optional[NumpyArray1D], T: int) -> Optional[bool]:
-    return (example_end_times is None) or (
-        len(example_end_times) == 2 and (example_end_times == [-1, T]).all()
-    )
+    # RK: I'm not sure why I had the below.. why would `.all()` be necesssary?
+    # return (example_end_times is None) or (
+    #     len(example_end_times) == 2 and (example_end_times == [-1, T]).all()
+    # )
+    return (example_end_times is None) or (len(example_end_times) == 2 and (example_end_times == [-1, T]))
 
 
 def get_initialization_times(example_end_times: NumpyArray1D) -> NumpyArray1D:
@@ -162,9 +164,7 @@ def fix_log_entity_transitions_at_example_boundaries(
         # We reshape this so that there the transitions to entity K are uniform across the rows
         log_transitions_to_destinations_per_init_dist = np.tile(np.log(IP.pi_entities[j]), (K, 1))
         for end_time in example_end_times[1:-1]:
-            log_entity_transitions_fixed[
-                end_time, j
-            ] = log_transitions_to_destinations_per_init_dist
+            log_entity_transitions_fixed[end_time, j] = log_transitions_to_destinations_per_init_dist
     return jnp.array(log_entity_transitions_fixed)
 
 
@@ -189,9 +189,7 @@ def fix__log_emissions_from_system__at_example_boundaries(
     ###
 
     # `iinitial_log_emissions_from_system` has shape (L,) and is obtained by summing over (J,K) objects
-    initial_log_emission_for_each_system_regime = jnp.sum(
-        VEZ_expected_regimes * np.log(IP.pi_entities)
-    )
+    initial_log_emission_for_each_system_regime = jnp.sum(VEZ_expected_regimes * np.log(IP.pi_entities))
     initial_log_emissions_from_system = jnp.repeat(initial_log_emission_for_each_system_regime, L)
 
     # TODO: Maybe vectorize this
@@ -218,9 +216,7 @@ def fix__log_emissions_from_entities__at_example_boundaries(
 
     # TODO: Vectorize all this
     for end_time in example_end_times[1:-1]:
-        log_emissions_from_entities_fixed[
-            end_time + 1
-        ] = model.compute_log_initial_continuous_state_emissions_JAX(
+        log_emissions_from_entities_fixed[end_time + 1] = model.compute_log_initial_continuous_state_emissions_JAX(
             IP, continuous_states[end_time + 1]
         )
 

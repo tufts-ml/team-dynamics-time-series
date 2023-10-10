@@ -43,12 +43,12 @@ def example_end_times():
 @pytest.fixture
 def DIMS(continuous_states):
     J, D = np.shape(continuous_states)[1:3]
-    D_t = 2
+    D_e = 2
     N = 0
-    M_s, M_e = 0, 0  # for now!
+    D_s, M_e = 0, 0  # for now!
     K = 10
     L = 5
-    return Dims(J, K, L, D, D_t, N, M_s, M_e)
+    return Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def IP_JAX(DIMS):
 
 @pytest.fixture
 def ETP_JAX(DIMS):
-    return make_data_free_preinitialization_of_ETP_JAX(DIMS, method_for_Psis="rnorm", seed=0)  # Psis is (J, L, K, D_t)
+    return make_data_free_preinitialization_of_ETP_JAX(DIMS, method_for_Psis="rnorm", seed=0)  # Psis is (J, L, K, D_e)
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def CSP_JAX_and_kms(DIMS, continuous_states, example_end_times):
 
 @pytest.fixture
 def model_basketball():
-    return get_basketball_model(Model_Type.Linear_Recurrence)
+    return get_basketball_model(Model_Type.Linear_Entity_Recurrence)
 
 
 ###

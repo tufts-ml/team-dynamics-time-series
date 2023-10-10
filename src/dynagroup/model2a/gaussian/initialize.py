@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from dynagroup.diagnostics.kmeans import plot_kmeans_on_2d_data
 from dynagroup.diagnostics.steps_in_state import plot_steps_assigned_to_state
-from dynagroup.examples import example_end_times_are_proper, only_one_example
+from dynagroup.examples import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
@@ -475,7 +475,7 @@ def fit_ARHMM_to_top_half_of_model(
 
             ### M-step (STP)
             num_system_states = np.shape(STP_JAX.Pi)[0]
-            if only_one_example(example_end_times, T) or num_system_states == 1:
+            if num_system_states == 1:
                 # TODO: I had written earlier that the VES step has already taken care of the `use_continuous_states` mask.
                 # But I might want to double check that.
                 STP_JAX = run_M_step_for_STP_in_closed_form(STP_JAX, ES_summary, example_end_times)
@@ -490,6 +490,8 @@ def fit_ARHMM_to_top_half_of_model(
                     model,
                     example_end_times,
                     system_covariates,
+                    continuous_states,
+                    verbose,
                 )
 
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)

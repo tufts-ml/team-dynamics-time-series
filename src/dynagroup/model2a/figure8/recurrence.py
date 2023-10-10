@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from dynagroup.types import JaxNumpyArray1D
 
 
-def transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
+def transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX(
     x_vec: JaxNumpyArray1D,
 ) -> JaxNumpyArray1D:
     """

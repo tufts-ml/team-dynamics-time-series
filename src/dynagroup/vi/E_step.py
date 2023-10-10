@@ -70,7 +70,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
     log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states_JAX[:-1],
-        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
     )
 
     expected_log_transition_matrices = jnp.einsum(
@@ -127,7 +127,7 @@ def run_VES_step_JAX(
         variationally_expected_initial_entity_regimes: np.array of size (J,K)
             The j-th row must live on the simplex for all j=1,...,J.
             May come from a list of J HMM_Posterior_Summary instances created by the VEZ step.
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: transform R^D -> R^D
+        transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX: transform R^D -> R^D
             of the continuous state vector before pre-multiplying by the the recurrence matrix.
         system_covariates : An optional array of shape (T, M_s)
         use_continuous_states: If None, we assume all states should be utilized in inference.
@@ -153,13 +153,15 @@ def run_VES_step_JAX(
 
     # `transitions` is (T-1) x L x L
     log_transitions = model.compute_log_system_transition_probability_matrices_JAX(
-        STP, T - 1, system_covariates
+        STP,
+        T - 1,
+        system_covariates=system_covariates,
+        x_prevs=continuous_states[:-1],
+        system_recurrence_transformation=model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX,
     )
 
     # ` initial_log_emission_for_each_system_regime` is a float after summing over (J,K) objects
-    initial_log_emission_for_each_system_regime = jnp.sum(
-        VEZ_summaries.expected_regimes[0] * np.log(IP.pi_entities)
-    )
+    initial_log_emission_for_each_system_regime = jnp.sum(VEZ_summaries.expected_regimes[0] * np.log(IP.pi_entities))
 
     # `inital_log_emission` has shape (L,)
     initial_log_emission = jnp.repeat(initial_log_emission_for_each_system_regime, L)
@@ -246,7 +248,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     log_transition_matrices = model.compute_log_entity_transition_probability_matrices_JAX(
         ETP,
         continuous_states[:-1],
-        model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
     )
 
     # TODO: This isn't working yet; needs initialization
@@ -290,14 +292,12 @@ def compute_log_entity_emissions_JAX(
         example_end_times = np.array([-1, T])
 
     ### Compute log emissions assuming a single example.
-    log_entity_emissions = compute_log_entity_emissions_JAX__assuming_single_example(
-            CSP, IP, continuous_states, model
-    )
+    log_entity_emissions = compute_log_entity_emissions_JAX__assuming_single_example(CSP, IP, continuous_states, model)
 
     ### Patch emissions if there are separate examples.
     return fix__log_emissions_from_entities__at_example_boundaries(
-            log_entity_emissions, continuous_states, IP, model, example_end_times
-        )    
+        log_entity_emissions, continuous_states, IP, model, example_end_times
+    )
 
 
 def compute_log_entity_emissions_JAX__assuming_single_example(
@@ -335,10 +335,8 @@ def compute_log_entity_emissions_JAX__assuming_single_example(
         continuous_states[0],
     )
     #### Remaining times
-    log_pdfs_remaining_times = (
-        model.compute_log_continuous_state_emissions_after_initial_timestep_JAX(
-            CSP, continuous_states
-        )
+    log_pdfs_remaining_times = model.compute_log_continuous_state_emissions_after_initial_timestep_JAX(
+        CSP, continuous_states
     )
 
     ### Combine them
@@ -383,7 +381,7 @@ def run_VEZ_step_JAX(
         IP,
         continuous_states,
         model,
-        example_end_times, 
+        example_end_times,
     )
 
     # `transitions` has shape (T-1,J,K,K)

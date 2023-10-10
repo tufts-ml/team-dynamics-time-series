@@ -77,7 +77,7 @@ def params__for_nearly_deterministic_stepping(DIMS) -> AllParameters_JAX:
 
 @pytest.fixture
 def model_with_linear_recurrence():
-    return get_basketball_model(Model_Type.Linear_Recurrence)
+    return get_basketball_model(Model_Type.Linear_Entity_Recurrence)
 
 
 @pytest.fixture

@@ -49,7 +49,7 @@ event_stop_idxs = None
 event_idxs = None  # [i for i in range(25)]
 
 # Model specification
-model_type = Model_Type.Linear_Recurrence
+model_type = Model_Type.Linear_Entity_Recurrence
 K = 20
 L = 5
 

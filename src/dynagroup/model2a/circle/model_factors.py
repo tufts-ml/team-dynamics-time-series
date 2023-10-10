@@ -19,7 +19,7 @@ from dynagroup.types import (
 from dynagroup.util import normalize_log_potentials_by_axis_JAX
 
 
-def zero_transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
+def zero_transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX(
     x_vec: JaxNumpyArray1D,
 ) -> JaxNumpyArray1D:
     """
@@ -60,9 +60,7 @@ def compute_log_system_transition_probability_matrices_JAX(
         L: number of system-level regimes
     """
     # TODO: Check t vs t-1
-    bias_from_system_covariates = jnp.einsum(
-        "ld,td->tl", STP.Upsilon, system_covariates[:-1]
-    )  # (T-1, L)
+    bias_from_system_covariates = jnp.einsum("ld,td->tl", STP.Upsilon, system_covariates[:-1])  # (T-1, L)
 
     # Pi: has shape (L, L)
     log_potentials = (
@@ -74,7 +72,7 @@ def compute_log_system_transition_probability_matrices_JAX(
 def compute_log_entity_transition_probability_matrices_JAX(
     ETP_JAX: EntityTransitionParameters_JAX,
     x_prevs: JaxNumpyArray3D,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable = None,
+    transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX: Callable = None,
 ) -> JaxNumpyArray5D:
     """
     Compute log entity transition probability matrices.
@@ -138,15 +136,11 @@ def compute_log_continuous_state_emissions_after_initial_timestep_JAX(
     K = jnp.shape(CSP.ar_coefs)[1]
     group_angles = group_angles.reshape((T, J))  # throw away D=1 axis dimension if it exists.
 
-    means_after_initial_timestep = jnp.einsum(
-        "jk,tj->tjk", CSP.ar_coefs, group_angles[:-1]
-    )  # (T-1,J,K)
+    means_after_initial_timestep = jnp.einsum("jk,tj->tjk", CSP.ar_coefs, group_angles[:-1])  # (T-1,J,K)
     means_after_initial_timestep += CSP.drifts[None, :, :]
     concentrations_after_initial_timestep = jnp.tile(CSP.kappas, (T - 1, 1, 1))  # (T-1,J,K)
 
-    group_angles_after_initial_timestep_axes_poorly_ordered = jnp.tile(
-        group_angles[1:], (K, 1, 1)
-    )  # (K,T-1,J)
+    group_angles_after_initial_timestep_axes_poorly_ordered = jnp.tile(group_angles[1:], (K, 1, 1))  # (K,T-1,J)
     group_angles_after_initial_timestep = jnp.moveaxis(
         group_angles_after_initial_timestep_axes_poorly_ordered,
         [0, 1, 2],
@@ -228,5 +222,6 @@ circle_model_JAX = Model(
     compute_log_continuous_state_emissions_after_initial_timestep_JAX,
     compute_log_system_transition_probability_matrices_JAX,
     compute_log_entity_transition_probability_matrices_JAX,
-    zero_transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    zero_transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
+    transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX=None,
 )

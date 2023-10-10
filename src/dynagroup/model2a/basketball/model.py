@@ -29,7 +29,7 @@ class Model_Type(Enum):
     Linear_Entity_Recurrence = 2
     Out_of_Bounds_Entity_Recurrence = 3
     Linear_And_Out_Of_Bounds_Entity_Recurrence = 4
-    Linear_And_Out_of_Bounds_And_Court_Side_Entity_Recurrence = 5
+    Linear_And_Out_Of_Bounds_And_Court_Side_Entity_Recurrence = 5
     Linear_And_Out_Of_Bounds_Entity_Recurrence__and__Team_Centroid_System_Recurrence = 6
 
 
@@ -111,7 +111,7 @@ def get_basketball_model_from_model_type(model_type: Model_Type) -> Model:
         return model_basketball_out_of_bounds_entity_recurrence
     elif model_type == Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence:
         return model_basketball_linear_and_out_of_bounds_entity_recurrence
-    elif model_type == Model_Type.Linear_And_Out_of_Bounds_And_Court_Side_Entity_Recurrence:
+    elif model_type == Model_Type.Linear_And_Out_Of_Bounds_And_Court_Side_Entity_Recurrence:
         return model_basketball_linear_and_out_of_bounds_and_court_side_entity_recurrence
     elif model_type == Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__Team_Centroid_System_Recurrence:
         return model_basketball_linear_and_out_of_bounds_entity_recurrence__and__team_centroid_system_recurrence

@@ -129,9 +129,7 @@ if show_plots_of_samples:
 
     for j in range(DIMS.J):
         print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(
-            sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
-        )
+        plot_sample_with_system_regimes(sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s)
 
     plot_unfolded_time_series(sample.xs, period_to_use=4)
 
@@ -160,7 +158,7 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 if model_adjustment == "one_system_regime":
     DIMS.L = 1
 elif model_adjustment == "remove_recurrence":
-    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = (
         lambda x_vec: np.zeros(DIMS.D_t)  # noqa
     )
 
@@ -197,12 +195,8 @@ results_init = smart_initialize_model_2a(
 params_init = results_init.params
 
 ### inspect quality of initialization
-inspect_entity_level_segmentations_over_EM_iterations(
-    results_init.record_of_most_likely_entity_states, sample.zs
-)
-inspect_system_level_segmentations_over_EM_iterations(
-    results_init.record_of_most_likely_system_states, sample.s
-)
+inspect_entity_level_segmentations_over_EM_iterations(results_init.record_of_most_likely_entity_states, sample.zs)
+inspect_system_level_segmentations_over_EM_iterations(results_init.record_of_most_likely_system_states, sample.s)
 
 ### print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
@@ -221,14 +215,10 @@ print(f"ELBO after init: {elbo_init:.02f}")
 
 ### Show plots of init
 if show_plots_after_init:
-    xs = get_deterministic_trajectories(
-        params_true.CSP.As, params_true.CSP.bs, num_time_samples=100
-    )
+    xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
     plot_deterministic_trajectories(xs, "True")
 
-    xs = get_deterministic_trajectories(
-        params_init.CSP.As, params_init.CSP.bs, num_time_samples=100
-    )
+    xs = get_deterministic_trajectories(params_init.CSP.As, params_init.CSP.bs, num_time_samples=100)
     plot_deterministic_trajectories(xs, "Initialized")
 
     plot_results_of_old_forecasting_test(
@@ -291,14 +281,10 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Plot Deterministic Trajectories (by regime)
 
 if show_plots_after_learning:
-    xs = get_deterministic_trajectories(
-        params_true.CSP.As, params_true.CSP.bs, num_time_samples=100
-    )
+    xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
     plot_deterministic_trajectories(xs, "True")
 
-    xs = get_deterministic_trajectories(
-        params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100
-    )
+    xs = get_deterministic_trajectories(params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100)
     plot_deterministic_trajectories(xs, "Learned")
 
 # Print the norms of the eigenvalues of the state matrix.  The
@@ -355,9 +341,7 @@ if show_plots_after_learning:
                 convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
                 after_learning,
             )
-            print(
-                f"Plotting next-step predictive means for entity {j} and dim {d}. After learning ? {after_learning}"
-            )
+            print(f"Plotting next-step predictive means for entity {j} and dim {d}. After learning ? {after_learning}")
             plt.plot(predictive_means[0:T_snippet_for_fit_to_observations, j, d], color="red")
             plt.plot(sample.xs[0:T_snippet_for_fit_to_observations, j, d], color="black")
             plt.title(f"Entity {j+1}. After learning ? {after_learning}")
@@ -385,28 +369,26 @@ learned_system_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.STP.
 print(f"Learned system tpm: \n{learned_system_tpm}")
 for j in range(DIMS.J):
     for l in range(DIMS.L):
-        learned_entity_tpm = np.exp(
-            normalize_log_potentials_by_axis(params_learned.ETP.Ps[j, l], axis=1)
-        )
+        learned_entity_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.ETP.Ps[j, l], axis=1))
         print(f"Learned tpm for entity {j} under system regime {l}: \n{learned_entity_tpm}")
 
 # Parameter investigation: Entity transition probabilities under different system regimes and closeness-to-origin statuses.
 investigate_entity_transition_probs_in_different_contexts(
     params_true.ETP,
     sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
 )
 input("Above is report with TRUE params.  Press any key to continue.")
 investigate_entity_transition_probs_in_different_contexts(
     params_init.ETP,
     sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
 )
 input("Above is report with INITIALIZED params.  Press any key to continue.")
 investigate_entity_transition_probs_in_different_contexts(
     params_learned.ETP,
     sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
     save_dir,
 )
 input("Above is report with LEARNED params.  Press any key to continue.")

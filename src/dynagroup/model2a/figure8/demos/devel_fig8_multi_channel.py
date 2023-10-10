@@ -102,9 +102,7 @@ if show_plots_of_samples:
 
     for j in range(DIMS.J):
         print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(
-            sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s
-        )
+        plot_sample_with_system_regimes(sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s)
 
     plot_unfolded_time_series(sample.xs, period_to_use=4)
 
@@ -134,7 +132,7 @@ xs_for_inference = sample.xs
 if MODEL_ADJUSTMENT == "one_system_regime":
     DIMS.L = 1
 elif MODEL_ADJUSTMENT == "remove_recurrence":
-    model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX = (
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = (
         lambda x_vec: np.zeros(DIMS.D_t)  # noqa
     )
 elif MODEL_ADJUSTMENT == "complete_pooling":

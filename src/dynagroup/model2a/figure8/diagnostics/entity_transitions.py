@@ -11,7 +11,7 @@ from dynagroup.util import normalize_log_potentials_by_axis
 def investigate_entity_transition_probs_in_different_contexts(
     ETP: EntityTransitionParameters,
     xs: np.array,
-    transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX: Callable,
+    transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX: Callable,
     save_dir: Optional[str] = None,
 ):
     """
@@ -24,7 +24,7 @@ def investigate_entity_transition_probs_in_different_contexts(
     # TODO: Don't hardcode the max closeness. It depends on x run through the transformation.
 
     x_tildes = np.apply_along_axis(
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
         2,
         xs,
     )

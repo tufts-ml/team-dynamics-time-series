@@ -83,7 +83,7 @@ def CSP_JAX_and_kms(DIMS, continuous_states, example_end_times):
 
 @pytest.fixture
 def model_basketball():
-    return get_basketball_model(Model_Type.Linear_Recurrence)
+    return get_basketball_model(Model_Type.Linear_Entity_Recurrence)
 
 
 ###

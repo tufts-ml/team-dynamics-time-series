@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from dynagroup.model2a.basketball.recurrence import LIST_OF_RECURRENCES
+from dynagroup.model2a.basketball.recurrence_entity import LIST_OF_ENTITY_RECURRENCES
 
 
 @pytest.fixture
@@ -32,10 +32,11 @@ def x_prevs(T, J, D):
 
 
 @pytest.mark.parametrize(
-    "transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX", LIST_OF_RECURRENCES
+    "transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX",
+    LIST_OF_ENTITY_RECURRENCES,
 )
 def test_that_entity_recurrence_transformations_can_be_applied_without_error(
-    x_prevs, transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX
+    x_prevs, transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX
 ):
     """ """
 
@@ -43,9 +44,9 @@ def test_that_entity_recurrence_transformations_can_be_applied_without_error(
     # the `compute_log_entity_transition_probability_matrices_JAX` function
     # in the `model_factors` module of the `gaussian` subpackage.
     x_prev_tildes = jnp.apply_along_axis(
-        transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX,
+        transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
         2,
         x_prevs,
     )
 
-    assert x_prev_tildes
+    assert x_prev_tildes is not None

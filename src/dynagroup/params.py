@@ -541,14 +541,37 @@ def dims_from_params(all_params: AllParameters) -> Dims:
     )
 
 
-def get_dim_of_recurrence_output(D: int, model: Model):
+def get_dim_of_entity_recurrence_output(D: int, model: Model):
     """
     The recurrence output is called `D_t` above.
     """
-    transformed_dim = model.transform_of_continuous_state_vector_before_premultiplying_by_recurrence_matrix_JAX(
-        jnp.zeros(D)
-    )
-    return np.shape(transformed_dim)[0]
+    if model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX is None:
+        return 0
+    else:
+        transformed_dim = (
+            model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX(
+                jnp.zeros(D)
+            )
+        )
+        return np.shape(transformed_dim)[0]
+
+
+def get_dim_of_system_recurrence_output(D: int, J: int, system_covariates: jnp.array, model: Model):
+    """
+    The recurrence output is called `D_t` above.
+    """
+    if (
+        model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX
+        is None
+    ):
+        return 0
+    else:
+        transformed_dim = (
+            model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX(
+                jnp.zeros(D * J), system_covariates
+            )
+        )
+        return np.shape(transformed_dim)[0]
 
 
 ###

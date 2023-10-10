@@ -43,7 +43,7 @@ example_end_times_test = None
 
 
 # Model specification
-model_type = Model_Type.Linear_Recurrence
+model_type = Model_Type.Linear_Entity_Recurrence
 K = 4
 L = 5
 

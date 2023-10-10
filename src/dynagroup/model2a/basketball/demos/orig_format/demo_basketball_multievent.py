@@ -43,7 +43,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATI
 
 
 # Model specification
-model_type = Model_Type.Linear_Recurrence
+model_type = Model_Type.Linear_Entity_Recurrence
 K = 5
 L = 5
 

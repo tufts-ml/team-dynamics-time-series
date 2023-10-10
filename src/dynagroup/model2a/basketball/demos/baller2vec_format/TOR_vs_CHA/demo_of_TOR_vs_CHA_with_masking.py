@@ -124,10 +124,10 @@ use_continuous_states = make_mask_of_which_continuous_states_to_use(
 #### Setup Dims
 
 J = np.shape(xs)[1]
-D, D_t = 2, 2
+D, D_e = 2, 2
 N = 0
-M_s, M_e = 0, 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
+D_s, M_e = 0, 0  # for now!
+DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)

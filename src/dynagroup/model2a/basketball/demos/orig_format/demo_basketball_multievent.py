@@ -63,7 +63,7 @@ alpha_system_prior, kappa_system_prior = 1.0, 50.0
 ###
 DATA = get_data_in_original_formatting()
 system_covariates = DATA.has_ball_players
-M_s = np.shape(system_covariates)[1]
+D_s = np.shape(system_covariates)[1]
 
 ###
 # MASKING
@@ -77,10 +77,10 @@ use_continuous_states = None
 #### Setup Dims
 
 J = np.shape(DATA.positions)[1]
-D, D_t = 2, 2
+D, D_e = 2, 2
 N = 0
 M_e = 0  # for now!
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
+DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 ### Setup Prior
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)

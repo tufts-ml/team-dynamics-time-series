@@ -50,7 +50,7 @@ def compute_log_system_transition_probability_matrices_JAX(
     Arguments:
         T_minus_1: The number of timesteps minus 1.  This is used instead of T because the initial
             system regime probabilities are governed by the initial parameters.
-        system_covariates: An optional array of shape (T, M_s).
+        system_covariates: An optional array of shape (T, D_s).
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning

@@ -6,10 +6,10 @@ from dynagroup.types import JaxNumpyArray1D
 """
 Module-level docstring:
 
-    System recurrence transformations map (JD,) to (M_s,), where
+    System recurrence transformations map (JD,) to (D_s,), where
         J: number of entities (for basketball J=10)
         D: dimension of continuous states (for basketball D=2)
-        M_s: dimension of system recurrence information and system covariates after transformation
+        D_s: dimension of system recurrence information and system covariates after transformation
 
     The flattened JD vector scrolls through j's for each d.  I.e. is can be indexed as
     (j_1,0), (j_2, 0), .... (J,0), (j_1, 1), (j_2, 1), ..., (J,1), ... (J,D)

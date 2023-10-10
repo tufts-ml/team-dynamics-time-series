@@ -26,10 +26,10 @@ def DIMS() -> Dims:
     L = 5
     J = 10
     D = 2
-    D_t = 2
+    D_e = 2
     N = 0
-    M_s, M_e = 0, 0  # for now!
-    return Dims(J, K, L, D, D_t, N, M_s, M_e)
+    D_s, M_e = 0, 0  # for now!
+    return Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 
 def make_CSP_JAX___with_identity_state_matrix(

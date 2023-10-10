@@ -109,7 +109,7 @@ def compute_log_system_transition_probability_matrices_JAX(
             system regime probabilities are governed by the initial parameters.
         x_prevs: np.array of shape (T-1,J,D) where the (t,j)-th entry is
             in R^D.  These are the previous continuous_states
-        system_covariates_prevs: An optional array of shape (T-1, M_s).
+        system_covariates_prevs: An optional array of shape (T-1, D_s).
 
     Returns:
         np.array of shape (T-1,L,L).  The (t,l,l')-th element gives the probability of transitioning
@@ -134,12 +134,12 @@ def compute_log_system_transition_probability_matrices_JAX(
             x_prevs_transposed, (x_prevs_transposed.shape[0], x_prevs_transposed.shape[1] * x_prevs_transposed.shape[2])
         )
 
-        ### Contruct transformation of the above, mapping each (JD,) array to a transformed (M_s,) array.
-        # To this, we pre-multiply by the parameter weight matrix Upsilon, which has shape (L, M_s,)
+        ### Contruct transformation of the above, mapping each (JD,) array to a transformed (D_s,) array.
+        # To this, we pre-multiply by the parameter weight matrix Upsilon, which has shape (L, D_s,)
         # In other words, the contribution here biases each of the L destinations differently
-        # depending on the values of the (M_s, ) vectors of transfomed skip-level recurrent inputs.
+        # depending on the values of the (D_s, ) vectors of transfomed skip-level recurrent inputs.
 
-        # x_prevs are (T-1,J,D)... first we flattened to (T-1,JD). Then x_prevs_tildes should be (T-1, M_s)
+        # x_prevs are (T-1,J,D)... first we flattened to (T-1,JD). Then x_prevs_tildes should be (T-1, D_s)
         x_prevs_tildes = jnp.apply_along_axis(
             system_recurrence_transformation__with_no_covariates,
             1,

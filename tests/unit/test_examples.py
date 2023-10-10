@@ -15,7 +15,7 @@ from dynagroup.util import make_fixed_sticky_tpm
 
 @pytest.fixture
 def DIMS():
-    return Dims(J=3, K=2, L=5, D=2, D_t=1, N=0, M_s=0, M_e=0)
+    return Dims(J=3, K=2, L=5, D=2, D_e=1, N=0, D_s=0, M_e=0)
 
 
 @pytest.fixture

@@ -133,7 +133,7 @@ if MODEL_ADJUSTMENT == "one_system_regime":
     DIMS.L = 1
 elif MODEL_ADJUSTMENT == "remove_recurrence":
     model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = (
-        lambda x_vec: np.zeros(DIMS.D_t)  # noqa
+        lambda x_vec: np.zeros(DIMS.D_e)  # noqa
     )
 elif MODEL_ADJUSTMENT == "complete_pooling":
     DIMS.J = 1

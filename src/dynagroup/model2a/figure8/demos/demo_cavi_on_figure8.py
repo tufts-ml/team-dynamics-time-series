@@ -159,7 +159,7 @@ if model_adjustment == "one_system_regime":
     DIMS.L = 1
 elif model_adjustment == "remove_recurrence":
     model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = (
-        lambda x_vec: np.zeros(DIMS.D_t)  # noqa
+        lambda x_vec: np.zeros(DIMS.D_e)  # noqa
     )
 
 ###

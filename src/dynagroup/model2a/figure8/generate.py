@@ -55,10 +55,10 @@ def make_Psis_for_figure_8_experiment(
         L: number of system-level regimes
         K: number of entity-level regimes
         D: dimensionality of latent continuous state, x
-        D_t: dimensionality of latent continuous state, x, after applying transformation f.
+        D_e: dimensionality of latent continuous state, x, after applying transformation f.
     """
-    L, K, D_t = 2, 2, 1  # these are fixed.
-    Psis = np.zeros((J, L, K, D_t))
+    L, K, D_e = 2, 2, 1  # these are fixed.
+    Psis = np.zeros((J, L, K, D_e))
 
     # The D dimension is not needed here; we populate it redundantly to preserve the data generation format
     # from the generic data generation.
@@ -156,7 +156,7 @@ J = 3
 N = 5
 T = 400
 M_e = 0  # number of covariates for entity
-M_s = 0  # dimensionality of contribution to system-level transitions from skip-level recurrence and system-level covariates
+D_s = 0  # dimensionality of contribution to system-level transitions from skip-level recurrence and system-level covariates
 
 # system transition parameters (stickiness)
 alpha_system, kappa_system = 1.0, 50.0  # only needed if fixed_system_regimes=None
@@ -190,7 +190,7 @@ np.random.seed(SEED)
 exp_Pi = sample_sticky_transition_matrix(L, alpha=alpha_system, kappa=kappa_system, seed=SEED)
 Pi = np.log(exp_Pi)
 Gammas = np.zeros((J, L, K))  # Gammas must be zero for no feedback.
-Upsilon = np.zeros((L, M_s))
+Upsilon = np.zeros((L, D_s))
 STP = SystemTransitionParameters(Gammas, Upsilon, Pi)
 
 # Entity Transition Parameters

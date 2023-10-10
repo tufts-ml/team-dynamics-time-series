@@ -80,12 +80,12 @@ def make_tpm_only_preinitialization_of_STP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> SystemTransitionParameters_JAX:
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
+    L, J, K, D_s = DIMS.L, DIMS.J, DIMS.K, DIMS.D_s
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=L)
     Pi = jnp.log(tpm)
     Gammas = jnp.zeros((J, L, K))  # Gammas must be zero for no feedback.
-    Upsilon = jnp.zeros((L, M_s))
+    Upsilon = jnp.zeros((L, D_s))
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
 
 
@@ -100,7 +100,7 @@ def make_data_free_preinitialization_of_STP_JAX(
     """
     key = jr.PRNGKey(seed)
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_s = DIMS.L, DIMS.J, DIMS.K, DIMS.M_s
+    L, J, K, D_s = DIMS.L, DIMS.J, DIMS.K, DIMS.D_s
 
     Gammas = jnp.zeros((J, L, K))
 
@@ -109,9 +109,9 @@ def make_data_free_preinitialization_of_STP_JAX(
     Pi = jnp.log(tpm)
 
     if method_for_Upsilon == "rnorm":
-        Upsilon = jr.normal(key, (L, M_s))
+        Upsilon = jr.normal(key, (L, D_s))
     elif method_for_Upsilon == "zeros":
-        Upsilon = jnp.zeros((L, M_s))
+        Upsilon = jnp.zeros((L, D_s))
     else:
         raise ValueError("What is the method for Upsilon?")
     return SystemTransitionParameters_JAX(Gammas, Upsilon, Pi)
@@ -128,14 +128,14 @@ def make_data_free_preinitialization_of_ETP_JAX(
     """
     key = jr.PRNGKey(seed)
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
+    L, J, K, M_e, D_e = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_e
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
     if method_for_Psis == "rnorm":
-        Psis = jr.normal(key, (J, L, K, D_t))
+        Psis = jr.normal(key, (J, L, K, D_e))
     elif method_for_Psis == "zeros":
-        Psis = jnp.zeros((J, L, K, D_t))
+        Psis = jnp.zeros((J, L, K, D_e))
     else:
         raise ValueError("What is the method for Psis?")
     Omegas = jnp.zeros((J, L, K, M_e))
@@ -146,11 +146,11 @@ def make_tpm_only_preinitialization_of_ETP_JAX(
     DIMS: Dims, fixed_self_transition_prob: float
 ) -> EntityTransitionParameters_MetaSwitch_JAX:
     # TODO: Support fixed or random draws from prior.
-    L, J, K, M_e, D_t = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_t
+    L, J, K, M_e, D_e = DIMS.L, DIMS.J, DIMS.K, DIMS.M_e, DIMS.D_e
     # make a tpm
     tpm = make_fixed_sticky_tpm_JAX(fixed_self_transition_prob, num_states=K)
     Ps = jnp.tile(np.log(tpm), (J, L, 1, 1))
-    Psis = jnp.zeros((J, L, K, D_t))
+    Psis = jnp.zeros((J, L, K, D_e))
     Omegas = jnp.zeros((J, L, K, M_e))
     return EntityTransitionParameters_MetaSwitch_JAX(Psis, Omegas, Ps)
 
@@ -449,7 +449,7 @@ def fit_ARHMM_to_top_half_of_model(
     record_of_most_likely_states = np.zeros((T, num_EM_iterations))
 
     if system_covariates is None:
-        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
     print("\n--- Now running AR-HMM on top half of Model 2a. ---")
@@ -633,7 +633,7 @@ def smart_initialize_model_2a(
         # TODO: Support fixed or random draws from prior.
         ETP_JAX = make_data_free_preinitialization_of_ETP_JAX(
             DIMS, method_for_Psis="rnorm", fixed_self_transition_prob=0.90, seed=seed
-        )  # Psis is (J, L, K, D_t)
+        )  # Psis is (J, L, K, D_e)
         # TODO: Support fixed or random draws from prior.
         IP_JAX = make_data_free_preinitialization_of_IP_JAX(DIMS)
         # EP_JAX is a placeholder; not used for Figure 8.

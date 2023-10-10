@@ -139,7 +139,7 @@ def run_CAVI_with_JAX(
         )
 
     if system_covariates is None:
-        # TODO: Check that M_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
+        # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries

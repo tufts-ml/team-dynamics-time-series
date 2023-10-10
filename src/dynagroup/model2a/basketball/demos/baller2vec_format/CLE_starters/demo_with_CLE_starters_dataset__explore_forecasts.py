@@ -162,11 +162,11 @@ model_basketball = get_basketball_model(model_type)
 
 J = np.shape(DATA_TRAIN.player_coords)[1]
 D = np.shape(DATA_TRAIN.player_coords)[2]
-D_t = get_dim_of_entity_recurrence_output(D, model_basketball)
-M_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model_basketball)
+D_e = get_dim_of_entity_recurrence_output(D, model_basketball)
+D_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model_basketball)
 M_e = 0  # for now!
 N = 0
-DIMS = Dims(J, K, L, D, D_t, N, M_s, M_e)
+DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
 print("Running smart initialization.")
 

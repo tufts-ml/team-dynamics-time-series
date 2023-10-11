@@ -4,9 +4,9 @@ import numpy as np
 
 from dynagroup.forecasts import (
     MSEs_from_forecasts,
-    make_forecast_MSEs_summary,
     plot_forecasts,
     save_forecasts,
+    summarize_forecast_MSEs_from_one_example,
 )
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.data.baller2vec.disk import Processed_Data_To_Analyze
@@ -79,7 +79,7 @@ def run_basketball_forecasts(
             forecasts,
             save_dir,
             forecast_description=f"random_forecast_starting_points_{random_forecast_starting_points}_T_forecast_{T_forecast}",
-            event_description=f"example_idx_{e}_orig_example_idx_{event_idx_to_analyze}_start_idx_{start_idx}_stop_idx_{stop_idx}_T_context_{T_context}",
+            example_description=f"example_idx_{e}_orig_example_idx_{event_idx_to_analyze}_start_idx_{start_idx}_stop_idx_{stop_idx}_T_context_{T_context}",
         )
 
         try:
@@ -88,7 +88,7 @@ def run_basketball_forecasts(
             print(f"Couldn't process event {e}")
             continue
 
-        forecast_MSEs_summary = make_forecast_MSEs_summary(forecast_MSEs)
+        forecast_MSEs_summary = summarize_forecast_MSEs_from_one_example(forecast_MSEs)
         forecast_MSEs_summary_by_example_idx[event_idx_to_analyze] = forecast_MSEs_summary
 
         print(

@@ -67,7 +67,7 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
-# Forecasts
+# Forecast_Collection_For_Example
 T_context = 20
 T_forecast = 20
 n_forecasts = 3

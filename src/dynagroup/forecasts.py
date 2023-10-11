@@ -50,7 +50,7 @@ COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
 
 
 @dataclass
-class Forecasts:
+class Forecast_Collection_For_Example:
     """
     Attributes:
         forward_simulations: array with shape (S, T_forecast, J, D), where S is the number of forecasts
@@ -68,7 +68,7 @@ class Forecasts:
 
 
 @dataclass
-class Forecast_MSEs:
+class Forecast_MSEs_For_Example:
     """
     Attributes:
         forward_simulations: array of shape (S, J), where S is the number of forecasts,
@@ -87,7 +87,7 @@ class Forecast_MSEs:
 
 
 @dataclass
-class Forecast_MSEs_Example_Summary:
+class Summary_Of_Forecast_MSEs_From_One_Example:
     mean_forward_simulation_over_entities_per_sample: List[float]
     mean_forward_simulation: float
     mean_fixed_velocity: float
@@ -102,7 +102,7 @@ class Forecast_MSEs_Example_Summary:
 ###
 
 
-def make_forecasts(
+def make_forecast_collection_for_one_example(
     continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
@@ -115,7 +115,7 @@ def make_forecasts(
     use_raw_coords: bool = True,
     seed: int = 0,
     verbose: bool = True,
-) -> Forecasts:
+) -> Forecast_Collection_For_Example:
     """
     Makes (complete, not partial) forecasts for our model against baselines.
 
@@ -175,6 +175,7 @@ def make_forecasts(
     for s in range(n_forecasts_from_our_model):
         forward_simulations_in_normalized_coords[s] = forward_samples_with_init_at_beginning[s].xs[1:]
         # ` forward_simulations_in_normalized_coords` has shape (n_forecasts_from_our_model, forecast_window, J, D)
+
     ###
     # Compute velocity baseline
     ###
@@ -213,14 +214,16 @@ def make_forecasts(
     # velocity_baseline=np.array(velocity_baseline, dtype=np.float64)
     # ground_truth=np.array(ground_truth, dtype=np.float64)
 
-    return Forecasts(forward_simulations, velocity_baseline, ground_truth, raw_coords)
+    return Forecast_Collection_For_Example(forward_simulations, velocity_baseline, ground_truth, raw_coords)
 
 
 ###
 # Save forecasts
 ###
-def save_forecasts(forecasts: Forecasts, save_dir: str, forecast_description: str, event_description: str):
-    save_subdir = os.path.join(save_dir, f"forecasts_{forecast_description}", event_description)
+def save_forecasts(
+    forecasts: Forecast_Collection_For_Example, save_dir: str, forecast_description: str, example_description: str
+):
+    save_subdir = os.path.join(save_dir, f"forecasts_{forecast_description}", example_description)
     ensure_dir(save_subdir)
     np.save(os.path.join(save_subdir, "forward_simulations.npy"), forecasts.forward_simulations)
     np.save(os.path.join(save_subdir, "fixed_velocity.npy"), forecasts.fixed_velocity)
@@ -232,7 +235,7 @@ def save_forecasts(forecasts: Forecasts, save_dir: str, forecast_description: st
 ###
 
 
-def MSEs_from_forecasts(forecasts: Forecasts):
+def MSEs_from_forecasts(forecasts: Forecast_Collection_For_Example):
     def _compute_mse_over_matrix(matrix_estimated: NumpyArray2D, matrix_true: NumpyArray2D) -> float:
         """
         Arguments:
@@ -259,10 +262,12 @@ def MSEs_from_forecasts(forecasts: Forecasts):
     velocity_MSEs = compute_MSEs_under_one_forecast(forecasts.fixed_velocity, forecasts.ground_truth)
     forward_simulation_MSEs = _compute_MSEs_under_many_forecasts(forecasts.forward_simulations, forecasts.ground_truth)
 
-    return Forecast_MSEs(forward_simulation_MSEs, velocity_MSEs, forecasts.raw_coords)
+    return Forecast_MSEs_For_Example(forward_simulation_MSEs, velocity_MSEs, forecasts.raw_coords)
 
 
-def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Example_Summary:
+def summarize_forecast_MSEs_from_one_example(
+    forecast_MSEs: Forecast_MSEs_For_Example,
+) -> Summary_Of_Forecast_MSEs_From_One_Example:
     """
     Here the MSE summary characterizes a single example.
 
@@ -271,7 +276,7 @@ def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Ex
         S : number of samples in forward simulation
         J : number of entities
     """
-    return Forecast_MSEs_Example_Summary(
+    return Summary_Of_Forecast_MSEs_From_One_Example(
         np.mean(forecast_MSEs.forward_simulation, 1),
         np.mean(forecast_MSEs.forward_simulation),
         np.mean(forecast_MSEs.fixed_velocity),
@@ -288,8 +293,8 @@ def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Ex
 
 
 def plot_forecasts(
-    forecasts: Forecasts,
-    forecasting_MSEs: Forecast_MSEs,
+    forecasts: Forecast_Collection_For_Example,
+    forecasting_MSEs: Forecast_MSEs_For_Example,
     save_dir: str,
     filename_prefix: str = "",
     figsize: Optional[Tuple[int]] = (8, 4),

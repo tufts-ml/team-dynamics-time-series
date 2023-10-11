@@ -92,13 +92,13 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
-# Forecasts
+# Forecast_Collection_For_Example
 random_forecast_starting_points = False
 n_cavi_iterations_for_forecasting = 5
 n_forecasts_per_example = 20
 n_forecasting_examples_to_analyze = np.inf
 n_forecasting_examples_to_plot = 0
-T_forecast = 30  # note this is "off-label" compared to what was generated on disk.
+T_forecast = 30  # note this is an "off-label" compared to what was generated on disk.
 
 
 ###

@@ -2,7 +2,10 @@ from typing import Optional, Union
 
 import numpy as np
 
-from dynagroup.forecasts import Forecasts, make_forecasts
+from dynagroup.forecasts import (
+    Forecast_Collection_For_Example,
+    make_forecast_collection_for_one_example,
+)
 from dynagroup.model import Model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
@@ -23,7 +26,7 @@ def get_forecasts_on_test_set_example(
     n_forecasts: int,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     seed: int = 0,
-) -> Forecasts:
+) -> Forecast_Collection_For_Example:
     """
     We partition the T timesteps in continuous_states into 3 cells:
         context window, forecasting window, unused window.
@@ -118,7 +121,7 @@ def get_forecasts_on_test_set_example(
     ###
     # Forecasting
     ###
-    forecasts = make_forecasts(
+    forecasts = make_forecast_collection_for_one_example(
         continuous_states,
         params_learned,
         model,

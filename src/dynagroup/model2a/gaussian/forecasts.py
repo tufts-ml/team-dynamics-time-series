@@ -17,7 +17,7 @@ from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 
 
 def get_forecasts_on_test_set_example(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
+    continuous_states_for_one_example: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
     T_context: int,
@@ -52,9 +52,8 @@ def get_forecasts_on_test_set_example(
     # Upfront computations
     ###
     example_end_times = None
-    use_continuous_states = None
 
-    T_test, J = np.shape(continuous_states)[:2]
+    T_test, J = np.shape(continuous_states_for_one_example)[:2]
 
     if T_context >= T_test:
         raise ValueError(
@@ -70,7 +69,7 @@ def get_forecasts_on_test_set_example(
 
     print("Now initializing E step for the context portion of the test set...")
     DIMS = dims_from_params(params_learned)
-    continuous_states_during_context_window = continuous_states[:T_context]
+    continuous_states_during_context_window = continuous_states_for_one_example[:T_context]
     results_init = smart_initialize_model_2a(
         DIMS,
         continuous_states_during_context_window,
@@ -91,6 +90,7 @@ def get_forecasts_on_test_set_example(
     ###
     # Run E-steps for the context period
     ###
+    use_continuous_states_during_context_window = None
     VES_summary, VEZ_summaries = results_init.ES_summary, results_init.EZ_summaries
 
     for i in range(n_cavi_iterations):
@@ -104,7 +104,7 @@ def get_forecasts_on_test_set_example(
             model,
             example_end_times,
             system_covariates,
-            use_continuous_states,
+            use_continuous_states_during_context_window,
         )
 
         VEZ_summaries_from_context_window = run_VEZ_step_JAX(
@@ -122,7 +122,7 @@ def get_forecasts_on_test_set_example(
     # Forecasting
     ###
     forecasts = make_forecast_collection_for_one_example(
-        continuous_states,
+        continuous_states_for_one_example,
         params_learned,
         model,
         VEZ_summaries_from_context_window,

@@ -65,10 +65,6 @@ model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Pla
 K = 10
 L = 5
 
-# Directories
-datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_ALL_forecasts_after_CAVI_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}__{datetime_as_string}/"
-
 # Exploratory Data Analysis
 animate_raw_data = False
 
@@ -93,12 +89,17 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecast_Collection_For_Example
-random_forecast_starting_points = False
+random_forecast_starting_points = True
 n_cavi_iterations_for_forecasting = 5
 n_forecasts_per_example = 20
 n_forecasting_examples_to_analyze = np.inf
 n_forecasting_examples_to_plot = 0
-T_forecast = 30  # note this is an "off-label" compared to what was generated on disk.
+T_forecast = 20  # note this is an "off-label" compared to what was generated on disk.
+
+
+# Directories
+datetime_as_string = get_current_datetime_as_string()
+save_dir = f"results/basketball/analyses/CLE_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}/"
 
 
 ###

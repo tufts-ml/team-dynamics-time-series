@@ -103,7 +103,7 @@ class Summary_Of_Forecast_MSEs_From_One_Example:
 
 
 def make_forecast_collection_for_one_example(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
+    continuous_states_for_one_example: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
     VEZ_summaries_from_context_window: HMM_Posterior_Summaries_JAX,
@@ -111,7 +111,7 @@ def make_forecast_collection_for_one_example(
     T_context: int,
     T_forecast: int,
     n_forecasts_from_our_model: int,
-    system_covariates: Optional[JaxNumpyArray2D] = None,
+    system_covariates_for_forecast_window: Optional[JaxNumpyArray2D] = None,
     use_raw_coords: bool = True,
     seed: int = 0,
     verbose: bool = True,
@@ -132,9 +132,9 @@ def make_forecast_collection_for_one_example(
     DIMS = dims_from_params(params_learned)
     T_forecast_plus_initialization_timestep_to_discard = T_forecast + 1
 
-    continuous_states_during_context_window = continuous_states[:T_context]
-    continuous_states_during_forecast_window = continuous_states[T_context : T_context + T_forecast]
-    discrete_derivative = continuous_states[T_context + 1] - continuous_states[T_context]
+    continuous_states_during_context_window = continuous_states_for_one_example[:T_context]
+    continuous_states_during_forecast_window = continuous_states_for_one_example[T_context : T_context + T_forecast]
+    discrete_derivative = continuous_states_during_context_window[-1] - continuous_states_during_context_window[-2]
 
     ###
     # Ground truth
@@ -170,7 +170,7 @@ def make_forecast_collection_for_one_example(
         fixed_init_system_regime=fixed_init_system_regime,
         fixed_init_entity_regimes=fixed_init_entity_regimes,
         fixed_init_continuous_states=fixed_init_continuous_states,
-        system_covariates=system_covariates,
+        system_covariates_for_forecast_window=system_covariates_for_forecast_window,
     )
     for s in range(n_forecasts_from_our_model):
         forward_simulations_in_normalized_coords[s] = forward_samples_with_init_at_beginning[s].xs[1:]

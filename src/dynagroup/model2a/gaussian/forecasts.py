@@ -13,7 +13,7 @@ from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 
 
-def get_forecasts_on_test_set(
+def get_forecasts_on_test_set_example(
     continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
@@ -39,6 +39,8 @@ def get_forecasts_on_test_set(
         T_context: Number of timesteps for context period
         T_forecast: Number of timesteps for forecasting period
     """
+
+    # TODO: Expand this to make forecasts with non-Gaussian emissions
 
     # TODO: Revise this so that it can return raw forecasts, which can then
     # separately get converted into MSEs and/or plots, as desired

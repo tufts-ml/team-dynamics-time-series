@@ -12,7 +12,7 @@ from dynagroup.model2a.basketball.data.baller2vec.data import (
     make_basketball_data_from_games,
 )
 from dynagroup.model2a.basketball.data.baller2vec.moments_and_events import Event
-from dynagroup.model2a.basketball.forecasts import (
+from dynagroup.model2a.basketball.data.baller2vec.random_context_times import (
     generate_random_context_times_for_events,
 )
 from dynagroup.types import NumpyArray2D, NumpyArray3D
@@ -80,10 +80,7 @@ def compare_elements(element1, element2):
 def data_classes_match(instance1, instance2):
     """Written by ChatGPT"""
     fields = instance1.__dataclass_fields__.values()
-    return all(
-        compare_elements(getattr(instance1, field.name), getattr(instance2, field.name))
-        for field in fields
-    )
+    return all(compare_elements(getattr(instance1, field.name), getattr(instance2, field.name)) for field in fields)
 
 
 ###
@@ -116,9 +113,7 @@ def write_processed_data_to_disk(
     ###
     # Generate Games
     ###
-    games = get_basketball_games_for_CLE_dataset(
-        sampling_rate_Hz=data_sampling_config.sampling_rate_Hz
-    )
+    games = get_basketball_games_for_CLE_dataset(sampling_rate_Hz=data_sampling_config.sampling_rate_Hz)
     plays_per_game = [len(game.events) for game in games]
     print(f"The plays per game are {plays_per_game}.")
 
@@ -132,9 +127,7 @@ def write_processed_data_to_disk(
 
     for n_train_games in n_train_games_list:
         # TODO: Factor out train better so we're not redundantly doing val and test.
-        games_train = games[
-            -(n_train_games + n_test_games + n_val_games) : -(n_test_games + n_val_games)
-        ]
+        games_train = games[-(n_train_games + n_test_games + n_val_games) : -(n_test_games + n_val_games)]
         data_train_dict[n_train_games] = make_basketball_data_from_games(games_train)
         player_coords_train_dict[n_train_games] = normalize_coords(
             data_train_dict[n_train_games].player_coords_unnormalized
@@ -197,9 +190,7 @@ def write_processed_data_to_disk(
         )
 
     ### Saving information from validation set
-    np.save(
-        f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy", player_coords_val
-    )
+    np.save(f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy", player_coords_val)
     np.save(f"{processed_data_dir}/ball_coords_val__with_{n_val_games}_games.npy", ball_coords_val)
     np.save(
         f"{processed_data_dir}/example_stop_idxs_val__with_{n_val_games}_games.npy",
@@ -222,9 +213,7 @@ def write_processed_data_to_disk(
         f"{processed_data_dir}/player_coords_test__with_{n_test_games}_games.npy",
         player_coords_test,
     )
-    np.save(
-        f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy", ball_coords_test
-    )
+    np.save(f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy", ball_coords_test)
     np.save(
         f"{processed_data_dir}/example_stop_idxs_test__with_{n_test_games}_games.npy",
         data_test.example_stop_idxs,
@@ -314,26 +303,18 @@ def load_processed_data_to_analyze(
 
     train_by_sample_dict = {}
     for n_train_games in data_split_config.n_train_games_list:
-        ball_coords = np.load(
-            f"{processed_data_dir}/ball_coords_train__with_{n_train_games}_games.npy"
-        )
-        player_coords = np.load(
-            f"{processed_data_dir}/player_coords_train__with_{n_train_games}_games.npy"
-        )
+        ball_coords = np.load(f"{processed_data_dir}/ball_coords_train__with_{n_train_games}_games.npy")
+        player_coords = np.load(f"{processed_data_dir}/player_coords_train__with_{n_train_games}_games.npy")
         play_start_stop_idxs = np.load(
             f"{processed_data_dir}/play_start_stop_idxs_train__with_{n_train_games}_games.npy",
         )
-        example_stop_idxs = np.load(
-            f"{processed_data_dir}/example_stop_idxs_train__with_{n_train_games}_games.npy"
-        )
+        example_stop_idxs = np.load(f"{processed_data_dir}/example_stop_idxs_train__with_{n_train_games}_games.npy")
         player_names_by_example = np.loadtxt(
             f"{processed_data_dir}/player_names_by_example_train__with_{n_train_games}_games.npy",
             dtype=str,
             delimiter=",",
         )
-        events = np.load(
-            f"{processed_data_dir}/events_train__with_{n_train_games}_games.npy", allow_pickle=True
-        )
+        events = np.load(f"{processed_data_dir}/events_train__with_{n_train_games}_games.npy", allow_pickle=True)
         train_by_sample_dict[n_train_games] = DataSplit(
             player_coords,
             ball_coords,
@@ -346,55 +327,35 @@ def load_processed_data_to_analyze(
 
     n_val_games = data_split_config.n_val_games
     val_data = DataSplit(
-        player_coords=np.load(
-            f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy"
-        ),
+        player_coords=np.load(f"{processed_data_dir}/player_coords_val__with_{n_val_games}_games.npy"),
         ball_coords=np.load(f"{processed_data_dir}/ball_coords_val__with_{n_val_games}_games.npy"),
-        play_start_stop_idxs=np.load(
-            f"{processed_data_dir}/play_start_stop_idxs_val__with_{n_val_games}_games.npy"
-        ),
-        example_stop_idxs=np.load(
-            f"{processed_data_dir}/example_stop_idxs_val__with_{n_val_games}_games.npy"
-        ),
+        play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_val__with_{n_val_games}_games.npy"),
+        example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_val__with_{n_val_games}_games.npy"),
         player_names_by_example=np.loadtxt(
             f"{processed_data_dir}/player_names_by_example_val__with_{n_val_games}_games.npy",
             dtype=str,
             delimiter=",",
         ),
-        events=np.load(
-            f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True
-        ),
+        events=np.load(f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True),
         player_data=player_data_from_all_games,
     )
 
     n_test_games = data_split_config.n_test_games
     test_data = DataSplit(
-        player_coords=np.load(
-            f"{processed_data_dir}/player_coords_test__with_{n_test_games}_games.npy"
-        ),
-        ball_coords=np.load(
-            f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy"
-        ),
-        play_start_stop_idxs=np.load(
-            f"{processed_data_dir}/play_start_stop_idxs_test__with_{n_test_games}_games.npy"
-        ),
-        example_stop_idxs=np.load(
-            f"{processed_data_dir}/example_stop_idxs_test__with_{n_test_games}_games.npy"
-        ),
+        player_coords=np.load(f"{processed_data_dir}/player_coords_test__with_{n_test_games}_games.npy"),
+        ball_coords=np.load(f"{processed_data_dir}/ball_coords_test__with_{n_test_games}_games.npy"),
+        play_start_stop_idxs=np.load(f"{processed_data_dir}/play_start_stop_idxs_test__with_{n_test_games}_games.npy"),
+        example_stop_idxs=np.load(f"{processed_data_dir}/example_stop_idxs_test__with_{n_test_games}_games.npy"),
         player_names_by_example=np.loadtxt(
             f"{processed_data_dir}/player_names_by_example_test__with_{n_test_games}_games.npy",
             dtype=str,
             delimiter=",",
         ),
-        events=np.load(
-            f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True
-        ),
+        events=np.load(f"{processed_data_dir}/events_val__with_{n_val_games}_games.npy", allow_pickle=True),
         player_data=player_data_from_all_games,
     )
 
     ### Load Random Context Times
     random_context_times = np.load(f"{processed_data_dir}/random_context_times.npy")
 
-    return Processed_Data_To_Analyze(
-        train_by_sample_dict, val_data, test_data, random_context_times
-    )
+    return Processed_Data_To_Analyze(train_by_sample_dict, val_data, test_data, random_context_times)

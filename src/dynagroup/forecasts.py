@@ -227,7 +227,7 @@ def save_forecasts(
     ensure_dir(save_subdir)
     np.save(os.path.join(save_subdir, "forward_simulations.npy"), forecasts.forward_simulations)
     np.save(os.path.join(save_subdir, "fixed_velocity.npy"), forecasts.fixed_velocity)
-    np.save(os.path.join(save_subdir, "ground_truth.npy"), forecasts.fixed_velocity)
+    np.save(os.path.join(save_subdir, "ground_truth.npy"), forecasts.ground_truth)
 
 
 ###

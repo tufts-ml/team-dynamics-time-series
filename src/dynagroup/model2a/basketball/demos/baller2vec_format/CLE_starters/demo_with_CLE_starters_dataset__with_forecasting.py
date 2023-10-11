@@ -61,7 +61,7 @@ n_test_games = 5
 sampling_rate_Hz = 5
 
 # Model specification
-model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence
+model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 K = 10
 L = 5
 

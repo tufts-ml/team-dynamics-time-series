@@ -1,3 +1,5 @@
+import os
+import pickle
 import warnings
 from dataclasses import dataclass
 from typing import Union
@@ -823,3 +825,14 @@ def normalize_log_tpms_within_parameter_group(param_group, name_of_param_to_log_
     dict_for_new_param_group = param_group.__dict__
     dict_for_new_param_group[name_of_param_to_log_normalize] = log_normalized_object
     return type(param_group)(**dict_for_new_param_group)
+
+
+####
+# Save params
+###
+
+
+def save_params(params: AllParameters_JAX, save_dir: str, basename_postfix: str = ""):
+    filepath = os.path.join(save_dir, f"params_{basename_postfix}.pkl")
+    with open(filepath, "wb") as file:
+        pickle.dump(params, file)

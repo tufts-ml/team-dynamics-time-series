@@ -11,6 +11,7 @@ from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
+from dynagroup.model2a.gaussian.forecasts import get_forecasts_on_test_set_example
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -18,7 +19,6 @@ from dynagroup.model2a.gaussian.initialize import (
 from dynagroup.params import Dims
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
-from dynagroup.vi.vi_forecast import get_forecasts_on_test_set
 
 
 """
@@ -201,7 +201,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Warning: TODO:  We want the test set API to perform one forecast per play;
 # right now it's just making a forecast at the end of ALL the plays.
 
-forecasts = get_forecasts_on_test_set(
+forecasts = get_forecasts_on_test_set_example(
     xs_test,
     params_learned,
     model_basketball,

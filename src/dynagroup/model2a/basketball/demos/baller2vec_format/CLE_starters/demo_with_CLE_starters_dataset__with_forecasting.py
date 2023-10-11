@@ -5,13 +5,9 @@ from dynagroup.diagnostics.steps_in_state import (
     plot_steps_within_examples_assigned_to_each_entity_state,
 )
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
-from dynagroup.forecasts import (
-    MSEs_from_forecasts,
-    make_forecast_MSEs_summary,
-    plot_forecasts,
-)
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
+from dynagroup.model import save_model_string
 from dynagroup.model2a.basketball.animate import (
     animate_event,
     animate_events_over_vector_field_for_one_player,
@@ -22,9 +18,7 @@ from dynagroup.model2a.basketball.data.baller2vec.disk import (
     ForecastConfig,
     load_processed_data_to_analyze,
 )
-from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
-    get_start_and_stop_timestep_idxs_from_event_idx,
-)
+from dynagroup.model2a.basketball.forecasts import run_basketball_forecasts
 from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
@@ -34,11 +28,11 @@ from dynagroup.params import (
     Dims,
     get_dim_of_entity_recurrence_output,
     get_dim_of_system_recurrence_output,
+    save_params,
 )
 from dynagroup.util import get_current_datetime_as_string
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
-from dynagroup.vi.vi_forecast import get_forecasts_on_test_set
 
 
 """
@@ -99,9 +93,12 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # Forecasts
-T_test_event_min = 50
-T_context_min = 20
-T_forecast = 20
+random_forecast_starting_points = False
+n_cavi_iterations_for_forecasting = 5
+n_forecasts_per_example = 20
+n_forecasting_examples_to_analyze = np.inf
+n_forecasting_examples_to_plot = 0
+T_forecast = 30  # note this is "off-label" compared to what was generated on disk.
 
 
 ###
@@ -116,7 +113,7 @@ ensure_dir(save_dir)
 
 data_sampling_config = DataSamplingConfig(sampling_rate_Hz)
 data_split_config = DataSplitConfig(n_train_games_list, n_val_games, n_test_games)
-forecast_config = ForecastConfig(T_test_event_min, T_context_min, T_forecast)
+forecast_config = ForecastConfig(T_test_event_min=50, T_context_min=20, T_forecast=20)
 
 DATA = load_processed_data_to_analyze(
     data_sampling_config,
@@ -269,74 +266,25 @@ if make_verbose_CAVI_plots:
         basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
     )
 
+### Save model and learned params
+save_model_string(model_basketball, save_dir, basename_postfix=model_type.name)
+save_params(params_learned, save_dir, basename_postfix="learned")
+
 
 ###
-# Explore forecasts: Quantitative, with Plotting for all entities on Example 0.
+# Make quantiative forecasts
 ###
 
-# additional configs; they are hidden down here for now.
-n_cavi_iterations_for_forecasting = 5
-n_forecasts_per_example = 25
-forecasting_examples_to_analyze = range(10)
-forecasting_examples_to_plot = range(10)
-
-xs_test = np.asarray(DATA_TEST.player_coords)
-example_end_times_test = DATA_TEST.example_stop_idxs
-params_for_forecasting = params_learned
-
-forecast_MSEs_summary_by_example_idx = {}
-
-for e, example_idx in enumerate(forecasting_examples_to_analyze):
-    start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(example_end_times_test, example_idx)
-    T_example = stop_idx - start_idx
-    T_context = int(0.8 * T_example)
-    T_forecast = T_example - T_context
-
-    MIN_T_IN_EXAMPLE_FOR_GENERATING_FORECASTS = 50
-    if T_example > MIN_T_IN_EXAMPLE_FOR_GENERATING_FORECASTS:
-        forecasts = get_forecasts_on_test_set(
-            xs_test[start_idx:stop_idx],
-            params_for_forecasting,
-            model_basketball,
-            T_context,
-            T_forecast,
-            n_cavi_iterations_for_forecasting,
-            n_forecasts_per_example,
-            system_covariates,
-        )
-
-        forecast_MSEs = MSEs_from_forecasts(forecasts)
-        forecast_MSEs_summary = make_forecast_MSEs_summary(forecast_MSEs)
-        forecast_MSEs_summary_by_example_idx[example_idx] = forecast_MSEs_summary
-
-        print(f"---Results for example {example_idx}, with start time  {start_idx} and stop time  {stop_idx} ---")
-
-        print(
-            f"Mean MSEs:  "
-            f"Fixed velocity: {forecast_MSEs_summary.mean_fixed_velocity:.03f}. "
-            f"Forward_simulation: {forecast_MSEs_summary.mean_forward_simulation:.03f}. "
-        )
-
-        print(
-            f"Median MSEs:  "
-            f"Fixed velocity: {forecast_MSEs_summary.median_fixed_velocity:.03f}. "
-            f"Forward_simulation: {forecast_MSEs_summary.median_forward_simulation:.03f}. "
-        )
-
-        if e in forecasting_examples_to_plot:
-            plot_forecasts(
-                forecasts,
-                forecast_MSEs,
-                save_dir,
-                filename_prefix=f"forecast_plot_example_idx_{example_idx}_start_idx_{start_idx}",
-            )
-
-# summary metrics
-
-mean_ours = np.mean([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
-mean_fixed_velocity = np.mean([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
-print(f"Mean over examples.  Fixed velocity: {mean_fixed_velocity:.03f}. Ours: {mean_ours:.03f}.")
-
-median_ours = np.median([v.median_forward_simulation for v in forecast_MSEs_summary_by_example_idx.values()])
-median_fixed_velocity = np.median([v.median_fixed_velocity for v in forecast_MSEs_summary_by_example_idx.values()])
-print(f"Median over examples.  Fixed velocity: {median_fixed_velocity:.03f}. Ours: {median_ours:.03f}.")
+run_basketball_forecasts(
+    DATA,
+    model_basketball,
+    params_learned,
+    system_covariates,
+    n_cavi_iterations_for_forecasting,
+    n_forecasts_per_example,
+    random_forecast_starting_points,
+    T_forecast,
+    save_dir,
+    n_forecasting_examples_to_plot,
+    n_forecasting_examples_to_analyze,
+)

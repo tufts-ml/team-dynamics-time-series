@@ -1,5 +1,6 @@
+import os
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
     HMM_Posterior_Summary_JAX,
 )
+from dynagroup.io import ensure_dir
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.court import (
     X_MAX_COURT,
@@ -27,6 +29,7 @@ from dynagroup.types import (
     NumpyArray1D,
     NumpyArray2D,
     NumpyArray3D,
+    NumpyArray4D,
 )
 
 
@@ -58,7 +61,7 @@ class Forecasts:
 
     """
 
-    forward_simulations: NumpyArray3D
+    forward_simulations: NumpyArray4D
     fixed_velocity: NumpyArray3D
     ground_truth: NumpyArray3D
     raw_coords: bool
@@ -84,11 +87,14 @@ class Forecast_MSEs:
 
 
 @dataclass
-class Forecast_MSEs_Summary:
-    mean_fixed_velocity: float
+class Forecast_MSEs_Example_Summary:
+    mean_forward_simulation_over_entities_per_sample: List[float]
     mean_forward_simulation: float
-    median_fixed_velocity: float
+    mean_fixed_velocity: float
     median_forward_simulation: float
+    median_fixed_velocity: float
+    mean_forward_simulation_CLE_only: float
+    mean_fixed_velocity_CLE_only: float
 
 
 ###
@@ -202,7 +208,23 @@ def make_forecasts(
         velocity_baseline = velocity_baseline_in_normalized_coords
         raw_coords = False
 
+    # ### Convert to float64 so that we can write dataclass to json
+    # forward_simulations=np.array(forward_simulations, dtype=np.float64)
+    # velocity_baseline=np.array(velocity_baseline, dtype=np.float64)
+    # ground_truth=np.array(ground_truth, dtype=np.float64)
+
     return Forecasts(forward_simulations, velocity_baseline, ground_truth, raw_coords)
+
+
+###
+# Save forecasts
+###
+def save_forecasts(forecasts: Forecasts, save_dir: str, forecast_description: str, event_description: str):
+    save_subdir = os.path.join(save_dir, f"forecasts_{forecast_description}", event_description)
+    ensure_dir(save_subdir)
+    np.save(os.path.join(save_subdir, "forward_simulations.npy"), forecasts.forward_simulations)
+    np.save(os.path.join(save_subdir, "fixed_velocity.npy"), forecasts.fixed_velocity)
+    np.save(os.path.join(save_subdir, "ground_truth.npy"), forecasts.fixed_velocity)
 
 
 ###
@@ -240,7 +262,7 @@ def MSEs_from_forecasts(forecasts: Forecasts):
     return Forecast_MSEs(forward_simulation_MSEs, velocity_MSEs, forecasts.raw_coords)
 
 
-def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Summary:
+def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Example_Summary:
     """
     Here the MSE summary characterizes a single example.
 
@@ -249,11 +271,14 @@ def make_forecast_MSEs_summary(forecast_MSEs: Forecast_MSEs) -> Forecast_MSEs_Su
         S : number of samples in forward simulation
         J : number of entities
     """
-    return Forecast_MSEs_Summary(
-        np.mean(forecast_MSEs.fixed_velocity),
+    return Forecast_MSEs_Example_Summary(
+        np.mean(forecast_MSEs.forward_simulation, 1),
         np.mean(forecast_MSEs.forward_simulation),
-        np.median(forecast_MSEs.fixed_velocity),
+        np.mean(forecast_MSEs.fixed_velocity),
         np.median(forecast_MSEs.forward_simulation),
+        np.median(forecast_MSEs.fixed_velocity),
+        np.mean(forecast_MSEs.forward_simulation[:, :5]),
+        np.mean(forecast_MSEs.fixed_velocity[:5]),
     )
 
 

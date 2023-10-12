@@ -12,9 +12,6 @@ from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
 )
 from dynagroup.model2a.basketball.data.baller2vec.disk import (
-    DataSamplingConfig,
-    DataSplitConfig,
-    ForecastConfig,
     load_processed_data_to_analyze,
 )
 from dynagroup.model2a.basketball.forecasts import run_basketball_forecasts
@@ -51,20 +48,10 @@ Compared to the full analysis:
 # Configs
 ###
 
-# Processed data dir
-processed_data_dir = "data/basketball/baller2vec_format/processed/"
-
-# Data split
-n_train_games_list = [1, 5, 20]
-n_train_games_to_use = 1
-n_val_games = 4
-n_test_games = 5
-
-# Sampling rate
-sampling_rate_Hz = 5
-
 # Model specification
+n_train_games_to_use = 1
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
+# model_type = Model_Type.No_Recurrence
 K = 10
 L = 5
 
@@ -96,11 +83,11 @@ n_cavi_iterations_for_forecasting = 5
 n_forecasts_per_example = 20
 n_forecasting_examples_to_analyze = np.inf
 n_forecasting_examples_to_plot = 0
-T_forecast = 20  # note this is an "off-label" compared to what was generated on disk.
+T_forecast = 30
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
+run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
 analysis_dir = f"results/basketball/CLE_starters/analysis/{run_description}/"
 model_dir = f"results/basketball/CLE_starters/models/"
 
@@ -114,16 +101,7 @@ ensure_dir(model_dir)
 # Data splitting and preprocessing
 ###
 
-data_sampling_config = DataSamplingConfig(sampling_rate_Hz)
-data_split_config = DataSplitConfig(n_train_games_list, n_val_games, n_test_games)
-forecast_config = ForecastConfig(T_test_event_min=50, T_context_min=20, T_forecast=30)  # this needs to be set
-
-DATA = load_processed_data_to_analyze(
-    processed_data_dir,
-    data_sampling_config,
-    data_split_config,
-    forecast_config,
-)
+DATA = load_processed_data_to_analyze()
 DATA_TRAIN, DATA_TEST, DATA_VAL = DATA.train_dict[n_train_games_to_use], DATA.test, DATA.val
 random_context_times = DATA.random_context_times
 
@@ -270,7 +248,6 @@ if make_verbose_CAVI_plots:
     )
 
 ### Save model and learned params
-run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}"
 save_model_type(model_type, model_dir, basename_prefix=run_description)
 save_params(params_learned, model_dir, basename_prefix=run_description)
 

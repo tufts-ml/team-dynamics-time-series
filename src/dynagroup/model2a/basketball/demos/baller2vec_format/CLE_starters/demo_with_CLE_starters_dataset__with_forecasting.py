@@ -99,8 +99,8 @@ T_forecast = 20  # note this is an "off-label" compared to what was generated on
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/basketball/analyses/CLE_with_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}/"
-
+run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}/"
+save_dir = f"results/basketball/CLE_starters/analysis/{run_description}"
 
 ###
 # I/O
@@ -268,8 +268,11 @@ if make_verbose_CAVI_plots:
     )
 
 ### Save model and learned params
-save_model_string(model_basketball, save_dir, basename_postfix=model_type.name)
-save_params(params_learned, save_dir, basename_postfix="learned")
+run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}/"
+model_dir = f"results/basketball/CLE_starters/models/"
+
+save_model_string(model_basketball, save_dir, basename_prefix=run_description)
+save_params(params_learned, save_dir, basename_prefix=run_description)
 
 
 ###

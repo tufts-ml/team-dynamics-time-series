@@ -55,14 +55,14 @@ def run_basketball_forecasts(
         start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(
             example_end_times_test, event_idx_to_analyze
         )
-        xs_test_example = xs_test[start_idx:stop_idx]
+        xs_test_example = xs_test[start_idx - 1 : stop_idx]
 
         if random_forecast_starting_points:
             # Use random starting times for forecast
             T_context = int(random_context_times[event_idx_to_analyze])
         else:
             # Use fixed starting times for forecast (last N steps)
-            T_example = stop_idx - start_idx
+            T_example = stop_idx - start_idx + 1
             T_context = T_example - T_forecast
 
         forecasts = get_forecasts_on_test_set_example(

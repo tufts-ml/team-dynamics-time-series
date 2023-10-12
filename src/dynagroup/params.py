@@ -832,7 +832,7 @@ def normalize_log_tpms_within_parameter_group(param_group, name_of_param_to_log_
 ###
 
 
-def save_params(params: AllParameters_JAX, save_dir: str, basename_postfix: str = ""):
-    filepath = os.path.join(save_dir, f"params_{basename_postfix}.pkl")
+def save_params(params: AllParameters_JAX, save_dir: str, basename_prefix: str = ""):
+    filepath = os.path.join(save_dir, f"{basename_prefix}_params.pkl")
     with open(filepath, "wb") as file:
         pickle.dump(params, file)

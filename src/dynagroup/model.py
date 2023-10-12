@@ -24,8 +24,8 @@ class Model:
     ] = None
 
 
-def save_model_string(model: Model, save_dir: str, basename_postfix: str = ""):
-    save_filepath = os.path.join(save_dir, f"model_string_{basename_postfix}.txt")
+def save_model_string(model: Model, save_dir: str, basename_prefix: str = ""):
+    save_filepath = os.path.join(save_dir, f"{basename_prefix}_model_string.txt")
     fields = [(attribute, value) for attribute, value in model.__dict__.items()]
     with open(save_filepath, "w") as file:
         for field in fields:

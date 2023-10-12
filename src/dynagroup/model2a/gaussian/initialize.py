@@ -231,12 +231,13 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             kms[j] = KMeans(K).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
 
     # ### Plot K-means fits
-    plot_kmeans_on_2d_data(
-        data_for_kmeans,
-        weights_for_kmeans,
-        kms,
-        save_dir,
-    )
+    if plotbose:
+        plot_kmeans_on_2d_data(
+            data_for_kmeans,
+            weights_for_kmeans,
+            kms,
+            save_dir,
+        )
 
     ### Initialize parameters by running separate vector autoregressions within each cluster.
 

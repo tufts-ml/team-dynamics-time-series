@@ -836,3 +836,9 @@ def save_params(params: AllParameters_JAX, save_dir: str, basename_prefix: str =
     filepath = os.path.join(save_dir, f"{basename_prefix}_params.pkl")
     with open(filepath, "wb") as file:
         pickle.dump(params, file)
+
+
+def load_params(filepath: str):
+    with open(filepath, "rb") as file:
+        params = pickle.load(file)
+    return params

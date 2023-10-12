@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 from dynagroup.model import Model
@@ -132,3 +133,21 @@ def get_basketball_model_from_model_type(model_type: Model_Type) -> Model:
         return model_basketball_linear_and_out_of_bounds_entity_recurrence__and__all_player_locations_system_recurrence
     else:
         raise ValueError("I don't understand the model type.")
+
+
+###
+# I/O
+###
+
+
+def save_model_type(model_type: Model_Type, model_dir: str, basename_prefix: str = ""):
+    filepath = os.path.join(model_dir, f"{basename_prefix}_model_type_string.txt")
+    with open(filepath, "w") as file:
+        file.write(model_type.name)
+
+
+def load_model_from_model_type_string_filepath(filepath: str) -> Model:
+    with open(filepath, "r") as file:
+        model_type_str = file.readlines()[0]
+    model_type = Model_Type[model_type_str]
+    return get_basketball_model_from_model_type(model_type)

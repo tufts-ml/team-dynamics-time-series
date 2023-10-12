@@ -247,11 +247,23 @@ def write_processed_data_to_disk(
 
 
 def load_processed_data_to_analyze(
-    data_sampling_config: DataSamplingConfig,
-    data_split_config: DataSplitConfig,
-    forecast_config: ForecastConfig,
-    processed_data_dir: str,
+    data_sampling_config: Optional[DataSamplingConfig] = None,
+    data_split_config: Optional[DataSplitConfig] = None,
+    forecast_config: Optional[ForecastConfig] = None,
+    processed_data_dir: Optional[str] = None,
 ) -> Processed_Data_To_Analyze:
+    ###
+    # Fill in Defaults
+    ###
+    if data_sampling_config is None:
+        data_sampling_config = DataSamplingConfig(sampling_rate_Hz=5.0)
+    if data_split_config is None:
+        data_split_config = DataSplitConfig(n_train_games_list=[1, 5, 20], n_val_games=4, n_test_games=5)
+    if forecast_config is None:
+        forecast_config = ForecastConfig(T_test_event_min=50, T_context_min=20, T_forecast=30)  # this needs to be set
+    if processed_data_dir is None:
+        processed_data_dir = "data/basketball/baller2vec_format/processed/"
+
     ###
     # Check if requested configs match those on disk.
     ###

@@ -7,7 +7,6 @@ from dynagroup.diagnostics.steps_in_state import (
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
-from dynagroup.model import save_model_string
 from dynagroup.model2a.basketball.animate import (
     animate_event,
     animate_events_over_vector_field_for_one_player,
@@ -19,7 +18,11 @@ from dynagroup.model2a.basketball.data.baller2vec.disk import (
     load_processed_data_to_analyze,
 )
 from dynagroup.model2a.basketball.forecasts import run_basketball_forecasts
-from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
+from dynagroup.model2a.basketball.model import (
+    Model_Type,
+    get_basketball_model,
+    save_model_type,
+)
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -71,7 +74,6 @@ animate_raw_data = False
 # Initialization
 animate_initialization = False
 make_verbose_initialization_plots = False  # True
-save_plots_of_initialization_diagnostics = False  # True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
@@ -88,7 +90,7 @@ system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
-# Forecast_Collection_For_Example
+# Forecasting
 random_forecast_starting_points = True
 n_cavi_iterations_for_forecasting = 5
 n_forecasts_per_example = 20
@@ -96,17 +98,17 @@ n_forecasting_examples_to_analyze = np.inf
 n_forecasting_examples_to_plot = 0
 T_forecast = 20  # note this is an "off-label" compared to what was generated on disk.
 
-
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}/"
-save_dir = f"results/basketball/CLE_starters/analysis/{run_description}"
+run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
+analysis_dir = f"results/basketball/CLE_starters/analysis/{run_description}/"
+model_dir = f"results/basketball/CLE_starters/models/"
 
 ###
 # I/O
 ###
-
-ensure_dir(save_dir)
+ensure_dir(analysis_dir)
+ensure_dir(model_dir)
 
 ###
 # Data splitting and preprocessing
@@ -114,13 +116,13 @@ ensure_dir(save_dir)
 
 data_sampling_config = DataSamplingConfig(sampling_rate_Hz)
 data_split_config = DataSplitConfig(n_train_games_list, n_val_games, n_test_games)
-forecast_config = ForecastConfig(T_test_event_min=50, T_context_min=20, T_forecast=20)
+forecast_config = ForecastConfig(T_test_event_min=50, T_context_min=20, T_forecast=30)  # this needs to be set
 
 DATA = load_processed_data_to_analyze(
+    processed_data_dir,
     data_sampling_config,
     data_split_config,
     forecast_config,
-    processed_data_dir,
 )
 DATA_TRAIN, DATA_TEST, DATA_VAL = DATA.train_dict[n_train_games_to_use], DATA.test, DATA.val
 random_context_times = DATA.random_context_times
@@ -142,7 +144,7 @@ if animate_raw_data:
     for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, save_dir)
+plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, analysis_dir)
 
 
 ###
@@ -184,7 +186,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    save_dir * save_plots_of_initialization_diagnostics,
+    analysis_dir,
     verbose=True,
     plotbose=make_verbose_initialization_plots,
 )
@@ -208,7 +210,7 @@ if make_verbose_initialization_plots:
         example_end_times=DATA_TRAIN.example_stop_idxs,
         use_continuous_states=None,
         K=DIMS.K,
-        save_dir=save_dir,
+        analysis_dir=analysis_dir,
         show_plot=False,
         basename_prefix="post_init",
     )
@@ -262,17 +264,15 @@ if make_verbose_CAVI_plots:
         example_end_times=DATA_TRAIN.example_stop_idxs,
         use_continuous_states=None,
         K=DIMS.K,
-        save_dir=save_dir,
+        analysis_dir=analysis_dir,
         show_plot=False,
         basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
     )
 
 ### Save model and learned params
-run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}/"
-model_dir = f"results/basketball/CLE_starters/models/"
-
-save_model_string(model_basketball, save_dir, basename_prefix=run_description)
-save_params(params_learned, save_dir, basename_prefix=run_description)
+run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_val_{n_val_games}_test_{n_test_games}_CAVI_{n_cavi_iterations}_its__{datetime_as_string}"
+save_model_type(model_type, model_dir, basename_prefix=run_description)
+save_params(params_learned, model_dir, basename_prefix=run_description)
 
 
 ###
@@ -288,7 +288,7 @@ run_basketball_forecasts(
     n_forecasts_per_example,
     random_forecast_starting_points,
     T_forecast,
-    save_dir,
+    analysis_dir,
     n_forecasting_examples_to_plot,
     n_forecasting_examples_to_analyze,
 )

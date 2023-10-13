@@ -55,7 +55,10 @@ for model_name in metrics_dict.keys():
     )
 
 
-# ### Sanity checks
+###
+# Sanity checks
+###
+
 # # forecasts should start at about the same place.
 # e=-2
 # j=2
@@ -67,7 +70,36 @@ for model_name in metrics_dict.keys():
 # print(f"Fixed velocity: {forecasts_dict['fixed_velocity'][e,:,j,:]}")
 
 
-#### Paired difference test
+####
+# Paired difference test
+###
 
-# diffs = metrics_dict["no_recurrence_small"].BOTH_TEAMS__MSE_E - metrics_dict["ours_small"].BOTH_TEAMS__MSE_E
+# diffs = metrics_dict["agentformer_small"].BOTH_TEAMS__MSE_E - metrics_dict["ours_small"].BOTH_TEAMS__MSE_E
 # t_stat = np.nanmean(diffs)/(np.nanstd(diffs)/np.sqrt(75))
+
+###
+# PLots
+###
+
+from dynagroup.model2a.basketball.forecast_plots import (
+    argsort_discarding_nan_indices,
+    plot_team_forecasts,
+)
+
+
+model_1 = "ours_large"
+model_2 = "no_recurrence_large"
+
+forecasts_1 = forecasts_dict[model_1]
+forecasts_2 = forecasts_dict[model_2]
+
+metrics_1 = metrics_dict[model_1]
+metrics_2 = metrics_dict[model_2]
+
+
+# find example where model_1 is most better than model_2
+e = argsort_discarding_nan_indices(metrics_2.CLE__MSE_E - metrics_1.CLE__MSE_E)[-1]
+
+rank_of_s_to_use = 15
+
+plot_team_forecasts(forecasts_1, forecasts_2, ground_truth, metrics_1, metrics_2, e, rank_of_s_to_use, show_plot=True)

@@ -26,7 +26,7 @@ def plot_team_forecasts(
     s_2: int,
     show_plot: bool = False,
     save_dir: Optional[str] = None,
-    filename_prefix: str = "",
+    basename_before_extension: str = "",
     figsize: Optional[Tuple[int]] = (20, 4),
 ):
     """
@@ -124,7 +124,7 @@ def plot_team_forecasts(
         plt.show()
 
     if save_dir:
-        fig.savefig(save_dir + f"{filename_prefix}_sims_{s_1}_and_{s_2}.pdf")
+        fig.savefig(save_dir + f"{basename_before_extension}.pdf")
 
     # An attempt to avoid inadventently retaining figures which consume too much memory.
     # References:

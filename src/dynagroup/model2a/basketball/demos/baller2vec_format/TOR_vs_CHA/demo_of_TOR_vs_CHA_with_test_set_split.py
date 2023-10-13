@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-from dynagroup.forecasts import MSEs_from_forecasts
+from dynagroup.forecast_collection import MSEs_for_example_from_forecast_collection
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
     animate_events_over_vector_field_for_one_player,
@@ -11,7 +11,9 @@ from dynagroup.model2a.basketball.data.baller2vec.TOR_vs_CHA import (
     get_basketball_data_for_TOR_vs_CHA,
 )
 from dynagroup.model2a.basketball.model import Model_Type, get_basketball_model
-from dynagroup.model2a.gaussian.forecasts import get_forecasts_on_test_set_example
+from dynagroup.model2a.gaussian.forecast_collection import (
+    get_forecast_collection_on_test_set_example,
+)
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
@@ -201,7 +203,7 @@ VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
 ### Warning: TODO:  We want the test set API to perform one forecast per play;
 # right now it's just making a forecast at the end of ALL the plays.
 
-forecasts = get_forecasts_on_test_set_example(
+forecasts = get_forecast_collection_on_test_set_example(
     xs_test,
     params_learned,
     model_basketball,
@@ -212,4 +214,4 @@ forecasts = get_forecasts_on_test_set_example(
     system_covariates,
 )
 
-forecasting_MSEs = MSEs_from_forecasts(forecasts)
+forecasting_MSEs = MSEs_for_example_from_forecast_collection(forecasts)

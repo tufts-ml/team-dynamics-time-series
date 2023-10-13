@@ -2,7 +2,6 @@ import os
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as npr
@@ -15,6 +14,8 @@ from dynagroup.hmm_posterior import (
 from dynagroup.io import ensure_dir
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.court import (
+    COURT_AXIS_UNNORM,
+    COURT_IMAGE,
     X_MAX_COURT,
     X_MIN_COURT,
     Y_MAX_COURT,
@@ -33,15 +34,14 @@ from dynagroup.types import (
 )
 
 
-###
-# CONSTANTS
-###
+"""
+Module-level docstring:
 
-# TODO: Move this to `court` file.  It's reused both here and in animate.
-# TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
-# so that I don't have to unnormalize all the time?!
-COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
-COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+We (unfortunately) work with forecast collections (one for each example) when processing the data.
+But when combing our results (our models, fixed velocity, ground truth) with external results (e.g. agentformer)
+we switch strategies to working with numpy arrays, which seems much more natural.
+
+"""
 
 
 ###
@@ -225,10 +225,14 @@ def make_forecast_collection_for_one_example(
 ###
 # Save forecasts
 ###
-def save_forecasts(
-    forecasts: Forecast_Collection_For_Example, save_dir: str, forecast_description: str, example_description: str
+def save_forecast_collection_as_numpy_arrays(
+    forecasts: Forecast_Collection_For_Example,
+    save_dir: str,
+    subdir_prefix: str,
+    forecast_description: str,
+    example_description: str,
 ):
-    save_subdir = os.path.join(save_dir, f"forecasts_{forecast_description}", example_description)
+    save_subdir = os.path.join(save_dir, f"{subdir_prefix}_forecasts_{forecast_description}", example_description)
     ensure_dir(save_subdir)
     np.save(os.path.join(save_subdir, "forward_simulations.npy"), forecasts.forward_simulations)
     np.save(os.path.join(save_subdir, "fixed_velocity.npy"), forecasts.fixed_velocity)
@@ -240,7 +244,7 @@ def save_forecasts(
 ###
 
 
-def MSEs_from_forecasts(forecasts: Forecast_Collection_For_Example):
+def MSEs_for_example_from_forecast_collection(forecasts: Forecast_Collection_For_Example) -> Forecast_MSEs_For_Example:
     def _compute_mse_over_matrix(matrix_estimated: NumpyArray2D, matrix_true: NumpyArray2D) -> float:
         """
         Arguments:
@@ -293,11 +297,15 @@ def summarize_forecast_MSEs_from_one_example(
 
 
 ###
-# Plot forecasts
+# Plot forecast collection
 ###
 
 
-def plot_forecasts(
+### TODO: Deprecate `plot_forecasts_from_forecast_collection`...
+# I want the forecast plotter to just directly take in forecasts as a numpy array.
+
+
+def plot_forecasts_from_forecast_collection(
     forecasts: Forecast_Collection_For_Example,
     forecasting_MSEs: Forecast_MSEs_For_Example,
     save_dir: str,

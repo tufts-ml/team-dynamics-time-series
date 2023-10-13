@@ -1,6 +1,7 @@
 import copy
 from typing import Union
 
+import matplotlib.image as mpimg
 import numpy as np
 
 from dynagroup.types import NumpyArray2D, NumpyArray3D
@@ -24,6 +25,11 @@ Y_MIN_COURT = 0
 Y_MAX_COURT = 50
 
 
+# TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
+# so that I don't have to unnormalize all the time?!
+COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
+COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
+
 ###
 # Normalize/Unnormalize
 ###
@@ -44,9 +50,7 @@ def normalize_coords(
     return coords_normalized
 
 
-def unnormalize_coords(
-    coords_normalized: Union[NumpyArray2D, NumpyArray3D]
-) -> Union[NumpyArray2D, NumpyArray3D]:
+def unnormalize_coords(coords_normalized: Union[NumpyArray2D, NumpyArray3D]) -> Union[NumpyArray2D, NumpyArray3D]:
     """
     Arguments:
         coords_normalized: NumpyArray whose last axis has shape D=2, representing x and y
@@ -79,8 +83,6 @@ def flip_player_coords_unnormalized(player_coords_unnormalized: NumpyArray2D) ->
     coords_normalized = normalize_coords(player_coords_unnormalized)
     coords_normalized_and_centered = coords_normalized - CENTER_OF_NORMALIZED_COURT
     coords_normalized_and_centered_and_flipped = coords_normalized_and_centered * -1
-    coords_normalized_and_flipped = (
-        coords_normalized_and_centered_and_flipped + CENTER_OF_NORMALIZED_COURT
-    )
+    coords_normalized_and_flipped = coords_normalized_and_centered_and_flipped + CENTER_OF_NORMALIZED_COURT
     coords_flipped = unnormalize_coords(coords_normalized_and_flipped)
     return coords_flipped

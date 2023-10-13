@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 
 from dynagroup.model2a.circle.changepoints import make_changepoints_dict
 from dynagroup.model2a.circle.plot_changepoints import plot_changepoint_dict
+from dynagroup.model2a.supra import MY_IRB_APPROVED_USERNAME
 from dynagroup.von_mises.util import degrees_to_radians
 
 
@@ -17,7 +18,7 @@ t_start, t_end, t_every = 130000, 134000, 20
 # Get sample
 ###
 
-filepath = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
+filepath = f"/Users/{MY_IRB_APPROVED_USERNAME}/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
 
 if not "df" in globals():
     df = pd.read_csv(filepath)

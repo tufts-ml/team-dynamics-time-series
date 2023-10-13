@@ -14,7 +14,9 @@ from dynagroup.model2a.basketball.animate import (
 from dynagroup.model2a.basketball.data.baller2vec.disk import (
     load_processed_data_to_analyze,
 )
-from dynagroup.model2a.basketball.forecasts import run_basketball_forecasts
+from dynagroup.model2a.basketball.forecast_collection import (
+    make_forecast_collections_for_all_basketball_examples,
+)
 from dynagroup.model2a.basketball.model import (
     Model_Type,
     get_basketball_model,
@@ -88,14 +90,14 @@ T_forecast = 30
 # Directories
 datetime_as_string = get_current_datetime_as_string()
 run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
-analysis_dir = f"results/basketball/CLE_starters/analysis/{run_description}/"
-model_dir = f"results/basketball/CLE_starters/models/"
+plots_dir = f"results/basketball/CLE_starters/plots/{run_description}/"
+artifacts_dir = f"results/basketball/CLE_starters/artifacts/"
 
 ###
 # I/O
 ###
-ensure_dir(analysis_dir)
-ensure_dir(model_dir)
+ensure_dir(plots_dir)
+ensure_dir(artifacts_dir)
 
 ###
 # Data splitting and preprocessing
@@ -122,7 +124,7 @@ if animate_raw_data:
     for event in DATA_TRAIN.events[-n_events_to_animate:]:
         animate_event(event)
 
-plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, analysis_dir)
+plot_discrete_derivatives(DATA_TRAIN.player_coords, DATA_TRAIN.example_stop_idxs, use_continuous_states, plots_dir)
 
 
 ###
@@ -164,7 +166,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    analysis_dir,
+    plots_dir,
     verbose=True,
     plotbose=make_verbose_initialization_plots,
 )
@@ -188,7 +190,7 @@ if make_verbose_initialization_plots:
         example_end_times=DATA_TRAIN.example_stop_idxs,
         use_continuous_states=None,
         K=DIMS.K,
-        analysis_dir=analysis_dir,
+        plots_dir=plots_dir,
         show_plot=False,
         basename_prefix="post_init",
     )
@@ -242,21 +244,21 @@ if make_verbose_CAVI_plots:
         example_end_times=DATA_TRAIN.example_stop_idxs,
         use_continuous_states=None,
         K=DIMS.K,
-        analysis_dir=analysis_dir,
+        plots_dir=plots_dir,
         show_plot=False,
         basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
     )
 
 ### Save model and learned params
-save_model_type(model_type, model_dir, basename_prefix=run_description)
-save_params(params_learned, model_dir, basename_prefix=run_description)
+save_model_type(model_type, artifacts_dir, basename_prefix=run_description)
+save_params(params_learned, artifacts_dir, basename_prefix=run_description)
 
 
 ###
 # Make quantiative forecasts
 ###
 
-run_basketball_forecasts(
+make_forecast_collections_for_all_basketball_examples(
     DATA,
     model_basketball,
     params_learned,
@@ -265,7 +267,8 @@ run_basketball_forecasts(
     n_forecasts_per_example,
     random_forecast_starting_points,
     T_forecast,
-    analysis_dir,
+    artifacts_dir,
     n_forecasting_examples_to_plot,
     n_forecasting_examples_to_analyze,
+    subdir_prefix=run_description,
 )

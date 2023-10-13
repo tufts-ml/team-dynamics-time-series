@@ -19,6 +19,10 @@ forecasts_no_recurrence_small_dir = "results/basketball/CLE_starters/artifacts/L
 forecasts_no_recurrence_medium_dir = "results/basketball/CLE_starters/artifacts/L=5_K=10_model_type_No_Recurrence_train_5_CAVI_its_2_timestamp__10-12-2023_00h20m34s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
 forecasts_no_recurrence_large_dir = "results/basketball/CLE_starters/artifacts/L=5_K=10_model_type_No_Recurrence_train_20_CAVI_its_2_timestamp__10-12-2023_00h19m53s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
 
+forecasts_no_system_switches_small_dir = "results/basketball/CLE_starters/artifacts/L=1_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_1_CAVI_its_2_timestamp__10-13-2023_10h07m00s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
+forecasts_no_system_switches_medium_dir = "results/basketball/CLE_starters/artifacts/L=1_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_5_CAVI_its_2_timestamp__10-13-2023_10h06m44s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
+forecasts_no_system_switches_large_dir = "results/basketball/CLE_starters/artifacts/L=1_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_20_CAVI_its_2_timestamp__10-13-2023_10h04m37s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
+
 
 forecasts_ours_small, fixed_velocity, ground_truth = load_dynagroup_forecasts(forecasts_ours_small_dir)
 forecasts_ours_medium, _, _ = load_dynagroup_forecasts(forecasts_ours_medium_dir)
@@ -27,6 +31,11 @@ forecasts_ours_large, _, _ = load_dynagroup_forecasts(forecasts_ours_large_dir)
 forecasts_no_recurrence_small, _, _ = load_dynagroup_forecasts(forecasts_no_recurrence_small_dir)
 forecasts_no_recurrence_medium, _, _ = load_dynagroup_forecasts(forecasts_no_recurrence_medium_dir)
 forecasts_no_recurrence_large, _, _ = load_dynagroup_forecasts(forecasts_no_recurrence_large_dir)
+
+forecasts_no_system_switches_small, _, _ = load_dynagroup_forecasts(forecasts_no_system_switches_small_dir)
+forecasts_no_system_switches_medium, _, _ = load_dynagroup_forecasts(forecasts_no_system_switches_medium_dir)
+forecasts_no_system_switches_large, _, _ = load_dynagroup_forecasts(forecasts_no_system_switches_large_dir)
+
 
 forecasts_dict["ours_small"] = forecasts_ours_small
 forecasts_dict["ours_medium"] = forecasts_ours_medium
@@ -104,7 +113,7 @@ metrics_2 = metrics_dict[model_2]
 # so we want to set things up so that we're always looking for a low value.
 e = np.argsort(metrics_1.CLE__MSE_E - metrics_2.CLE__MSE_E)[37]
 
-for r in [1, 5, 10, 15]:
+for r in [1, 5, 10, 15, 20]:
     rank_of_s_to_use = r
     s_1 = np.argsort(metrics_1.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
     s_2 = np.argsort(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]

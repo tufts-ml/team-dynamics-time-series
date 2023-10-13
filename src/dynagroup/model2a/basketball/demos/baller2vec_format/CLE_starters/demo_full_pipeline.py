@@ -48,10 +48,10 @@ Compared to the full analysis:
 
 ###
 # Configs
-###
+###a
 
 # Model specification
-n_train_games_to_use = 20
+n_train_games_to_use = 1
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10

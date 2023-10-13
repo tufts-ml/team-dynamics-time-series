@@ -81,26 +81,33 @@ for model_name in metrics_dict.keys():
 # PLots
 ###
 
-from dynagroup.model2a.basketball.forecast_plots import (
-    argsort_discarding_nan_indices,
-    plot_team_forecasts,
-)
+import numpy as np
+
+from dynagroup.model2a.basketball.forecast_plots import plot_team_forecasts
 
 
-model_1 = "ours_large"
-model_2 = "no_recurrence_large"
+### arguments
+model_1 = "ours_small"
+model_2 = "agentformer_small"
 
+
+### setup
 forecasts_1 = forecasts_dict[model_1]
 forecasts_2 = forecasts_dict[model_2]
 
 metrics_1 = metrics_dict[model_1]
 metrics_2 = metrics_dict[model_2]
 
+# find example where model_1 is most better than model_2.
+# argsort goes lowest to highest
+# by default, argsort treats NaN as larger than any other value
+# so we want to set things up so that we're always looking for a low value.
+e = np.argsort(metrics_1.CLE__MSE_E - metrics_2.CLE__MSE_E)[37]
 
-# find example where model_1 is most better than model_2
-# but really I think we want to find a PAIR (e,s)
-e = argsort_discarding_nan_indices(metrics_2.CLE__MSE_E - metrics_1.CLE__MSE_E)[-1]
+for r in [1, 5, 10, 15]:
+    rank_of_s_to_use = r
+    s_1 = np.argsort(metrics_1.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
+    s_2 = np.argsort(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
+    # s_2=0 #fixed velocity
 
-rank_of_s_to_use = 15
-
-plot_team_forecasts(forecasts_1, forecasts_2, ground_truth, metrics_1, metrics_2, e, rank_of_s_to_use, show_plot=True)
+    plot_team_forecasts(forecasts_1, forecasts_2, ground_truth, metrics_1, metrics_2, e, s_1, s_2, show_plot=True)

@@ -15,25 +15,6 @@ from dynagroup.model2a.basketball.forecast_analysis import Metrics
 from dynagroup.types import NumpyArray4D, NumpyArray5D
 
 
-###
-# Helper functions
-###
-
-
-def argsort_discarding_nan_indices(arr):
-    """
-    by default, argsort treats NaN as larger than any other value
-    argsort goes lowest to highest
-    """
-    nan_mask = np.isnan(arr)
-    return np.argsort(arr[~nan_mask])
-
-
-###
-# Plotting functions
-###
-
-
 def plot_team_forecasts(
     forecasts_1: NumpyArray5D,
     forecasts_2: NumpyArray5D,
@@ -41,7 +22,8 @@ def plot_team_forecasts(
     metrics_1: Metrics,
     metrics_2: Metrics,
     e: int,
-    rank_of_s_to_use: int,
+    s_1: int,
+    s_2: int,
     show_plot: bool = False,
     save_dir: Optional[str] = None,
     filename_prefix: str = "",
@@ -59,11 +41,6 @@ def plot_team_forecasts(
     """
 
     (E, S, T_forecast, J, D) = np.shape(forecasts_1)
-
-    # Given an example, find which simulations to use from each method
-    # in order to have a given rank.
-    s_1 = argsort_discarding_nan_indices(metrics_1.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
-    s_2 = argsort_discarding_nan_indices(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
 
     MSE_1 = metrics_1.CLE__MSE_ES[e, s_1]
     MSE_2 = metrics_2.CLE__MSE_ES[e, s_2]
@@ -103,39 +80,38 @@ def plot_team_forecasts(
             zorder=2,
         )
 
-    # TODO: Should take the min over  ground truth
-    common_x_min = np.min(
-        [
-            np.full(T_forecast, common_x_min),
-            forecasts_1[e, s_1, :, j, 0],
-            forecasts_2[e, s_2, :, j, 0],
-            ground_truth[e, :, j, 0],
-        ]
-    )
-    common_x_max = np.max(
-        [
-            np.full(T_forecast, common_x_max),
-            forecasts_1[e, s_1, :, j, 0],
-            forecasts_2[e, s_2, :, j, 0],
-            ground_truth[e, :, j, 0],
-        ]
-    )
-    common_y_min = np.min(
-        [
-            np.full(T_forecast, common_y_min),
-            forecasts_1[e, s_1, :, j, 1],
-            forecasts_2[e, s_2, :, j, 1],
-            ground_truth[e, :, j, 1],
-        ]
-    )
-    common_y_max = np.max(
-        [
-            np.full(T_forecast, common_y_max),
-            forecasts_1[e, s_1, :, j, 1],
-            forecasts_2[e, s_2, :, j, 1],
-            ground_truth[e, :, j, 1],
-        ]
-    )
+        common_x_min = np.min(
+            [
+                np.full(T_forecast, common_x_min),
+                forecasts_1[e, s_1, :, j, 0],
+                forecasts_2[e, s_2, :, j, 0],
+                ground_truth[e, :, j, 0],
+            ]
+        )
+        common_x_max = np.max(
+            [
+                np.full(T_forecast, common_x_max),
+                forecasts_1[e, s_1, :, j, 0],
+                forecasts_2[e, s_2, :, j, 0],
+                ground_truth[e, :, j, 0],
+            ]
+        )
+        common_y_min = np.min(
+            [
+                np.full(T_forecast, common_y_min),
+                forecasts_1[e, s_1, :, j, 1],
+                forecasts_2[e, s_2, :, j, 1],
+                ground_truth[e, :, j, 1],
+            ]
+        )
+        common_y_max = np.max(
+            [
+                np.full(T_forecast, common_y_max),
+                forecasts_1[e, s_1, :, j, 1],
+                forecasts_2[e, s_2, :, j, 1],
+                ground_truth[e, :, j, 1],
+            ]
+        )
 
     for ax in axes:
         ax.set_xlim((common_x_min, common_x_max))

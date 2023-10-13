@@ -20,7 +20,7 @@ at https://github.com/linouk23/NBA-Player-Movements
 and containing one of 4 common starting lineups from CLE.
 
 The datasets used here are listed in 
-/Users/mwojno01/Repos/baller2vec_forked/src/baller2vec_forked/mike/CLE_starters.py
+~/Repos/baller2vec_forked/src/baller2vec_forked/mike/CLE_starters.py
 """
 
 PATH_TO_BALLER2VEC_INFO = "data/basketball/baller2vec_format/preprocessed/CLE_starters/info/baller2vec_info.pydict"

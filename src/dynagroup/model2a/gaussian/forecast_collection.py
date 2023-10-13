@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from dynagroup.forecasts import (
+from dynagroup.forecast_collection import (
     Forecast_Collection_For_Example,
     make_forecast_collection_for_one_example,
 )
@@ -16,7 +16,7 @@ from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 
 
-def get_forecasts_on_test_set_example(
+def get_forecast_collection_on_test_set_example(
     continuous_states_for_one_example: Union[JaxNumpyArray2D, JaxNumpyArray3D],
     params_learned: AllParameters_JAX,
     model: Model,
@@ -121,7 +121,7 @@ def get_forecasts_on_test_set_example(
     ###
     # Forecasting
     ###
-    forecasts = make_forecast_collection_for_one_example(
+    forecast_collection = make_forecast_collection_for_one_example(
         continuous_states_for_one_example,
         params_learned,
         model,
@@ -134,4 +134,4 @@ def get_forecasts_on_test_set_example(
         use_raw_coords=True,
         seed=seed,
     )
-    return forecasts
+    return forecast_collection

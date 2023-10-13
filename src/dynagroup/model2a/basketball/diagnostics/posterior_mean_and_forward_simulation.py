@@ -3,7 +3,6 @@ import warnings
 from enum import Enum
 from typing import Callable, List, Optional, Tuple
 
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,6 +14,8 @@ from dynagroup.hmm_posterior import (
 )
 from dynagroup.model import Model
 from dynagroup.model2a.basketball.court import (
+    COURT_AXIS_UNNORM,
+    COURT_IMAGE,
     X_MAX_COURT,
     X_MIN_COURT,
     Y_MAX_COURT,
@@ -24,17 +25,6 @@ from dynagroup.model2a.basketball.court import (
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
 from dynagroup.types import JaxNumpyArray2D, JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
-
-
-###
-# CONSTANTS
-###
-
-# TODO: Move this to `court` file.  It's reused both here and in animate.
-# TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
-# so that I don't have to unnormalize all the time?!
-COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
-COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
 
 
 ###

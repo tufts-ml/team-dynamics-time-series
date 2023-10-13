@@ -2,10 +2,10 @@ from typing import Optional
 
 import numpy as np
 
-from dynagroup.forecasts import (
-    MSEs_from_forecasts,
-    plot_forecasts,
-    save_forecasts,
+from dynagroup.forecast_collection import (
+    MSEs_for_example_from_forecast_collection,
+    plot_forecasts_from_forecast_collection,
+    save_forecast_collection_as_numpy_arrays,
     summarize_forecast_MSEs_from_one_example,
 )
 from dynagroup.model import Model
@@ -13,7 +13,9 @@ from dynagroup.model2a.basketball.data.baller2vec.disk import Processed_Data_To_
 from dynagroup.model2a.basketball.data.baller2vec.event_boundaries import (
     get_start_and_stop_timestep_idxs_from_event_idx,
 )
-from dynagroup.model2a.gaussian.forecasts import get_forecasts_on_test_set_example
+from dynagroup.model2a.gaussian.forecast_collection import (
+    get_forecast_collection_on_test_set_example,
+)
 from dynagroup.params import AllParameters_JAX
 
 
@@ -22,7 +24,7 @@ from dynagroup.params import AllParameters_JAX
 ###
 
 
-def run_basketball_forecasts(
+def make_forecast_collections_for_all_basketball_examples(
     data: Processed_Data_To_Analyze,
     model: Model,
     params: AllParameters_JAX,
@@ -34,6 +36,7 @@ def run_basketball_forecasts(
     save_dir: str,
     n_forecasting_examples_to_plot: int = 0,
     n_forecasting_examples_to_analyze: float = np.inf,
+    subdir_prefix: str = "",
 ):
     """
     Makes forecasts, saves to disk, saves desired number of plots, gives evaluation metrics along the way.
@@ -55,7 +58,7 @@ def run_basketball_forecasts(
         start_idx, stop_idx = get_start_and_stop_timestep_idxs_from_event_idx(
             example_end_times_test, event_idx_to_analyze
         )
-        xs_test_example = xs_test[start_idx - 1 : stop_idx]
+        xs_test_example = xs_test[start_idx:stop_idx]
 
         if random_forecast_starting_points:
             # Use random starting times for forecast
@@ -65,7 +68,7 @@ def run_basketball_forecasts(
             T_example = stop_idx - start_idx + 1
             T_context = T_example - T_forecast
 
-        forecasts = get_forecasts_on_test_set_example(
+        forecast_collection = get_forecast_collection_on_test_set_example(
             xs_test_example,
             params,
             model,
@@ -76,15 +79,16 @@ def run_basketball_forecasts(
             system_covariates,
         )
 
-        save_forecasts(
-            forecasts,
+        save_forecast_collection_as_numpy_arrays(
+            forecast_collection,
             save_dir,
+            subdir_prefix,
             forecast_description=f"random_forecast_starting_points_{random_forecast_starting_points}_T_forecast_{T_forecast}",
             example_description=f"example_idx_{e}_orig_example_idx_{event_idx_to_analyze}_start_idx_{start_idx}_stop_idx_{stop_idx}_T_context_{T_context}",
         )
 
         try:
-            forecast_MSEs = MSEs_from_forecasts(forecasts)
+            forecast_MSEs = MSEs_for_example_from_forecast_collection(forecast_collection)
         except TypeError:
             print(f"Couldn't process event {e}")
             continue
@@ -115,8 +119,11 @@ def run_basketball_forecasts(
         )
 
         if (e + 1) <= n_forecasting_examples_to_plot:
-            plot_forecasts(
-                forecasts,
+            ### TODO: Deprecate this style of plotting forecasts... I want the forecast plotter to just
+            ### directly take in forecasts as a numpy array.  Also, we probably want to do this "post hoc",
+            ### so that it's easier to find "interesting" forecasts (or to control for the goodness, as per MSE.)
+            plot_forecasts_from_forecast_collection(
+                forecast_collection,
                 forecast_MSEs,
                 save_dir,
                 filename_prefix=f"forecast_plot_example_idx_{e}_orig_example_idx_{event_idx_to_analyze}_start_idx_{start_idx}_stop_idx_{stop_idx}",

@@ -10,6 +10,7 @@ from dynagroup.model2a.circle.directions import (
     LABELS_OF_DIRECTIONS,
     RADIANS_OF_DIRECTIONS,
 )
+from dynagroup.model2a.supra import MY_IRB_APPROVED_USERNAME
 from dynagroup.plotting.paneled_series import plot_time_series_with_regime_panels
 from dynagroup.von_mises.inference.arhmm import run_EM_for_von_mises_arhmm
 from dynagroup.von_mises.util import degrees_to_radians
@@ -49,7 +50,7 @@ num_EM_iterations = 3
 # Get sample
 ###
 
-filepath = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
+filepath = f"/Users/{MY_IRB_APPROVED_USERNAME}/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
 
 if not "df" in globals():
     df = pd.read_csv(filepath)

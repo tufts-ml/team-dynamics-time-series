@@ -98,6 +98,7 @@ metrics_2 = metrics_dict[model_2]
 
 
 # find example where model_1 is most better than model_2
+# but really I think we want to find a PAIR (e,s)
 e = argsort_discarding_nan_indices(metrics_2.CLE__MSE_E - metrics_1.CLE__MSE_E)[-1]
 
 rank_of_s_to_use = 15

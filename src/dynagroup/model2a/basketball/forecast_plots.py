@@ -66,7 +66,7 @@ def plot_team_forecasts(
     s_2 = argsort_discarding_nan_indices(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
 
     MSE_1 = metrics_1.CLE__MSE_ES[e, s_1]
-    MSE_2 = metrics_1.CLE__MSE_ES[e, s_2]
+    MSE_2 = metrics_2.CLE__MSE_ES[e, s_2]
 
     fig, axes = plt.subplots(ncols=5, figsize=figsize)
 
@@ -99,7 +99,7 @@ def plot_team_forecasts(
             c=[i for i in range(T_forecast)],
             cmap="cool",
             marker="x",
-            alpha=0.25,
+            alpha=0.50,
             zorder=2,
         )
 

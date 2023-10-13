@@ -41,9 +41,14 @@ forecasts_dict["ours_small"] = forecasts_ours_small
 forecasts_dict["ours_medium"] = forecasts_ours_medium
 forecasts_dict["ours_large"] = forecasts_ours_large
 
+forecasts_dict["no_system_switches_small"] = forecasts_no_system_switches_small
+forecasts_dict["no_system_switches_medium"] = forecasts_no_system_switches_medium
+forecasts_dict["no_system_switches_large"] = forecasts_no_system_switches_large
+
 forecasts_dict["no_recurrence_small"] = forecasts_no_recurrence_small
 forecasts_dict["no_recurrence_medium"] = forecasts_no_recurrence_medium
 forecasts_dict["no_recurrence_large"] = forecasts_no_recurrence_large
+
 
 forecasts_dict["fixed_velocity"] = fixed_velocity
 
@@ -96,8 +101,8 @@ from dynagroup.model2a.basketball.forecast_plots import plot_team_forecasts
 
 
 ### arguments
-model_1 = "ours_small"
-model_2 = "agentformer_small"
+model_1 = "ours_large"
+model_2 = "no_system_switches_large"
 
 
 ### setup
@@ -111,12 +116,28 @@ metrics_2 = metrics_dict[model_2]
 # argsort goes lowest to highest
 # by default, argsort treats NaN as larger than any other value
 # so we want to set things up so that we're always looking for a low value.
-e = np.argsort(metrics_1.CLE__MSE_E - metrics_2.CLE__MSE_E)[37]
+rank_of_e_to_use = 1
+e = np.argsort(metrics_1.CLE__MSE_E - metrics_2.CLE__MSE_E)[rank_of_e_to_use - 1]
 
 for r in [1, 5, 10, 15, 20]:
+    print(
+        f"plotting with the {r}-th best forecasting samples for each model from the {e}-th best example for showing a difference"
+    )
     rank_of_s_to_use = r
     s_1 = np.argsort(metrics_1.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
     s_2 = np.argsort(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
     # s_2=0 #fixed velocity
 
-    plot_team_forecasts(forecasts_1, forecasts_2, ground_truth, metrics_1, metrics_2, e, s_1, s_2, show_plot=True)
+    plot_team_forecasts(
+        forecasts_1,
+        forecasts_2,
+        ground_truth,
+        metrics_1,
+        metrics_2,
+        e,
+        s_1,
+        s_2,
+        show_plot=False,
+        save_dir="/Users/miw267/Desktop/",
+        basename_before_extension=f"{model_1}_vs_{model_2}_example_rank_{rank_of_e_to_use}_sample_ranks_{rank_of_s_to_use}",
+    )

@@ -103,28 +103,34 @@ def load_dynagroup_forecasts(dir_forecasts_ours: str) -> Tuple[NumpyArray5D, Num
 
 @dataclass
 class Metrics:
-    BOTH_TEAMS__MSE_ESJ: NumpyArray3D
-    BOTH_TEAMS__MSE_ES: NumpyArray2D
-    BOTH_TEAMS__MSE_ES: NumpyArray2D
-    BOTH_TEAMS__MSE_E: NumpyArray1D
-    BOTH_TEAMS__MSE_T: NumpyArray1D
-    BOTH_TEAMS__MSE: float
-    BOTH_TEAMS__SE_MSE: float
-    CLE__MSE_ESJ: NumpyArray3D
-    CLE__MSE_ES: NumpyArray2D
-    CLE__MSE_ES: NumpyArray2D
-    CLE__MSE_E: NumpyArray1D
-    CLE__MSE_T: NumpyArray1D
-    CLE__MSE: float
-    CLE__SE_MSE: float
+    """
+    Attributes
+        num_valid_examples: could be less than len(BOTH_TEAMS__MEAN_DIST_E) due to `np.nan`s
+            `np.nan`s could exist due to a bug in which the test set example wasn't quite long enough
+            to accomodate the requested forecasting window size at the stipulated context window size.
+    """
+
+    num_valid_examples: int
+    BOTH_TEAMS__MEAN_DIST_ESJ: NumpyArray3D
+    BOTH_TEAMS__MEAN_DIST_ES: NumpyArray2D
+    BOTH_TEAMS__MEAN_DIST_ES: NumpyArray2D
+    BOTH_TEAMS__MEAN_DIST_E: NumpyArray1D
+    BOTH_TEAMS__MEAN_DIST_T: NumpyArray1D
+    BOTH_TEAMS__MEAN_DIST: float
+    BOTH_TEAMS__SE_MEAN_DIST: float
+    CLE__MEAN_DIST_ESJ: NumpyArray3D
+    CLE__MEAN_DIST_ES: NumpyArray2D
+    CLE__MEAN_DIST_ES: NumpyArray2D
+    CLE__MEAN_DIST_E: NumpyArray1D
+    CLE__MEAN_DIST_T: NumpyArray1D
+    CLE__MEAN_DIST: float
+    CLE__SE_MEAN_DIST: float
 
 
-def compute_squared_distances_from_forecasts_to_truth(
-    forecasts: NumpyArray5D, ground_truth: NumpyArray4D
-) -> NumpyArray4D:
+def compute_distances_from_forecasts_to_truth(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> NumpyArray4D:
     """
     Given forecasts with shape (E,S,T,J,D) and ground truth with shape (E,T,J,D),
-    we want to compute the MSE along the T and D dimensions,
+    we want to compute the MEAN_DIST along the T and D dimensions,
     to give an array of shape (E,S,J)?
 
     Arguments:
@@ -132,7 +138,7 @@ def compute_squared_distances_from_forecasts_to_truth(
         ground_truth: shape (E,T,J,D)
 
     Returns:
-        squared_distances: shape (E,S,T,J)
+        distances: shape (E,S,T,J)
 
     Notation:
         E: number of examples
@@ -152,7 +158,7 @@ def compute_squared_distances_from_forecasts_to_truth(
 
     # Compute sum of square differences along D dimension
     diff = forecasts - ground_truth[:, None, :, :, :]
-    return np.sum(diff**2, axis=4)
+    return np.sqrt(np.sum(diff**2, axis=4))
 
 
 def compute_metrics(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> Metrics:
@@ -173,33 +179,34 @@ def compute_metrics(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> Metr
     warnings.filterwarnings(action="ignore", message="Mean of empty slice")
 
     # Whole team
-    BOTH_TEAMS__squared_distances_ESTJ = compute_squared_distances_from_forecasts_to_truth(forecasts, ground_truth)
-    BOTH_TEAMS__MSE_ESJ = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=3)
-    BOTH_TEAMS__MSE_ES = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(2, 3))
-    BOTH_TEAMS__MSE_E = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(1, 2, 3))
-    BOTH_TEAMS__MSE_T = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(0, 1, 3))
-    BOTH_TEAMS__MSE = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ)
-    BOTH_TEAMS__SE_MSE = np.nanstd(BOTH_TEAMS__MSE_E) / np.sqrt(num_valid_examples)
+    BOTH_TEAMS__squared_distances_ESTJ = compute_distances_from_forecasts_to_truth(forecasts, ground_truth)
+    BOTH_TEAMS__MEAN_DIST_ESJ = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=3)
+    BOTH_TEAMS__MEAN_DIST_ES = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(2, 3))
+    BOTH_TEAMS__MEAN_DIST_E = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(1, 2, 3))
+    BOTH_TEAMS__MEAN_DIST_T = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(0, 1, 3))
+    BOTH_TEAMS__MEAN_DIST = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ)
+    BOTH_TEAMS__SE_MEAN_DIST = np.nanstd(BOTH_TEAMS__MEAN_DIST_E) / np.sqrt(num_valid_examples)
 
     # CLE only
     CLE__squared_distances_ESTJ = BOTH_TEAMS__squared_distances_ESTJ[:, :, :, :5]
-    CLE__MSE_ESJ = np.nanmean(CLE__squared_distances_ESTJ, axis=3)
-    CLE__MSE_ES = np.nanmean(CLE__squared_distances_ESTJ, axis=(2, 3))
-    CLE__MSE_E = np.nanmean(CLE__squared_distances_ESTJ, axis=(1, 2, 3))
-    CLE__MSE_T = np.nanmean(CLE__squared_distances_ESTJ, axis=(0, 1, 3))
-    CLE__MSE = np.nanmean(CLE__squared_distances_ESTJ)
-    CLE__SE_MSE = np.nanstd(CLE__MSE_E) / np.sqrt(num_valid_examples)
+    CLE__MEAN_DIST_ESJ = np.nanmean(CLE__squared_distances_ESTJ, axis=3)
+    CLE__MEAN_DIST_ES = np.nanmean(CLE__squared_distances_ESTJ, axis=(2, 3))
+    CLE__MEAN_DIST_E = np.nanmean(CLE__squared_distances_ESTJ, axis=(1, 2, 3))
+    CLE__MEAN_DIST_T = np.nanmean(CLE__squared_distances_ESTJ, axis=(0, 1, 3))
+    CLE__MEAN_DIST = np.nanmean(CLE__squared_distances_ESTJ)
+    CLE__SE_MEAN_DIST = np.nanstd(CLE__MEAN_DIST_E) / np.sqrt(num_valid_examples)
     return Metrics(
-        BOTH_TEAMS__MSE_ESJ,
-        BOTH_TEAMS__MSE_ES,
-        BOTH_TEAMS__MSE_E,
-        BOTH_TEAMS__MSE_T,
-        BOTH_TEAMS__MSE,
-        BOTH_TEAMS__SE_MSE,
-        CLE__MSE_ESJ,
-        CLE__MSE_ES,
-        CLE__MSE_E,
-        CLE__MSE_T,
-        CLE__MSE,
-        CLE__SE_MSE,
+        num_valid_examples,
+        BOTH_TEAMS__MEAN_DIST_ESJ,
+        BOTH_TEAMS__MEAN_DIST_ES,
+        BOTH_TEAMS__MEAN_DIST_E,
+        BOTH_TEAMS__MEAN_DIST_T,
+        BOTH_TEAMS__MEAN_DIST,
+        BOTH_TEAMS__SE_MEAN_DIST,
+        CLE__MEAN_DIST_ESJ,
+        CLE__MEAN_DIST_ES,
+        CLE__MEAN_DIST_E,
+        CLE__MEAN_DIST_T,
+        CLE__MEAN_DIST,
+        CLE__SE_MEAN_DIST,
     )

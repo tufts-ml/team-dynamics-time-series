@@ -50,8 +50,9 @@ forecasts_dict["no_recurrence_medium"] = forecasts_no_recurrence_medium
 forecasts_dict["no_recurrence_large"] = forecasts_no_recurrence_large
 
 
-forecasts_dict["fixed_velocity"] = fixed_velocity
-
+forecasts_dict["fixed_velocity_small"] = fixed_velocity
+forecasts_dict["fixed_velocity_medium"] = fixed_velocity
+forecasts_dict["fixed_velocity_large"] = fixed_velocity
 
 ###  Run metrics
 print("\n")
@@ -59,13 +60,13 @@ metrics_dict = {}
 for model_name, forecasts in forecasts_dict.items():
     metrics_dict[model_name] = compute_metrics(forecasts, ground_truth)
     print(
-        f"MSE (SE) - Both teams for {model_name} is {metrics_dict[model_name].BOTH_TEAMS__MSE : .02f} ({metrics_dict[model_name].BOTH_TEAMS__SE_MSE : .02f} )"
+        f"MEAN DIST (SE) - Both teams for {model_name} is {metrics_dict[model_name].BOTH_TEAMS__MEAN_DIST : .01f} ({metrics_dict[model_name].BOTH_TEAMS__SE_MEAN_DIST : .01f})"
     )
 
 print("\n")
 for model_name in metrics_dict.keys():
     print(
-        f"MSE (SE) - CLE for {model_name} is {metrics_dict[model_name].CLE__MSE : .02f} ({metrics_dict[model_name].CLE__SE_MSE : .02f} )"
+        f"MEAN DIST (SE) - CLE for {model_name} is {metrics_dict[model_name].CLE__MEAN_DIST : .02f} ({metrics_dict[model_name].CLE__SE_MEAN_DIST : .02f} )"
     )
 
 
@@ -83,13 +84,6 @@ for model_name in metrics_dict.keys():
 # print(f"Ours: {forecasts_dict['ours_small'][e,s,:,j,:]}")
 # print(f"Fixed velocity: {forecasts_dict['fixed_velocity'][e,:,j,:]}")
 
-
-####
-# Paired difference test
-###
-
-# diffs = metrics_dict["agentformer_small"].BOTH_TEAMS__MSE_E - metrics_dict["ours_small"].BOTH_TEAMS__MSE_E
-# t_stat = np.nanmean(diffs)/(np.nanstd(diffs)/np.sqrt(75))
 
 ###
 # PLots
@@ -116,16 +110,16 @@ metrics_2 = metrics_dict[model_2]
 # argsort goes lowest to highest
 # by default, argsort treats NaN as larger than any other value
 # so we want to set things up so that we're always looking for a low value.
-rank_of_e_to_use = 1
-e = np.argsort(metrics_1.CLE__MSE_E - metrics_2.CLE__MSE_E)[rank_of_e_to_use - 1]
+rank_of_e_to_use = 37
+e = np.argsort(metrics_1.CLE__MEAN_DIST_E - metrics_2.CLE__MEAN_DIST_E)[rank_of_e_to_use - 1]
 
 for r in [1, 5, 10, 15, 20]:
     print(
         f"plotting with the {r}-th best forecasting samples for each model from the {e}-th best example for showing a difference"
     )
     rank_of_s_to_use = r
-    s_1 = np.argsort(metrics_1.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
-    s_2 = np.argsort(metrics_2.CLE__MSE_ES[e])[rank_of_s_to_use - 1]
+    s_1 = np.argsort(metrics_1.CLE__MEAN_DIST_ES[e])[rank_of_s_to_use - 1]
+    s_2 = np.argsort(metrics_2.CLE__MEAN_DIST_ES[e])[rank_of_s_to_use - 1]
     # s_2=0 #fixed velocity
 
     plot_team_forecasts(
@@ -141,3 +135,121 @@ for r in [1, 5, 10, 15, 20]:
         save_dir="/Users/miw267/Desktop/",
         basename_before_extension=f"{model_1}_vs_{model_2}_example_rank_{rank_of_e_to_use}_sample_ranks_{rank_of_s_to_use}",
     )
+
+####
+# Paired difference test
+###
+
+import pprint
+from collections import OrderedDict
+
+from scipy.stats import ttest_1samp
+from statsmodels.stats.multitest import fdrcorrection
+
+
+focal_models_to_competitor_models = {
+    "ours": ["agentformer", "no_system_switches", "no_recurrence", "fixed_velocity"],
+}
+
+
+# focal_models_to_competitor_models={
+#     "ours" : ["agentformer", "no_system_switches", "no_recurrence"],
+#     "agentformer" : ["no_system_switches", "no_recurrence"],
+# }
+
+
+uncorrected_p_vals_dict = OrderedDict()
+
+### Make uncorrected p-values
+for size in ["small", "medium", "large"]:
+    for focal_model, competitor_models in focal_models_to_competitor_models.items():
+        for competitor in competitor_models:
+            diffs = (
+                metrics_dict[f"{competitor}_{size}"].BOTH_TEAMS__MEAN_DIST_E
+                - metrics_dict[f"{focal_model}_{size}"].BOTH_TEAMS__MEAN_DIST_E
+            )
+
+            # t_stat_by_hand = np.nanmean(diffs)/(np.nanstd(diffs)/np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples))
+            t_stat, p_val = ttest_1samp(diffs, popmean=0, nan_policy="omit")
+            uncorrected_p_vals_dict[(size, focal_model, competitor)] = p_val
+
+### Make corrected p-values
+# TODO: confirm it makes sense to assume that tests are positively correlated for all comparisons
+
+reject_hypoth, pvals_corrected = fdrcorrection(
+    list(uncorrected_p_vals_dict.values()), alpha=0.05, method="poscorr", is_sorted=False
+)
+test_results_dict = OrderedDict()
+for i, comparison in enumerate(uncorrected_p_vals_dict.keys()):
+    test_results_dict.update([(comparison, (reject_hypoth[i], f"{pvals_corrected[i]:.3e}"))])
+
+### Print results
+
+print(f"\nFormal comparisons")
+pprint.pprint(test_results_dict)
+
+####
+# Statistics
+###
+
+from typing import Tuple
+
+from dynagroup.model2a.basketball.court import (
+    X_MAX_COURT,
+    X_MIN_COURT,
+    Y_MAX_COURT,
+    Y_MIN_COURT,
+)
+from dynagroup.types import NumpyArray1D, NumpyArray5D
+
+
+### IN Bounds
+def compute_in_bounds_pcts_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
+    # TODO: Restrict to valid examples ?
+    E = np.shape(forecasts)[0]
+
+    in_bounds_pcts = np.zeros(E)
+    for e in range(E):
+        in_bounds_pcts[e] = np.mean(
+            (forecasts[e, ..., 0] >= X_MIN_COURT)
+            * (forecasts[e, ..., 0] <= X_MAX_COURT)
+            * (forecasts[e, ..., 1] >= Y_MIN_COURT)
+            * (forecasts[e, ..., 1] <= Y_MAX_COURT)
+        )
+    return in_bounds_pcts
+
+
+def compute_in_bounds_pct_mean_and_SE(forecasts: NumpyArray5D) -> Tuple[float, float]:
+    in_bounds_pcts = compute_in_bounds_pcts_by_example(forecasts)
+    return np.mean(in_bounds_pcts), np.std(in_bounds_pcts) / np.sqrt(len(in_bounds_pcts))
+
+
+print("Pct in bounds analysis.")
+for method, forecasts in forecasts_dict.items():
+    mean_pct, SE_mean_pct = compute_in_bounds_pct_mean_and_SE(forecasts)
+    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")
+
+### Coordination
+
+
+def compute_dispersions_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
+    # TODO: Restrict to valid examples ?
+    E = np.shape(forecasts)[0]
+
+    dispersions_by_example = np.zeros(E)
+    for e in range(E):
+        typical_centroid_distance_by_sample = np.sqrt(np.sum(np.var(forecasts[e, :, -1, :5], axis=1), axis=1))
+        dispersions_by_example[e] = np.mean(typical_centroid_distance_by_sample)
+    return dispersions_by_example
+
+
+# TODO: combine with similar function above
+def compute_dispersions_by_example_mean_and_SE(forecasts: NumpyArray5D) -> Tuple[float, float]:
+    dispersions = compute_dispersions_by_example(forecasts)
+    return np.mean(dispersions), np.std(dispersions) / np.sqrt(len(dispersions))
+
+
+print("Pct in bounds analysis.")
+for method, forecasts in forecasts_dict.items():
+    mean_pct, SE_mean_pct = compute_dispersions_by_example_mean_and_SE(forecasts)
+    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")

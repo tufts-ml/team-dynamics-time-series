@@ -1,3 +1,5 @@
+import numpy as np 
+
 from dynagroup.model2a.basketball.forecast_analysis import (
     compute_metrics,
     load_agentformer_forecasts,
@@ -70,6 +72,55 @@ for model_name in metrics_dict.keys():
     )
 
 
+####
+# Paired difference test
+###
+
+import pprint
+from collections import OrderedDict
+
+from scipy.stats import ttest_1samp
+from statsmodels.stats.multitest import fdrcorrection
+
+
+focal_models_to_competitor_models = {
+    "ours": ["agentformer", "no_system_switches", "no_recurrence", "fixed_velocity"],
+}
+
+uncorrected_p_vals_dict = OrderedDict()
+SE_diffs = []
+
+### Make uncorrected p-values
+for size in ["small", "medium", "large"]:
+    for focal_model, competitor_models in focal_models_to_competitor_models.items():
+        for competitor in competitor_models:
+            diffs = (
+                metrics_dict[f"{competitor}_{size}"].BOTH_TEAMS__MEAN_DIST_E
+                - metrics_dict[f"{focal_model}_{size}"].BOTH_TEAMS__MEAN_DIST_E
+            )
+            SE_diff = np.nanstd(diffs) / np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples)
+            # t_stat_by_hand = np.nanmean(diffs)/np.nanstd(diffs)/np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples)
+            t_stat, p_val = ttest_1samp(diffs, popmean=0, nan_policy="omit")
+            uncorrected_p_vals_dict[(size, focal_model, competitor)] = p_val
+            SE_diffs.append(SE_diff)
+
+
+### Make corrected p-values
+# TODO: confirm it makes sense to assume that tests are positively correlated for all comparisons
+
+reject_hypoth, pvals_corrected = fdrcorrection(
+    list(uncorrected_p_vals_dict.values()), alpha=0.05, method="poscorr", is_sorted=False
+)
+test_results_dict = OrderedDict()
+for i, comparison in enumerate(uncorrected_p_vals_dict.keys()):
+    test_results_dict.update([(comparison, (reject_hypoth[i], f"{pvals_corrected[i]:.3e}", f"{SE_diffs[i]:.3f}"))])
+
+### Print results
+
+print(f"\nFormal comparisons")
+pprint.pprint(test_results_dict)
+
+
 ###
 # Sanity checks
 ###
@@ -136,57 +187,6 @@ for r in [1, 5, 10, 15, 20]:
         basename_before_extension=f"{model_1}_vs_{model_2}_example_rank_{rank_of_e_to_use}_sample_ranks_{rank_of_s_to_use}",
     )
 
-####
-# Paired difference test
-###
-
-import pprint
-from collections import OrderedDict
-
-from scipy.stats import ttest_1samp
-from statsmodels.stats.multitest import fdrcorrection
-
-
-focal_models_to_competitor_models = {
-    "ours": ["agentformer", "no_system_switches", "no_recurrence", "fixed_velocity"],
-}
-
-
-# focal_models_to_competitor_models={
-#     "ours" : ["agentformer", "no_system_switches", "no_recurrence"],
-#     "agentformer" : ["no_system_switches", "no_recurrence"],
-# }
-
-
-uncorrected_p_vals_dict = OrderedDict()
-
-### Make uncorrected p-values
-for size in ["small", "medium", "large"]:
-    for focal_model, competitor_models in focal_models_to_competitor_models.items():
-        for competitor in competitor_models:
-            diffs = (
-                metrics_dict[f"{competitor}_{size}"].BOTH_TEAMS__MEAN_DIST_E
-                - metrics_dict[f"{focal_model}_{size}"].BOTH_TEAMS__MEAN_DIST_E
-            )
-
-            # t_stat_by_hand = np.nanmean(diffs)/(np.nanstd(diffs)/np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples))
-            t_stat, p_val = ttest_1samp(diffs, popmean=0, nan_policy="omit")
-            uncorrected_p_vals_dict[(size, focal_model, competitor)] = p_val
-
-### Make corrected p-values
-# TODO: confirm it makes sense to assume that tests are positively correlated for all comparisons
-
-reject_hypoth, pvals_corrected = fdrcorrection(
-    list(uncorrected_p_vals_dict.values()), alpha=0.05, method="poscorr", is_sorted=False
-)
-test_results_dict = OrderedDict()
-for i, comparison in enumerate(uncorrected_p_vals_dict.keys()):
-    test_results_dict.update([(comparison, (reject_hypoth[i], f"{pvals_corrected[i]:.3e}"))])
-
-### Print results
-
-print(f"\nFormal comparisons")
-pprint.pprint(test_results_dict)
 
 ####
 # Statistics
@@ -229,7 +229,7 @@ for method, forecasts in forecasts_dict.items():
     mean_pct, SE_mean_pct = compute_in_bounds_pct_mean_and_SE(forecasts)
     print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")
 
-### Coordination
+### Dispersions (at the last timestep)
 
 
 def compute_dispersions_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
@@ -243,13 +243,76 @@ def compute_dispersions_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
     return dispersions_by_example
 
 
-# TODO: combine with similar function above
+# TODO: combine with similar function above for pct out of bounds
 def compute_dispersions_by_example_mean_and_SE(forecasts: NumpyArray5D) -> Tuple[float, float]:
     dispersions = compute_dispersions_by_example(forecasts)
     return np.mean(dispersions), np.std(dispersions) / np.sqrt(len(dispersions))
 
 
-print("Pct in bounds analysis.")
+print("Dispersions analysis.")
 for method, forecasts in forecasts_dict.items():
     mean_pct, SE_mean_pct = compute_dispersions_by_example_mean_and_SE(forecasts)
+    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")
+
+### Directional variability
+
+from scipy.stats import circvar
+
+
+# Compute the circular variance
+# circular_variance = circvar(theta)
+
+
+def compute_directional_variability_by_example(forecasts: NumpyArray5D, CLE_only: bool = False) -> NumpyArray1D:
+    """
+    We interpret directional variability during the forecasting window as
+        Circular variance of (X_forecasted_T2 - X_forecasted_T1).
+
+    It can be taken as a measure of coordination.
+
+    Arguments:
+        forecasts: (E,S,T_forecast,J,D)
+        CLE_only : If true, we only look at variability across the CAVS.
+    """
+    # TODO: Restrict to valid examples ?
+    E, S = np.shape(forecasts)[:2]
+
+    def get_circular_variance_for_one_example_and_sample(forecasts_by_example_and_sample):
+        """
+        Arguments:
+            forecasts_by_example_and_sample: (T_forecast, J, D)
+        """
+        player_forecast_secants = forecasts_by_example_and_sample[-1] - forecasts_by_example_and_sample[0]  # J,D
+        player_angles = np.arctan2(player_forecast_secants[:, 1], player_forecast_secants[:, 0])
+        return circvar(player_angles)
+
+    if CLE_only:
+        num_players_to_use = 5
+    else:
+        num_players_to_use = 10
+
+    directional_variability_by_example = np.zeros(E)
+    for e in range(E):
+        circular_variances_for_samples_on_this_example = np.zeros(S)
+        for s in range(S):
+            circular_variances_for_samples_on_this_example[s] = get_circular_variance_for_one_example_and_sample(
+                forecasts[e, s, :, :num_players_to_use]
+            )
+        directional_variability_by_example[e] = np.nanmean(circular_variances_for_samples_on_this_example)
+    return directional_variability_by_example
+
+
+# TODO: combine with similar function above for pct out of bounds
+def compute_directional_variability_by_example_mean_and_SE(
+    forecasts: NumpyArray5D, CLE_only: bool
+) -> Tuple[float, float]:
+    directional_variabilities = compute_directional_variability_by_example(forecasts, CLE_only)
+    return np.mean(directional_variabilities), np.std(directional_variabilities) / np.sqrt(
+        len(directional_variabilities)
+    )
+
+
+print("Directional variability analysis.")
+for method, forecasts in forecasts_dict.items():
+    mean_pct, SE_mean_pct = compute_directional_variability_by_example_mean_and_SE(forecasts, CLE_only=False)
     print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")

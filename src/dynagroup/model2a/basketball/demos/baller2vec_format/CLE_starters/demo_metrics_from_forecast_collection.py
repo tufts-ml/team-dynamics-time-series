@@ -1,4 +1,4 @@
-import numpy as np 
+import numpy as np
 
 from dynagroup.model2a.basketball.forecast_analysis import (
     compute_metrics,
@@ -122,6 +122,32 @@ pprint.pprint(test_results_dict)
 
 
 ###
+# Forecasting statistics
+###
+
+from dynagroup.model2a.basketball.forecast_statistics import (
+    Forecast_Statistic,
+    compute_model_comparison_results_for_forecast_statistic,
+    compute_summaries_of_forecast_statistic,
+)
+
+
+focal_models_to_competitor_models = {
+    "ours": ["no_system_switches", "no_recurrence"],
+}
+
+
+for forecast_statistic in Forecast_Statistic:
+    statistics_summary_dict = compute_summaries_of_forecast_statistic(forecast_statistic, forecasts_dict)
+    test_results_dict = compute_model_comparison_results_for_forecast_statistic(
+        statistics_summary_dict, focal_models_to_competitor_models, alpha=0.0001, alternative="two-sided"
+    )
+
+    print(f"\nFormal comparisons")
+    pprint.pprint(test_results_dict)
+
+
+###
 # Sanity checks
 ###
 
@@ -186,133 +212,3 @@ for r in [1, 5, 10, 15, 20]:
         save_dir="/Users/miw267/Desktop/",
         basename_before_extension=f"{model_1}_vs_{model_2}_example_rank_{rank_of_e_to_use}_sample_ranks_{rank_of_s_to_use}",
     )
-
-
-####
-# Statistics
-###
-
-from typing import Tuple
-
-from dynagroup.model2a.basketball.court import (
-    X_MAX_COURT,
-    X_MIN_COURT,
-    Y_MAX_COURT,
-    Y_MIN_COURT,
-)
-from dynagroup.types import NumpyArray1D, NumpyArray5D
-
-
-### IN Bounds
-def compute_in_bounds_pcts_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
-    # TODO: Restrict to valid examples ?
-    E = np.shape(forecasts)[0]
-
-    in_bounds_pcts = np.zeros(E)
-    for e in range(E):
-        in_bounds_pcts[e] = np.mean(
-            (forecasts[e, ..., 0] >= X_MIN_COURT)
-            * (forecasts[e, ..., 0] <= X_MAX_COURT)
-            * (forecasts[e, ..., 1] >= Y_MIN_COURT)
-            * (forecasts[e, ..., 1] <= Y_MAX_COURT)
-        )
-    return in_bounds_pcts
-
-
-def compute_in_bounds_pct_mean_and_SE(forecasts: NumpyArray5D) -> Tuple[float, float]:
-    in_bounds_pcts = compute_in_bounds_pcts_by_example(forecasts)
-    return np.mean(in_bounds_pcts), np.std(in_bounds_pcts) / np.sqrt(len(in_bounds_pcts))
-
-
-print("Pct in bounds analysis.")
-for method, forecasts in forecasts_dict.items():
-    mean_pct, SE_mean_pct = compute_in_bounds_pct_mean_and_SE(forecasts)
-    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")
-
-### Dispersions (at the last timestep)
-
-
-def compute_dispersions_by_example(forecasts: NumpyArray5D) -> NumpyArray1D:
-    # TODO: Restrict to valid examples ?
-    E = np.shape(forecasts)[0]
-
-    dispersions_by_example = np.zeros(E)
-    for e in range(E):
-        typical_centroid_distance_by_sample = np.sqrt(np.sum(np.var(forecasts[e, :, -1, :5], axis=1), axis=1))
-        dispersions_by_example[e] = np.mean(typical_centroid_distance_by_sample)
-    return dispersions_by_example
-
-
-# TODO: combine with similar function above for pct out of bounds
-def compute_dispersions_by_example_mean_and_SE(forecasts: NumpyArray5D) -> Tuple[float, float]:
-    dispersions = compute_dispersions_by_example(forecasts)
-    return np.mean(dispersions), np.std(dispersions) / np.sqrt(len(dispersions))
-
-
-print("Dispersions analysis.")
-for method, forecasts in forecasts_dict.items():
-    mean_pct, SE_mean_pct = compute_dispersions_by_example_mean_and_SE(forecasts)
-    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")
-
-### Directional variability
-
-from scipy.stats import circvar
-
-
-# Compute the circular variance
-# circular_variance = circvar(theta)
-
-
-def compute_directional_variability_by_example(forecasts: NumpyArray5D, CLE_only: bool = False) -> NumpyArray1D:
-    """
-    We interpret directional variability during the forecasting window as
-        Circular variance of (X_forecasted_T2 - X_forecasted_T1).
-
-    It can be taken as a measure of coordination.
-
-    Arguments:
-        forecasts: (E,S,T_forecast,J,D)
-        CLE_only : If true, we only look at variability across the CAVS.
-    """
-    # TODO: Restrict to valid examples ?
-    E, S = np.shape(forecasts)[:2]
-
-    def get_circular_variance_for_one_example_and_sample(forecasts_by_example_and_sample):
-        """
-        Arguments:
-            forecasts_by_example_and_sample: (T_forecast, J, D)
-        """
-        player_forecast_secants = forecasts_by_example_and_sample[-1] - forecasts_by_example_and_sample[0]  # J,D
-        player_angles = np.arctan2(player_forecast_secants[:, 1], player_forecast_secants[:, 0])
-        return circvar(player_angles)
-
-    if CLE_only:
-        num_players_to_use = 5
-    else:
-        num_players_to_use = 10
-
-    directional_variability_by_example = np.zeros(E)
-    for e in range(E):
-        circular_variances_for_samples_on_this_example = np.zeros(S)
-        for s in range(S):
-            circular_variances_for_samples_on_this_example[s] = get_circular_variance_for_one_example_and_sample(
-                forecasts[e, s, :, :num_players_to_use]
-            )
-        directional_variability_by_example[e] = np.nanmean(circular_variances_for_samples_on_this_example)
-    return directional_variability_by_example
-
-
-# TODO: combine with similar function above for pct out of bounds
-def compute_directional_variability_by_example_mean_and_SE(
-    forecasts: NumpyArray5D, CLE_only: bool
-) -> Tuple[float, float]:
-    directional_variabilities = compute_directional_variability_by_example(forecasts, CLE_only)
-    return np.mean(directional_variabilities), np.std(directional_variabilities) / np.sqrt(
-        len(directional_variabilities)
-    )
-
-
-print("Directional variability analysis.")
-for method, forecasts in forecasts_dict.items():
-    mean_pct, SE_mean_pct = compute_directional_variability_by_example_mean_and_SE(forecasts, CLE_only=False)
-    print(f"{method} : mean: {mean_pct:.02f}, SE: {SE_mean_pct:.02f}")

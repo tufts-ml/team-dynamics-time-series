@@ -14,7 +14,7 @@ from dynagroup.model2a.basketball.animate import (
 from dynagroup.model2a.basketball.data.baller2vec.disk import (
     load_processed_data_to_analyze,
 )
-from dynagroup.model2a.basketball.forecast_collection import (
+from dynagroup.model2a.basketball.forecast.collection import (
     make_forecast_collections_for_all_basketball_examples,
 )
 from dynagroup.model2a.basketball.model import (

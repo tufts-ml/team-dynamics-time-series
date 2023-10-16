@@ -1,6 +1,6 @@
 import numpy as np
 
-from dynagroup.model2a.basketball.forecast_analysis import (
+from dynagroup.model2a.basketball.forecast.main_analysis import (
     compute_metrics,
     load_agentformer_forecasts,
     load_dynagroup_forecasts,
@@ -125,7 +125,7 @@ pprint.pprint(test_results_dict)
 # Forecasting statistics
 ###
 
-from dynagroup.model2a.basketball.forecast_statistics import (
+from dynagroup.model2a.basketball.forecast.statistics import (
     Forecast_Statistic,
     compute_model_comparison_results_for_forecast_statistic,
     compute_summaries_of_forecast_statistic,
@@ -136,11 +136,19 @@ focal_models_to_competitor_models = {
     "ours": ["no_system_switches", "no_recurrence"],
 }
 
+parameters_for_model_comparison_on_forecast_statistics = {
+    Forecast_Statistic.Pct_In_Bounds: {"alpha": 0.01, "alternative": "less"},
+    Forecast_Statistic.Directional_Variabilities: {"alpha": 0.01, "alternative": "greater"},
+}
 
-for forecast_statistic in Forecast_Statistic:
+
+for forecast_statistic, test_params in parameters_for_model_comparison_on_forecast_statistics.items():
     statistics_summary_dict = compute_summaries_of_forecast_statistic(forecast_statistic, forecasts_dict)
     test_results_dict = compute_model_comparison_results_for_forecast_statistic(
-        statistics_summary_dict, focal_models_to_competitor_models, alpha=0.0001, alternative="two-sided"
+        statistics_summary_dict,
+        focal_models_to_competitor_models,
+        alpha=test_params["alpha"],
+        alternative_hypothesis_for_competitor_minus_focal=test_params["alternative"],
     )
 
     print(f"\nFormal comparisons")
@@ -163,12 +171,12 @@ for forecast_statistic in Forecast_Statistic:
 
 
 ###
-# PLots
+# PLots -- NEEDS TO BE ABSORBED
 ###
 
 import numpy as np
 
-from dynagroup.model2a.basketball.forecast_plots import plot_team_forecasts
+from dynagroup.model2a.basketball.forecast.plots import plot_team_forecasts
 
 
 ### arguments

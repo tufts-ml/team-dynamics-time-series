@@ -146,7 +146,7 @@ def compute_summaries_of_forecast_statistic(
             SE_MEAN_STAT=np.nanstd(statistics_by_example) / np.sqrt(num_valid_examples),
         )
         print(
-            f" {statistics_summary_dict[model_name].name} for {model_name} is {statistics_summary_dict[model_name].MEAN_STAT : .02f} ({statistics_summary_dict[model_name].SE_MEAN_STAT : .03f})"
+            f" {statistics_summary_dict[model_name].name} for {model_name} is {statistics_summary_dict[model_name].MEAN_STAT : .03f} ({statistics_summary_dict[model_name].SE_MEAN_STAT : .03f})"
         )
     return statistics_summary_dict
 
@@ -155,7 +155,7 @@ def compute_model_comparison_results_for_forecast_statistic(
     statistics_summary_dict: Dict[str, Summary_Of_Forecast_Statistic],
     focal_models_to_competitor_models: Dict[str, List[str]],
     alpha: float,
-    alternative: str = "two-sided",
+    alternative_hypothesis_for_competitor_minus_focal: str = "two-sided",
 ) -> Dict:
     """
     Arguments:
@@ -179,7 +179,9 @@ def compute_model_comparison_results_for_forecast_statistic(
                 )
                 SE_diff = np.nanstd(diffs) / np.sqrt(statistics_summary_dict[f"ours_{size}"].num_valid_examples)
                 # t_stat_by_hand = np.nanmean(diffs)/np.nanstd(diffs)/np.sqrt(statistics_summary_dict[f"ours_{size}"].num_valid_examples)
-                t_stat, p_val = ttest_1samp(diffs, popmean=0, nan_policy="omit", alternative=alternative)
+                t_stat, p_val = ttest_1samp(
+                    diffs, popmean=0, nan_policy="omit", alternative=alternative_hypothesis_for_competitor_minus_focal
+                )
                 uncorrected_p_vals_dict[(size, focal_model, competitor)] = p_val
                 SE_diffs.append(SE_diff)
 

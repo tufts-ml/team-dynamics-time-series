@@ -11,7 +11,7 @@ from dynagroup.model2a.basketball.court import (
     Y_MAX_COURT,
     Y_MIN_COURT,
 )
-from dynagroup.model2a.basketball.forecast_analysis import Metrics
+from dynagroup.model2a.basketball.forecast.main_analysis import Metrics
 from dynagroup.types import NumpyArray4D, NumpyArray5D
 
 

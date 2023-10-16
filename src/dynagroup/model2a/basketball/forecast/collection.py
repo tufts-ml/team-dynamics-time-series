@@ -19,6 +19,15 @@ from dynagroup.model2a.gaussian.forecast_collection import (
 from dynagroup.params import AllParameters_JAX
 
 
+"""
+Module-level docstring:
+
+We (unfortunately) work with forecast collections (one for each example) when processing the data.
+But when combing our results (our models, fixed velocity, ground truth) with external results (e.g. agentformer)
+we switch strategies to working with numpy arrays, which seems much more natural.
+
+"""
+
 ###
 # Make forecasts on test set examples
 ###

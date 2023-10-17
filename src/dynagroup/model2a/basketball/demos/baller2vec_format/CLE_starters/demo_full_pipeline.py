@@ -148,6 +148,11 @@ M_e = 0  # for now!
 N = 0
 DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
+
+###
+# Initialize Model
+###
+
 print("Running smart initialization.")
 
 ### TODO: Make smart initialization better. E.g.

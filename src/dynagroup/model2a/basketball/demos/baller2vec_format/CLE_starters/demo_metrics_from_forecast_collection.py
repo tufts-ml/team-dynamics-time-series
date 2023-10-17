@@ -76,6 +76,9 @@ for model_name in metrics_dict.keys():
 # Paired difference test
 ###
 
+# TODO: Much of this material (metrics computation, muliple comparisons testing)
+# is redundant with what's done in the forecasting statistics section.  Combine these.
+
 import pprint
 from collections import OrderedDict
 
@@ -156,6 +159,66 @@ for forecast_statistic, test_params in parameters_for_model_comparison_on_foreca
 
 
 ###
+# PLots
+###
+
+from dynagroup.model2a.basketball.forecast.plots import (
+    get_plot_lims_for_column_and_row,
+    plot_team_forecasts_giving_multiple_samples_for_one_model_and_one_player,
+)
+
+
+### arguments
+models_list = ["ours_large", "no_system_switches_large", "no_recurrence_large", "agentformer_large"]
+forecasts_list = [forecasts_dict[model] for model in models_list]
+metrics_list = [metrics_dict[model] for model in models_list]
+
+
+# find median example for our model
+# argsort goes lowest to highest
+# by default, argsort treats NaN as larger than any other value
+# so we want to set things up so that we're always looking for a low value.
+rank_of_e_to_use = 37
+e = np.argsort(metrics_dict["ours_large"].CLE__MEAN_DIST_E)[rank_of_e_to_use - 1]
+
+
+# sample ranks to use (for each model)
+r_list = [1, 5, 10]
+
+# convert to sample idxs
+M, S = len(models_list), len(r_list)
+s_matrix = np.zeros((M, S), dtype=int)
+for m, model in enumerate(models_list):
+    for i, r in enumerate(r_list):
+        rank_of_s_to_use = r
+        s_matrix[m, i] = np.argsort(metrics_dict[model].CLE__MEAN_DIST_ES[e])[rank_of_s_to_use - 1]
+
+
+### get x lims by column and row
+x_mins, x_maxes, y_mins, y_maxes = get_plot_lims_for_column_and_row(
+    models_list, forecasts_dict, ground_truth, s_matrix, e
+)
+
+
+for m, model in enumerate(models_list):
+    for j in range(5):
+        plot_team_forecasts_giving_multiple_samples_for_one_model_and_one_player(
+            forecasts_dict[model],
+            ground_truth,
+            e,
+            j,
+            s_matrix[m],
+            np.min(x_mins),
+            np.max(x_maxes),
+            np.min(y_mins),
+            np.max(y_maxes),
+            show_plot=False,
+            save_dir="/Users/miw267/Repos/aistats-2024/images/basketball/",
+            basename_before_extension=f"forecasts_by_{model}_for_player_{j}",
+        )
+
+
+###
 # Sanity checks
 ###
 
@@ -168,55 +231,3 @@ for forecast_statistic, test_params in parameters_for_model_comparison_on_foreca
 # print(f"Agent former: {forecasts_dict['agentformer_small'][e,s,:,j,:]}")
 # print(f"Ours: {forecasts_dict['ours_small'][e,s,:,j,:]}")
 # print(f"Fixed velocity: {forecasts_dict['fixed_velocity'][e,:,j,:]}")
-
-
-###
-# PLots -- NEEDS TO BE ABSORBED
-###
-
-import numpy as np
-
-from dynagroup.model2a.basketball.forecast.plots import plot_team_forecasts
-
-
-### arguments
-model_1 = "ours_large"
-model_2 = "no_system_switches_large"
-
-
-### setup
-forecasts_1 = forecasts_dict[model_1]
-forecasts_2 = forecasts_dict[model_2]
-
-metrics_1 = metrics_dict[model_1]
-metrics_2 = metrics_dict[model_2]
-
-# find example where model_1 is most better than model_2.
-# argsort goes lowest to highest
-# by default, argsort treats NaN as larger than any other value
-# so we want to set things up so that we're always looking for a low value.
-rank_of_e_to_use = 37
-e = np.argsort(metrics_1.CLE__MEAN_DIST_E - metrics_2.CLE__MEAN_DIST_E)[rank_of_e_to_use - 1]
-
-for r in [1, 5, 10, 15, 20]:
-    print(
-        f"plotting with the {r}-th best forecasting samples for each model from the {e}-th best example for showing a difference"
-    )
-    rank_of_s_to_use = r
-    s_1 = np.argsort(metrics_1.CLE__MEAN_DIST_ES[e])[rank_of_s_to_use - 1]
-    s_2 = np.argsort(metrics_2.CLE__MEAN_DIST_ES[e])[rank_of_s_to_use - 1]
-    # s_2=0 #fixed velocity
-
-    plot_team_forecasts(
-        forecasts_1,
-        forecasts_2,
-        ground_truth,
-        metrics_1,
-        metrics_2,
-        e,
-        s_1,
-        s_2,
-        show_plot=False,
-        save_dir="/Users/miw267/Desktop/",
-        basename_before_extension=f"{model_1}_vs_{model_2}_example_rank_{rank_of_e_to_use}_sample_ranks_{rank_of_s_to_use}",
-    )

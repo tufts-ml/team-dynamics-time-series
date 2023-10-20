@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.frame import DataFrame
 
+from dynagroup.model2a.supra import MY_IRB_APPROVED_USERNAME
 from dynagroup.types import NumpyArray1D, NumpyArray2D
 from dynagroup.von_mises.util import degrees_to_radians
 
@@ -49,7 +50,8 @@ class TimeSnippet:
 # Constants
 ###
 
-DATA_FILEPATH_FOR_PLATOON_2_SQUAD_1 = "/Users/mwojno01/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
+
+DATA_FILEPATH_FOR_PLATOON_2_SQUAD_1 = f"/Users/{MY_IRB_APPROVED_USERNAME}/Library/CloudStorage/Box-Box/IRB_Approval_Required/MASTR_E_Program_Data/data/18_003_SUPRA_Data/Results_Files/MASTRE_SUPRA_P2S1_ITDG.csv"
 TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1 = 203100
 ENTITY_NAMES = [
     "SL",
@@ -95,12 +97,8 @@ def get_df() -> DataFrame:
 # Key Time snippets of interest
 ###
 
-CONTACT_FIRST_MINUTE = TimeSnippet(
-    t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=210840, t_every=20
-)
-CONTACT_ALL = TimeSnippet(
-    t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=273427, t_every=20
-)
+CONTACT_FIRST_MINUTE = TimeSnippet(t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=210840, t_every=20)
+CONTACT_ALL = TimeSnippet(t_start=TIMESTEP_OF_CONTACT_START_FOR_PLATOON_2_SQUAD_1, t_end=273427, t_every=20)
 # this squad doesn't have actions on objective phase, so the final timestep for contact
 # equals the final timestep for the whole time series
 

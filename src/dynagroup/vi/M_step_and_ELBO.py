@@ -908,7 +908,8 @@ def run_M_step_for_STP(
     verbose: bool = True,
 ) -> AllParameters_JAX:
     if M_step_toggles_STP == M_Step_Toggle_Value.OFF:
-        print("Skipping M-step for STP, as requested.")
+        if verbose:
+            print("Skipping M-step for STP, as requested.")
         return all_params
     elif M_step_toggles_STP == M_Step_Toggle_Value.CLOSED_FORM_TPM:
         STP_new = run_M_step_for_STP_in_closed_form(all_params.STP, VES_summary, example_end_times)

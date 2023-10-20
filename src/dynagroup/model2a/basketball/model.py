@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 from dynagroup.model import Model
@@ -9,6 +10,7 @@ from dynagroup.model2a.basketball.recurrence_entity import (
     ZERO_transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
 )
 from dynagroup.model2a.basketball.recurrence_system import (
+    ALL_PLAYER_LOCATIONS_system_recurrence_transformation,
     TEAM_CENTROID_X_DISTANCE_system_recurrence_transformation,
 )
 from dynagroup.model2a.gaussian.model_factors import (
@@ -31,6 +33,7 @@ class Model_Type(Enum):
     Linear_And_Out_Of_Bounds_Entity_Recurrence = 4
     Linear_And_Out_Of_Bounds_And_Court_Side_Entity_Recurrence = 5
     Linear_And_Out_Of_Bounds_Entity_Recurrence__and__Team_Centroid_System_Recurrence = 6
+    Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence = 7
 
 
 ###
@@ -97,6 +100,15 @@ model_basketball_linear_and_out_of_bounds_entity_recurrence__and__team_centroid_
     TEAM_CENTROID_X_DISTANCE_system_recurrence_transformation,
 )
 
+model_basketball_linear_and_out_of_bounds_entity_recurrence__and__all_player_locations_system_recurrence = Model(
+    compute_log_initial_continuous_state_emissions_JAX,
+    compute_log_continuous_state_emissions_after_initial_timestep_JAX,
+    compute_log_system_transition_probability_matrices_JAX,
+    compute_log_entity_transition_probability_matrices_JAX,
+    LINEAR_AND_OOB_RECURRENCE_transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
+    ALL_PLAYER_LOCATIONS_system_recurrence_transformation,
+)
+
 
 def get_basketball_model(model_type_string: str) -> Model:
     return get_basketball_model_from_model_type(Model_Type(model_type_string))
@@ -115,5 +127,27 @@ def get_basketball_model_from_model_type(model_type: Model_Type) -> Model:
         return model_basketball_linear_and_out_of_bounds_and_court_side_entity_recurrence
     elif model_type == Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__Team_Centroid_System_Recurrence:
         return model_basketball_linear_and_out_of_bounds_entity_recurrence__and__team_centroid_system_recurrence
+    elif (
+        model_type == Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
+    ):
+        return model_basketball_linear_and_out_of_bounds_entity_recurrence__and__all_player_locations_system_recurrence
     else:
         raise ValueError("I don't understand the model type.")
+
+
+###
+# I/O
+###
+
+
+def save_model_type(model_type: Model_Type, model_dir: str, basename_prefix: str = ""):
+    filepath = os.path.join(model_dir, f"{basename_prefix}_model_type_string.txt")
+    with open(filepath, "w") as file:
+        file.write(model_type.name)
+
+
+def load_model_from_model_type_string_filepath(filepath: str) -> Model:
+    with open(filepath, "r") as file:
+        model_type_str = file.readlines()[0]
+    model_type = Model_Type[model_type_str]
+    return get_basketball_model_from_model_type(model_type)

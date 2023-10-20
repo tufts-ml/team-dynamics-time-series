@@ -1,5 +1,5 @@
 import functools
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from dynagroup.model2a.figure8.diagnostics.posterior_mean_and_forward_simulation
     evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.params import AllParameters_JAX
-from dynagroup.types import JaxNumpyArray3D, NumpyArray2D
+from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray4D
 
 
 ###
@@ -51,7 +51,21 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_
     use_continuous_states: NumpyArray2D,
     entity_idxs: Optional[List[int]] = None,
     filename_prefix: Optional[str] = None,
-) -> None:
+) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D, NumpyArray4D]:
+    """
+    Returns:
+        MSEs_posterior_mean: An array of size (J,) that describes the model performance for each of the
+            J entities over a time period requested for the posterior mean.
+        MSEs_forward_sims: An array of size (J,S)  that describes the model performance for each of the
+            J entities for each of S simulations over a time period requested for the forward sims.
+            The value is NaN if the entity was not masked.
+        MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
+            J entities over the same time period as requested for the forward sims.
+            The value is NaN if the entity was not masked.
+        forecasts: An array of shape (S,T_forecast,J_forecast,D), where S is the number of simulations, J is the number of forecasted entities,
+            D is the continuous state dimensionality, and T is the number of forecasted timesteps.  We put np.nan for any
+            entities or timesteps where there was no forecasting.
+    """
     # I want to work with when we transition from up to down (timesteps 100-200)
 
     find_forward_sim_t0_for_entity_sample = functools.partial(

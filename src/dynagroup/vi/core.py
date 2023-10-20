@@ -11,7 +11,7 @@ from dynagroup.hmm_posterior import (
 from dynagroup.initialize import InitializationResults
 from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model import Model
-from dynagroup.params import AllParameters_JAX
+from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -21,6 +21,7 @@ from dynagroup.types import (
 )
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
+    M_Step_Toggle_Value,
     M_Step_Toggles,
     compute_elbo_decomposed,
     run_M_step_for_CSP,
@@ -102,14 +103,15 @@ def run_CAVI_with_JAX(
 
     IR = initialization_results
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
-    T, J = np.shape(continuous_states)[:2]
+    DIMS = dims_from_params(all_params)
+    T = np.shape(continuous_states)[0]
 
     if continuous_states.ndim == 2:
         print("Continuous states has only two array dimensions; now adding a third array dimension with 1 element.")
         continuous_states = continuous_states[:, :, None]
 
     if use_continuous_states is None:
-        use_continuous_states = np.full((T, J), True)
+        use_continuous_states = np.full((T, DIMS.J), True)
     else:
         # TODO: Raise error if use_continuous_states has False followed by True for any entity j;
         # in the current implementation, inference will not be done correctly, because the VEZ step will not correctly
@@ -141,6 +143,10 @@ def run_CAVI_with_JAX(
     if system_covariates is None:
         # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
+
+    if DIMS.L == 1:
+        # Automatically turn off M-step for system level parameters if there is only one system state.
+        M_step_toggles.STP = M_Step_Toggle_Value.OFF
 
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And
@@ -202,8 +208,8 @@ def run_CAVI_with_JAX(
                 f"\nVEZ step's log normalizer by entities for continuous state emissions when we use VES inits for q(S): {VEZ_summaries.log_normalizers}"
             )
             if true_entity_regimes is not None:
-                pct_corrects_entities = np.empty(J)
-                for j in range(J):
+                pct_corrects_entities = np.empty(DIMS.J)
+                for j in range(DIMS.J):
                     most_likely_system_regimes = np.argmax(VEZ_summaries.expected_regimes[:, j, :], axis=1)
                     pct_corrects_entities[j] = compute_regime_labeling_accuracy(
                         most_likely_system_regimes, true_entity_regimes[:, j]

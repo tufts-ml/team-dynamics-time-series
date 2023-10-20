@@ -27,6 +27,17 @@ def TEAM_CENTROID_X_DISTANCE_system_recurrence_transformation(
     return jnp.atleast_1d(jnp.mean(x_prevs_reshaped[:5]) - jnp.mean(x_prevs_reshaped[5:10]))
 
 
+def ALL_PLAYER_LOCATIONS_system_recurrence_transformation(
+    x_prevs_reshaped: JaxNumpyArray1D,
+    system_covariates: JaxNumpyArray1D,
+) -> JaxNumpyArray1D:
+    """
+    Computes the x-distances between centroids of the two teams.
+    """
+    return x_prevs_reshaped
+
+
 LIST_OF_SYSTEM_RECURRENCES = [
     TEAM_CENTROID_X_DISTANCE_system_recurrence_transformation,
+    ALL_PLAYER_LOCATIONS_system_recurrence_transformation,
 ]

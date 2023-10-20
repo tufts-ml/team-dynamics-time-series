@@ -108,7 +108,7 @@ T_slice_for_old_forecasting = 70
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/fig8/analyses/RETRY_fig8_after_adding__use_continuous_states__argument_to_M_step_at_bottom_level_of_gaussian_init__{datetime_as_string}/"
+save_dir = f"results/fig8/analyses/REDO_{datetime_as_string}/"
 
 ###
 # PLOT SAMPLE

@@ -1,7 +1,6 @@
 # dynagroup
 
-Welcome to dynagroup
-
+Welcome to `dynagroup`.   This is a Python repo for the under-review paper _Discovering group dynamics in synchronous time series via hierarchical recurrent switching-state models_.
 
 # Installation
 
@@ -26,6 +25,14 @@ Unit tests can be run from within the activated virtual environment using
 ```
 python -m python
 ```
+
+# Experiment reproduction
+
+The experiments on publicly available data can be reproduced by running the following scripts:
+
+1. For basketball: `src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py`
+2. For _FigureEight_: `src/dynagroup/model2a/figure8/demos/demo_cavi_on_figure8.py`
+
 
 
 

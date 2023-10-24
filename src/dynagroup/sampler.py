@@ -196,12 +196,13 @@ def get_multiple_samples_of_team_dynamics(
         R = AP.EP.Rs[j]
         emissions_exist = C.any() or d.any() or R.any()
         if emissions_exist:
-            raise NotImplementedError(
-                "Need to update multi-sample generation to handle emissions of y. See commit on 10/6/23."
+            ys[:, 0, j] = jax.random.multivariate_normal(
+                key,
+                mean=np.einsum("nd, sd -> sn", C, xs[:, 0, j]) + d,
+                cov=R,
+                shape=(S,),
             )
-            # Rk: it should be something like
-            #   ys[:,0, j] = mvn(C @ xs[:,0, j] + d, R, size=S)
-            # but I probably need einsum rather than @.
+            key, _ = jax.random.split(key)
 
     ### Generate
     for t in range(1, T):
@@ -282,12 +283,13 @@ def get_multiple_samples_of_team_dynamics(
             R = AP.EP.Rs[j]
             emissions_exist = C.any() or d.any() or R.any()
             if emissions_exist:
-                raise NotImplementedError(
-                    "Need to update multi-sample generation to handle emissions of y. See commit on 10/6/23."
+                ys[:, t, j] = jax.random.multivariate_normal(
+                    key,
+                    mean=np.einsum("nd, sd -> sn", C, xs[:, t, j]) + d,
+                    cov=R,
+                    shape=(S,),
                 )
-                # It should be something like
-                #   ys[t, j] = mvn(C @ xs[:,t, j] + d, R, size=S)
-                # but I probably need einsum rather than @.
+                key, _ = jax.random.split(key)
 
     return list(Sample(s[sample], z_probs[sample], zs[sample], xs[sample], ys[sample]) for sample in range(S))
 

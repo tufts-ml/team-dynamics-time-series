@@ -14,7 +14,7 @@ from dynagroup.hmm_posterior import (
 from dynagroup.model import Model
 from dynagroup.params import AllParameters_JAX, dims_from_params
 from dynagroup.sampler import sample_team_dynamics
-from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D
+from dynagroup.types import JaxNumpyArray3D, NumpyArray1D, NumpyArray2D, NumpyArray4D
 
 
 # TODO!!! : Align this module with the very similar module in basketball.diagnostics.
@@ -83,7 +83,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     y_lim: Optional[Tuple] = None,
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
-) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
+) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D, NumpyArray4D]:
     """
     A helper function for write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice
 
@@ -115,13 +115,15 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
+        forecasts: An array of shape (S,T_forecast,J_forecast,D), where S is the number of simulations, J is the number of forecasted entities,
+            D is the continuous state dimensionality, and T is the number of forecasted timesteps.
     """
 
     ###
     # Upfront info
     ###
     DIMS = dims_from_params(params)
-    T, J, _ = np.shape(continuous_states)
+    T, J, D = np.shape(continuous_states)
     if entity_idxs is None:
         entity_idxs = [j for j in range(J)]
     if find_posterior_mean_t0_for_entity_sample is None:
@@ -137,7 +139,20 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     MSEs_forward_sims = np.full((J, S), np.nan)  # value is NaN if entity was not masked
     MSEs_velocity_baseline = np.full(J, np.nan)  # value is NaN if entity was not masked.
 
-    for j in entity_idxs:
+    ### Construct forecasts return object
+    J_forecast = len(entity_idxs)
+
+    # Guess at T_forecast_universal_across_j . If it's not the same for all j_forecasts then
+    j_star = entity_idxs[0]
+    sample_entity = continuous_states[:, j_star]  # TxD
+    t_0_forward_sim = find_forward_sim_t0_for_entity_sample(continuous_states[:, j_star])
+    x_0_forward_sim = sample_entity[t_0_forward_sim]
+    t_end_forward_sim = np.min((t_0_forward_sim + max_forward_sim_window, T))
+    T_forecast_universal_across_forecasted_entities = t_end_forward_sim - t_0_forward_sim
+
+    forecasts = np.zeros((S, T_forecast_universal_across_forecasted_entities, J_forecast, D))
+
+    for j_forecast, j in enumerate(entity_idxs):
         ###
         # Plotting the truth for the whole entity.
         ###
@@ -165,6 +180,12 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         x_0_forward_sim = sample_entity[t_0_forward_sim]
         t_end_forward_sim = np.min((t_0_forward_sim + max_forward_sim_window, T))
         T_slice_forward_sim = t_end_forward_sim - t_0_forward_sim
+
+        if not T_slice_forward_sim == T_forecast_universal_across_forecasted_entities:
+            raise ValueError(
+                f"The code for saving forecasts assumes that the size of the forecasting window "
+                "is constant across forecasted entities."
+            )
 
         t_0_posterior_mean = find_posterior_mean_t0_for_entity_sample(continuous_states[:, j])
         x_0_posterior_mean = sample_entity[t_0_posterior_mean]
@@ -300,6 +321,8 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 fixed_init_continuous_states=fixed_init_continuous_states,
             )
 
+            forecasts[s, :, j_forecast, :] = sample_ahead.xs[:, j, :]
+
             # MSE
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
             MSE_forward_sim = np.mean((ground_truth_forward_sim - sample_ahead.xs[:, j]) ** 2)
@@ -420,7 +443,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
     plt.close(plt.gcf())
 
-    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline
+    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline, forecasts
 
 
 def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
@@ -442,7 +465,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
     filename_prefix: Optional[str] = "",
     figsize: Optional[Tuple[int]] = (8, 4),
     verbose: Optional[bool] = True,
-) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D]:
+) -> Tuple[NumpyArray1D, NumpyArray2D, NumpyArray1D, NumpyArray4D]:
     """
     By posterior mean and forward simulation, we mean:
         - posterior mean: Compute the posterior mean over a certain segment of time.
@@ -472,6 +495,9 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         MSEs_velocity_baseline: An array of size (J,) that describes the model performance for each of the
             J entities over the same time period as requested for the forward sims.
             The value is NaN if the entity was not masked.
+        forecasts: An array of shape (S,T_forecast,J_forecast,D), where S is the number of simulations, J is the number of forecasted entities,
+            D is the continuous state dimensionality, and T is the number of forecasted timesteps.  We put np.nan for any
+            entities or timesteps where there was no forecasting.
     """
     # Rk: `MMSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
     # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
@@ -482,6 +508,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         MSEs_posterior_mean,
         MSEs_forward_sims,
         MSEs_velocity_baseline,
+        forecasts,
     ) = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         continuous_states,
         params,
@@ -526,4 +553,4 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         }
     )
     df_eval.to_csv(os.path.join(save_dir, f"performance_MSEs_{filename_prefix}.csv"))
-    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline
+    return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline, forecasts

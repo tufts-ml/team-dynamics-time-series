@@ -559,6 +559,7 @@ def write_model_evaluation_via_posterior_mean_and_forward_simulation_on_slice(
         MSEs_posterior_mean,
         MSEs_forward_sims,
         MSEs_velocity_baseline,
+        _,
     ) = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         continuous_states,
         params,

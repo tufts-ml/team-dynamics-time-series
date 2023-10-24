@@ -108,7 +108,7 @@ T_slice_for_old_forecasting = 70
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/fig8/analyses/RETRY_fig8_after_adding__use_continuous_states__argument_to_M_step_at_bottom_level_of_gaussian_init__{datetime_as_string}/"
+save_dir = f"results/fig8/analyses/REDO_{datetime_as_string}/"
 
 ###
 # PLOT SAMPLE
@@ -234,7 +234,7 @@ if show_plots_after_init:
         title_prefix="forecasted (via init params)",
     )
 
-    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+    _, _, _, forecasts_init = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
         sample.xs,
         params_init,
         results_init.ES_summary,
@@ -299,7 +299,8 @@ for j in range(DIMS.J):
 
 ### Plot forecasting test
 
-evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+# forecasts has shape (S,T_forecast, J_forecast, D)
+_, _, _, forecasts = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     sample.xs,
     params_learned,
     VES_summary,
@@ -310,7 +311,7 @@ evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     save_dir,
     use_continuous_states,
     entity_idxs_for_forecasting,
-    filename_prefix=f"adjustment_{model_adjustment}_",
+    filename_prefix=f"AFTER_CAVI_adjustment_{model_adjustment}_",
 )
 
 ### Plot Old Forecasting test

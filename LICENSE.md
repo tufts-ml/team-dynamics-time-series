@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) Michael T. Wojnowicz
+Copyright (c) NAME REDACTED WHILE PAPER UNDER REVIEW.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

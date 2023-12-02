@@ -4,6 +4,7 @@ from dynagroup.model2a.basketball.forecast.main_analysis import (
     compute_metrics,
     load_agentformer_forecasts,
     load_dynagroup_forecasts,
+    load_groupnet_forecasts,
 )
 
 
@@ -12,6 +13,10 @@ forecasts_dict = {}
 forecasts_dict["agentformer_small"] = load_agentformer_forecasts("small")
 forecasts_dict["agentformer_medium"] = load_agentformer_forecasts("medium")
 forecasts_dict["agentformer_large"] = load_agentformer_forecasts("large")
+
+forecasts_dict["groupnet_small"] = load_groupnet_forecasts("small")
+forecasts_dict["groupnet_medium"] = load_groupnet_forecasts("medium")
+forecasts_dict["groupnet_large"] = load_groupnet_forecasts("large")
 
 forecasts_ours_small_dir = "results/basketball/CLE_starters/artifacts/L=5_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_1_CAVI_its_2_timestamp__10-12-2023_00h20m38s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
 forecasts_ours_medium_dir = "results/basketball/CLE_starters/artifacts/L=5_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_5_CAVI_its_2_timestamp__10-12-2023_00h20m21s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
@@ -51,7 +56,6 @@ forecasts_dict["no_recurrence_small"] = forecasts_no_recurrence_small
 forecasts_dict["no_recurrence_medium"] = forecasts_no_recurrence_medium
 forecasts_dict["no_recurrence_large"] = forecasts_no_recurrence_large
 
-
 forecasts_dict["fixed_velocity_small"] = fixed_velocity
 forecasts_dict["fixed_velocity_medium"] = fixed_velocity
 forecasts_dict["fixed_velocity_large"] = fixed_velocity
@@ -87,7 +91,7 @@ from statsmodels.stats.multitest import fdrcorrection
 
 
 focal_models_to_competitor_models = {
-    "ours": ["agentformer", "no_system_switches", "no_recurrence", "fixed_velocity"],
+    "ours": ["agentformer", "groupnet", "no_system_switches", "no_recurrence", "fixed_velocity"],
 }
 
 uncorrected_p_vals_dict = OrderedDict()
@@ -169,7 +173,7 @@ from dynagroup.model2a.basketball.forecast.plots import (
 
 
 ### arguments
-models_list = ["ours_large", "no_system_switches_large", "no_recurrence_large", "agentformer_large"]
+models_list = ["ours_large", "no_system_switches_large", "no_recurrence_large", "agentformer_large", "groupnet_large"]
 forecasts_list = [forecasts_dict[model] for model in models_list]
 metrics_list = [metrics_dict[model] for model in models_list]
 

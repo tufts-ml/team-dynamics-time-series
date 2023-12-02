@@ -20,6 +20,32 @@ from dynagroup.types import (
 ###
 
 
+def load_groupnet_forecasts(size: str) -> NumpyArray5D:
+    """
+    Argument:
+        size: in [small, medium, large]
+    Returns:
+        array of shape (E,S,T_forecast,J,D)
+    """
+
+    FILEPATH_GROUPNET = (
+        f"results/basketball/CLE_starters/artifacts_external/groupnet_sampled_trajectories_{size}_set.npy"
+    )
+
+    forecasts_normalized_and_doubly_wrongly_shaped = np.load(FILEPATH_GROUPNET)  # (S,E,J,T_forecast,D)
+    # S, E, J, T_forecast, D = np.shape(forecasts_normalized_but_doubly_wrongly_shaped )
+
+    forecasts_normalized_and_singly_wrongly_shaped = forecasts_normalized_and_doubly_wrongly_shaped.swapaxes(
+        0, 1
+    )  # has shape (E,S, J, T_forecast, D
+
+    forecasts_normalized = forecasts_normalized_and_singly_wrongly_shaped.swapaxes(
+        2, 3
+    )  # has shape (E,S,T_forecast,J,D)
+
+    return unnormalize_coords(forecasts_normalized)
+
+
 def load_agentformer_forecasts(size: str) -> NumpyArray5D:
     """
     Argument:

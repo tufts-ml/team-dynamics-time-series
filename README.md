@@ -28,10 +28,24 @@ python -m python
 
 # Experiment reproduction
 
-The experiments on publicly available data can be reproduced by running the following scripts:
+Here we provide scripts for reproducing experiments on publicly available data (_FigureEight_, basketball).
 
-1. For basketball: `src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py`
-2. For _FigureEight_: `src/dynagroup/model2a/figure8/demos/demo_cavi_on_figure8.py`
+Baseline forecasts for non-ablation models can be obtained via the following external repos:
+
+1. [_FigureEight_: DSARF](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm)
+2. [Basketball: AgentFormer](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm) 
+3. [Basketball: GroupNet](https://github.com/mikewojnowicz/GroupNet/tree/aistats)
+
+To train our model (HSRDM) as well as various ablations, use
+
+1. [_FigureEight_: HSRDM, rAR-HMM](src/dynagroup/model2a/figure8/demos/demo_cavi_on_figure8.py)
+2. [Basketball: HSRDM, rAR-HMM, no-system-state ablation](src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py)
+
+To show results, use
+
+1. [_FigureEight_: DSARF](src/dynagroup/model2a/figure8/diagnostics/plot_external_forecasts.py) (results from our model constructed via above script)
+2. [Basketball: all models](/Users/miw267/Repos/dynagroup/src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_metrics_from_forecast_collection.py)
+
 
 
 

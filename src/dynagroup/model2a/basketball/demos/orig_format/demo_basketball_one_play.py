@@ -148,7 +148,7 @@ print_multi_level_regime_occupancies_after_init(results_init)
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(xs),
     n_cavi_iterations,
     results_init,

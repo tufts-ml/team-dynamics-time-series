@@ -253,7 +253,7 @@ if show_plots_after_init:
 ###
 
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
     n_cavi_iterations,
     results_init,

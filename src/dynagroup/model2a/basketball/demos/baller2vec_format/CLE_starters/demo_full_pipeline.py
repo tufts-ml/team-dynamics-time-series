@@ -53,7 +53,7 @@ Compared to the full analysis:
 ###a
 
 # Model specification
-n_train_games_to_use = 20
+n_train_games_to_use = 1
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10
@@ -227,7 +227,7 @@ if animate_initialization:
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(DATA_TRAIN.player_coords),
     n_cavi_iterations,
     results_init,

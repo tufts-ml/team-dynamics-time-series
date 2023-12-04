@@ -4,6 +4,7 @@ import numpy as np
 from dynagroup.diagnostics.steps_in_state import (
     plot_steps_within_examples_assigned_to_each_entity_state,
 )
+from dynagroup.diagnostics.system_states import plot_system_states
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
 from dynagroup.hmm_posterior import save_hmm_posterior_summary
 from dynagroup.initialize import compute_elbo_from_initialization_results
@@ -79,6 +80,7 @@ M_step_toggle_for_IP = "closed_form_gaussian"
 system_covariates = None
 num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
+show_system_states = False
 
 # Forecasting
 random_forecast_starting_points = True
@@ -254,6 +256,10 @@ if make_verbose_CAVI_plots:
         show_plot=False,
         basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
     )
+
+if show_system_states:
+    plot_system_states(VES_summary, DATA_TRAIN.player_coords)
+
 
 ### Save model, learned params, latent state distribution
 save_model_type(model_type, artifacts_dir, basename_prefix=run_description)

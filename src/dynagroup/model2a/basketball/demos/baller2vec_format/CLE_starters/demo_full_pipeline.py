@@ -5,6 +5,7 @@ from dynagroup.diagnostics.steps_in_state import (
     plot_steps_within_examples_assigned_to_each_entity_state,
 )
 from dynagroup.eda.show_derivatives import plot_discrete_derivatives
+from dynagroup.hmm_posterior import save_hmm_posterior_summary
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.basketball.animate import (
@@ -51,11 +52,11 @@ Compared to the full analysis:
 ###a
 
 # Model specification
-n_train_games_to_use = 1
+n_train_games_to_use = 20
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10
-L = 1
+L = 5
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -69,7 +70,7 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 2
+n_cavi_iterations = 10
 make_verbose_CAVI_plots = False
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -89,7 +90,7 @@ T_forecast = 30
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
+run_description = f"rebuttal_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
 plots_dir = f"results/basketball/CLE_starters/plots/{run_description}/"
 artifacts_dir = f"results/basketball/CLE_starters/artifacts/"
 
@@ -254,9 +255,11 @@ if make_verbose_CAVI_plots:
         basename_prefix=f"post_CAVI_{n_cavi_iterations}_iterations",
     )
 
-### Save model and learned params
+### Save model, learned params, latent state distribution
 save_model_type(model_type, artifacts_dir, basename_prefix=run_description)
 save_params(params_learned, artifacts_dir, basename_prefix=run_description)
+save_hmm_posterior_summary(VES_summary, "qS", artifacts_dir, basename_prefix=run_description)
+save_hmm_posterior_summary(VEZ_summaries, "qZ", artifacts_dir, basename_prefix=run_description)
 
 
 ###

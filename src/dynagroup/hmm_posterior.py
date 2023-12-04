@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
@@ -381,11 +382,7 @@ def compute_hmm_posterior_summaries_NUMPY(
 def convert_hmm_posterior_summaries_from_jax_to_numpy(
     hmm_posterior_summaries: HMM_Posterior_Summaries_JAX,
 ) -> HMM_Posterior_Summaries_NUMPY:
-    entropies = (
-        None
-        if hmm_posterior_summaries.entropies is None
-        else np.asarray(hmm_posterior_summaries.entropies)
-    )
+    entropies = None if hmm_posterior_summaries.entropies is None else np.asarray(hmm_posterior_summaries.entropies)
     return HMM_Posterior_Summaries_NUMPY(
         np.asarray(hmm_posterior_summaries.expected_regimes),
         np.asarray(hmm_posterior_summaries.expected_joints),
@@ -426,9 +423,7 @@ def make_hmm_posterior_summaries_from_list(
     expected_regimes = jnp.swapaxes(expected_regimes_entity_first, 0, 1)  # (T,J,K)
     expected_joints = jnp.swapaxes(expected_joints_entity_first, 0, 1)  # (T-1,J,K,K)
 
-    return HMM_Posterior_Summaries_JAX(
-        expected_regimes, expected_joints, log_normalizers, entropies
-    )
+    return HMM_Posterior_Summaries_JAX(expected_regimes, expected_joints, log_normalizers, entropies)
 
 
 def make_list_from_hmm_posterior_summaries(
@@ -439,14 +434,10 @@ def make_list_from_hmm_posterior_summaries(
     list_of_hmm_posterior_summaries = [None] * J
     for j in range(J):
         entropy_for_entity = (
-            hmm_posterior_summaries.entropies[j]
-            if hmm_posterior_summaries.entropies is not None
-            else None
+            hmm_posterior_summaries.entropies[j] if hmm_posterior_summaries.entropies is not None else None
         )
         log_normalizer_for_entity = (
-            hmm_posterior_summaries.log_normalizers[j]
-            if hmm_posterior_summaries.log_normalizers is not None
-            else None
+            hmm_posterior_summaries.log_normalizers[j] if hmm_posterior_summaries.log_normalizers is not None else None
         )
         list_of_hmm_posterior_summaries[j] = HMM_Posterior_Summary_JAX(
             hmm_posterior_summaries.expected_regimes[:, j],
@@ -548,3 +539,27 @@ def compute_closed_form_M_step_on_posterior_summaries(
         )
 
     return np.array(tpms)
+
+
+####
+# Save hmm posterior summary
+###
+
+
+def save_hmm_posterior_summary(
+    hmm_posterior_summary: HMM_Posterior_Summary_JAX,
+    role_in_model: str,
+    save_dir: str,
+    basename_prefix: str = "",
+):
+    """
+    Saves the expected regimes and expected joints from an HMM posterior as numpy files.
+
+    Arguments:
+        role_in_model: says whether it's system states S or entity states Z.
+    """
+    filepath_regimes = os.path.join(save_dir, f"{basename_prefix}_expected_regimes_{role_in_model}.npy")
+    filepath_joints = os.path.join(save_dir, f"{basename_prefix}_expected_joints_{role_in_model}.npy")
+
+    np.save(filepath_regimes, np.array(hmm_posterior_summary.expected_regimes))
+    np.save(filepath_joints, np.array(hmm_posterior_summary.expected_joints))

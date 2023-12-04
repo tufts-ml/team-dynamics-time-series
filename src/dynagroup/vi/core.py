@@ -21,6 +21,7 @@ from dynagroup.types import (
 )
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
+    ELBO_Decomposed,
     M_Step_Toggle_Value,
     M_Step_Toggles,
     compute_elbo_decomposed,
@@ -46,7 +47,7 @@ def run_CAVI_with_JAX(
     true_system_regimes: Optional[NumpyArray1D] = None,
     true_entity_regimes: Optional[NumpyArray2D] = None,
     verbose: bool = True,
-) -> Tuple[HMM_Posterior_Summary_JAX, HMM_Posterior_Summaries_JAX, AllParameters_JAX]:
+) -> Tuple[HMM_Posterior_Summary_JAX, HMM_Posterior_Summaries_JAX, AllParameters_JAX, ELBO_Decomposed]:
     """
     Arguments:
         continuous_states: jnp.array with shape (T,J) or (T, J, D)
@@ -364,4 +365,4 @@ def run_CAVI_with_JAX(
                 f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-    return VES_summary, VEZ_summaries, all_params
+    return VES_summary, VEZ_summaries, all_params, elbo_decomposed

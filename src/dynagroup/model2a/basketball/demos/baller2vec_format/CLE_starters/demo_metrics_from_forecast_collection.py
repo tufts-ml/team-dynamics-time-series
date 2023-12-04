@@ -187,7 +187,8 @@ e = np.argsort(metrics_dict["ours_large"].CLE__MEAN_DIST_E)[rank_of_e_to_use - 1
 
 
 # sample ranks to use (for each model)
-r_list = [1, 5, 10]
+# r_list = [1, 5, 10]
+r_list = [1, 10, 20]
 
 # convert to sample idxs
 M, S = len(models_list), len(r_list)

@@ -54,10 +54,11 @@ Compared to the full analysis:
 
 # Model specification
 n_train_games_to_use = 1
-model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
+model_type = Model_Type.Linear_And_OOB_Entity_Recurrence__and__All_Player_Locs_And_Court_Config_System_Recurrence
+# model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10
-L = 5
+L = 10
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -71,7 +72,7 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 20
+n_cavi_iterations = 10
 make_verbose_CAVI_plots = False
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -92,7 +93,7 @@ T_forecast = 30
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"rebuttal_L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
+run_description = f"expand_sys_recurrence__L={L}_K={K}_model_type_{model_type.name}_train_{n_train_games_to_use}_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
 plots_dir = f"results/basketball/CLE_starters/plots/{run_description}/"
 artifacts_dir = f"results/basketball/CLE_starters/artifacts/"
 

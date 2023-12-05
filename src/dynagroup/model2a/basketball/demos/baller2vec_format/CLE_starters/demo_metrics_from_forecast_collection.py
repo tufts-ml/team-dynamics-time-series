@@ -15,8 +15,8 @@ forecasts_dict["agentformer_medium"] = load_agentformer_forecasts("medium")
 forecasts_dict["agentformer_large"] = load_agentformer_forecasts("large")
 
 forecasts_dict["groupnet_small"] = load_groupnet_forecasts("small", n_epochs=100, n_its_per_epoch=1000)
-forecasts_dict["groupnet_medium"] = load_groupnet_forecasts("medium", n_epochs=200, n_its_per_epoch=1000)
-forecasts_dict["groupnet_large"] = load_groupnet_forecasts("large", n_epochs=290, n_its_per_epoch=1000)
+forecasts_dict["groupnet_medium"] = load_groupnet_forecasts("medium", n_epochs=100, n_its_per_epoch=1000)
+forecasts_dict["groupnet_large"] = load_groupnet_forecasts("large", n_epochs=100, n_its_per_epoch=1000)
 
 forecasts_ours_small_dir = "results/basketball/CLE_starters/artifacts/rebuttal_L=5_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_1_CAVI_its_10_timestamp__12-04-2023_15h33m13s_forecasts_random_forecast_starting_points_True_T_forecast_30/"
 forecasts_ours_medium_dir = "results/basketball/CLE_starters/artifacts/rebuttal_L=5_K=10_model_type_Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence_train_5_CAVI_its_10_timestamp__12-04-2023_15h32m56s_forecasts_random_forecast_starting_points_True_T_forecast_30/"

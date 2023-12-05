@@ -232,7 +232,7 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(xs),
     n_cavi_iterations,
     results_init,

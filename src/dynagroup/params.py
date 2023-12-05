@@ -7,6 +7,7 @@ from typing import Union
 import jax.numpy as jnp
 import jax_dataclasses as jdc
 import numpy as np
+import torch
 from jax import vmap
 
 from dynagroup.covariances import (
@@ -825,6 +826,32 @@ def normalize_log_tpms_within_parameter_group(param_group, name_of_param_to_log_
     dict_for_new_param_group = param_group.__dict__
     dict_for_new_param_group[name_of_param_to_log_normalize] = log_normalized_object
     return type(param_group)(**dict_for_new_param_group)
+
+
+###
+# Count params
+###
+
+
+def count_params(params: AllParameters_JAX):
+    # TODO: don't hard-code (assume) what parameters live inside; do this programmatically
+    return (
+        torch.tensor(np.array(params.EP.Cs)).numel()
+        + torch.tensor(np.array(params.EP.ds)).numel()
+        + torch.tensor(np.array(params.EP.Rs)).numel()
+        + torch.tensor(np.array(params.CSP.As)).numel()
+        + torch.tensor(np.array(params.CSP.bs)).numel()
+        + torch.tensor(np.array(params.CSP.Qs)).numel()
+        + torch.tensor(np.array(params.IP.mu_0s)).numel()
+        + torch.tensor(np.array(params.IP.pi_entities)).numel()
+        + torch.tensor(np.array(params.IP.pi_system)).numel()
+        + torch.tensor(np.array(params.ETP.Omegas)).numel()
+        + torch.tensor(np.array(params.ETP.Ps)).numel()
+        + torch.tensor(np.array(params.ETP.Psis)).numel()
+        + torch.tensor(np.array(params.STP.Gammas)).numel()
+        + torch.tensor(np.array(params.STP.Pi)).numel()
+        + torch.tensor(np.array(params.STP.Upsilon)).numel()
+    )
 
 
 ####

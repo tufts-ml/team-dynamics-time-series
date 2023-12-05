@@ -5,7 +5,13 @@ from typing import Tuple
 
 import numpy as np
 
-from dynagroup.model2a.basketball.court import unnormalize_coords
+from dynagroup.model2a.basketball.court import (
+    X_MAX_COURT,
+    X_MIN_COURT,
+    Y_MAX_COURT,
+    Y_MIN_COURT,
+    unnormalize_coords,
+)
 from dynagroup.types import (
     NumpyArray1D,
     NumpyArray2D,
@@ -18,6 +24,30 @@ from dynagroup.types import (
 ###
 # Load forecasts
 ###
+
+
+def load_groupnet_forecasts(size: str, n_epochs: int, n_its_per_epoch: int) -> NumpyArray5D:
+    """
+    Argument:
+        size: in [small, medium, large]
+    Returns:
+        array of shape (E,S,T_forecast,J,D)
+    """
+
+    FILEPATH_GROUPNET = f"results/basketball/CLE_starters/artifacts_external/groupnet_sampled_trajectories_{size}_set_{n_epochs}_epochs_{n_its_per_epoch}_its_per_epoch.npy"
+
+    forecasts_normalized_and_doubly_wrongly_shaped = np.load(FILEPATH_GROUPNET)  # (S,E,J,T_forecast,D)
+    # S, E, J, T_forecast, D = np.shape(forecasts_normalized_but_doubly_wrongly_shaped )
+
+    forecasts_normalized_and_singly_wrongly_shaped = forecasts_normalized_and_doubly_wrongly_shaped.swapaxes(
+        0, 1
+    )  # has shape (E,S, J, T_forecast, D
+
+    forecasts_normalized = forecasts_normalized_and_singly_wrongly_shaped.swapaxes(
+        2, 3
+    )  # has shape (E,S,T_forecast,J,D)
+
+    return unnormalize_coords(forecasts_normalized)
 
 
 def load_agentformer_forecasts(size: str) -> NumpyArray5D:
@@ -127,7 +157,11 @@ class Metrics:
     CLE__SE_MEAN_DIST: float
 
 
-def compute_distances_from_forecasts_to_truth(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> NumpyArray4D:
+def compute_distances_from_forecasts_to_truth(
+    forecasts: NumpyArray5D,
+    ground_truth: NumpyArray4D,
+    enforce_boundary: bool = False,
+) -> NumpyArray4D:
     """
     Given forecasts with shape (E,S,T,J,D) and ground truth with shape (E,T,J,D),
     we want to compute the MEAN_DIST along the T and D dimensions,
@@ -156,12 +190,19 @@ def compute_distances_from_forecasts_to_truth(forecasts: NumpyArray5D, ground_tr
     if not (E_1 == E_2 and T_1 == T_2 and J_1 == J_2 and D_1 == D_2):
         raise ValueError("Dimensionalities of forecasts and ground truth do not match where expected.")
 
+    if enforce_boundary:
+        forecasts = np.maximum(forecasts, np.array([X_MIN_COURT, Y_MIN_COURT])[None, None, None, None, :])
+        forecasts = np.minimum(forecasts, np.array([X_MAX_COURT, Y_MAX_COURT])[None, None, None, None, :])
+
+        ground_truth = np.maximum(ground_truth, np.array([X_MIN_COURT, Y_MIN_COURT])[None, None, None, :])
+        ground_truth = np.minimum(ground_truth, np.array([X_MAX_COURT, Y_MAX_COURT])[None, None, None, :])
+
     # Compute sum of square differences along D dimension
     diff = forecasts - ground_truth[:, None, :, :, :]
     return np.sqrt(np.sum(diff**2, axis=4))
 
 
-def compute_metrics(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> Metrics:
+def compute_metrics(forecasts: NumpyArray5D, ground_truth: NumpyArray4D, enforce_boundary: bool = False) -> Metrics:
     """
     Arguments:
         forecasts: shape (E,S,T,J,D)
@@ -179,7 +220,9 @@ def compute_metrics(forecasts: NumpyArray5D, ground_truth: NumpyArray4D) -> Metr
     warnings.filterwarnings(action="ignore", message="Mean of empty slice")
 
     # Whole team
-    BOTH_TEAMS__squared_distances_ESTJ = compute_distances_from_forecasts_to_truth(forecasts, ground_truth)
+    BOTH_TEAMS__squared_distances_ESTJ = compute_distances_from_forecasts_to_truth(
+        forecasts, ground_truth, enforce_boundary
+    )
     BOTH_TEAMS__MEAN_DIST_ESJ = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=3)
     BOTH_TEAMS__MEAN_DIST_ES = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(2, 3))
     BOTH_TEAMS__MEAN_DIST_E = np.nanmean(BOTH_TEAMS__squared_distances_ESTJ, axis=(1, 2, 3))

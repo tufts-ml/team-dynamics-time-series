@@ -54,11 +54,10 @@ Compared to the full analysis:
 
 # Model specification
 n_train_games_to_use = 1
-model_type = Model_Type.Linear_And_OOB_Entity_Recurrence__and__All_Player_Locs_And_Court_Config_System_Recurrence
-# model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
+model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10
-L = 10
+L = 5
 
 # Exploratory Data Analysis
 animate_raw_data = False
@@ -67,8 +66,8 @@ animate_raw_data = False
 animate_initialization = False
 make_verbose_initialization_plots = False  # True
 seed_for_initialization = 1
-num_em_iterations_for_bottom_half_init = 5
-num_em_iterations_for_top_half_init = 20
+num_em_iterations_for_bottom_half_init = 10
+num_em_iterations_for_top_half_init = 40
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference

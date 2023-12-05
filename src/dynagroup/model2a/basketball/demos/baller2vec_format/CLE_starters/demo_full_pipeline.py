@@ -71,7 +71,7 @@ num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.DERIVATIVE
 
 # Inference
-n_cavi_iterations = 10
+n_cavi_iterations = 20
 make_verbose_CAVI_plots = False
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"

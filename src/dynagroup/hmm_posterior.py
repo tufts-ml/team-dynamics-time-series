@@ -220,7 +220,7 @@ def compute_entropy_of_HMM_posterior(
     """
     PS = posterior_summary_without_entropy
     entropy = 0.0
-    entropy += PS.log_normalizer  # float
+    entropy += -PS.log_normalizer  # float
     entropy += -jnp.sum(PS.expected_regimes * log_emissions)
     entropy += -jnp.sum(PS.expected_joints * log_transitions)
     entropy += -jnp.sum(PS.expected_regimes[0] * log_init)

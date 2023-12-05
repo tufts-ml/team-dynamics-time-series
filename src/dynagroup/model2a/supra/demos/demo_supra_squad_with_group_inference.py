@@ -217,7 +217,7 @@ report_on_directional_attractors(params_init)
 ###
 
 # TODO: Check if results_init (or something ele?) needs to be jax numpyified
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(snip.squad_angles),
     n_cavi_iterations,
     results_init,

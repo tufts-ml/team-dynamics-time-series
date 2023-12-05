@@ -200,7 +200,7 @@ params_init = results_init.params
 ###
 
 
-VES_summary, VEZ_summaries, params_learned = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     jnp.asarray(xs_for_inference),
     n_cavi_iterations,
     results_init,

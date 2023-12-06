@@ -44,7 +44,7 @@ B. To train our model (HSRDM) as well as various ablations, use
 C. To show results, use
 
 1. [_FigureEight_: DSARF](src/dynagroup/model2a/figure8/diagnostics/plot_external_forecasts.py) (results from our model constructed via above script)
-2. [Basketball: all models](/Users/miw267/Repos/dynagroup/src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_metrics_from_forecast_collection.py). Note that this script requires locating the forecasts that were written to disk in step B1. 
+2. [Basketball: all models](src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_metrics_from_forecast_collection.py). Note that this script requires locating the forecasts that were written to disk in step B1. 
 
 
 

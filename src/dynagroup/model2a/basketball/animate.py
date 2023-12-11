@@ -1,4 +1,4 @@
-# import os
+import os
 from functools import partial
 from typing import Dict, List, Optional, Tuple
 
@@ -40,10 +40,11 @@ References:
 # Vector field colors
 COLOR_NAMES = [
     "windows blue",
-    "red",
     "amber",
     "faded green",
+    "jungle green",
     "dusty purple",
+    "goldenrod",
     "orange",
     "brown",
     "pink",
@@ -57,9 +58,7 @@ Y_MIN_NORM, Y_MAX_NORM = 0.0, 1.0
 N_BINS_PER_AXIS = 10
 X_NORM = np.linspace(X_MIN_NORM - EPSILON, X_MAX_NORM + EPSILON, N_BINS_PER_AXIS)
 Y_NORM = np.linspace(Y_MIN_NORM - EPSILON, Y_MAX_NORM + EPSILON, N_BINS_PER_AXIS)
-XY_NORM = compute_cartesian_product_of_two_1d_arrays(
-    X_NORM, Y_NORM
-)  # shape (N_BINS_PER_AXIS**2, D=2)
+XY_NORM = compute_cartesian_product_of_two_1d_arrays(X_NORM, Y_NORM)  # shape (N_BINS_PER_AXIS**2, D=2)
 
 
 ###
@@ -100,8 +99,11 @@ def init(ax, info_text, player_text, player_circ, ball_circ, play_description: s
         ax.add_patch(player_circ[i])
     ax.add_patch(ball_circ)
 
+    # # Initialize quiver_handle (for vector fields, if used)
+    # quiver_handle = ax.quiver([], [])
+
     # Initialize quiver_handle (for vector fields, if used)
-    quiver_handle = ax.quiver([], [])
+    quiver_handle.set_UVC([], [])  # Clear the previous vector field
 
     # Setup axis basis
     ax.axis("off")
@@ -130,11 +132,13 @@ def update(
     ### 1. Draw players by team, with jersey numbers
     for i in range(10):
         player_circ[i].center = (event.moments[n].player_xs[i], event.moments[n].player_ys[i])
-        player_text[i].set_text(
-            str(event.moments[n].player_ids[i])
-        )  # todo: update with jersey number
+        player_text[i].set_text(str(event.moments[n].player_ids[i]))  # todo: update with jersey number
         player_text[i].set_x(event.moments[n].player_xs[i])
         player_text[i].set_y(event.moments[n].player_ys[i])
+
+    # if vector_field_dict:
+    #     focal_player_idx = vector_field_dict["focal_player_idx"]
+    #     player_text[focal_player_idx].set_text("***")
 
     ### 2. Draw ball
     ball_circ.center = (event.moments[n].ball_x, event.moments[n].ball_y)
@@ -158,9 +162,7 @@ def update(
         xy = unnormalize_coords(XY_NORM)
         dxydt = unnormalize_coords(dxydt_norm)
         k_hat = np.argmax(entity_state_weights)
-        quiver_handle = ax.quiver(
-            xy[:, 0], xy[:, 1], dxydt[:, 0], dxydt[:, 1], color=COLORS[k_hat % len(COLORS)]
-        )
+        quiver_handle = ax.quiver(xy[:, 0], xy[:, 1], dxydt[:, 0], dxydt[:, 1], color=COLORS[k_hat % len(COLORS)])
 
     ### 4. Print game clock info
     info_str = (
@@ -176,8 +178,35 @@ def update(
             info_str += f" {k}:{v[n]}"
     info_text[0].set_text(info_str)
 
-    plt.pause(0.04)  # Uncomment to watch movie as it's being made
+    plt.pause(0.005)  # Uncomment to watch movie as it's being made
     return tuple(info_text) + tuple(player_text) + tuple(player_circ) + (ball_circ, quiver_handle)
+
+
+def _make_player_colors(event, vector_field_dict) -> List[str]:
+    player_colors = ["color_unassigned"] * 10
+    exists_focal_player = vector_field_dict is not None
+    if exists_focal_player:
+        focal_player_idx = vector_field_dict["focal_player_idx"]
+        focal_team_hoop_side = event.moments[0].player_hoop_sides[focal_player_idx]
+        # if focal_team_hoop_size==0,  try to score on left.
+        focal_team_color = "darkred"
+        non_focal_team_color = "grey"
+        focal_player_color = "red"
+    else:
+        DUMMY_FOCAL_TEAM_HOOP_SIDE = 0
+        focal_team_hoop_side = DUMMY_FOCAL_TEAM_HOOP_SIDE
+        focal_team_color = "red"
+        non_focal_team_color = "blue"
+        focal_player_color = "N/A"
+
+    for i in range(10):
+        if event.moments[0].player_hoop_sides[i] == focal_team_hoop_side:
+            player_colors[i] = focal_team_color
+        else:
+            player_colors[i] = non_focal_team_color
+    if exists_focal_player:
+        player_colors[focal_player_idx] = focal_player_color
+    return player_colors
 
 
 def animate_event(
@@ -230,13 +259,10 @@ def animate_event(
     player_text = [None] * 10
     player_circ = [None] * 10
     R = 2.2
+    player_colors = _make_player_colors(event, vector_field_dict)
     for i in range(10):
         player_text[i] = ax.text(0, 0, "", color="w", ha="center", va="center")
-        if event.moments[0].player_hoop_sides[i] == 0:
-            col = "b"  # try to score on left.
-        else:
-            col = "r"  # try to score on right
-        player_circ[i] = plt.Circle((0, 0), R, color=col)
+        player_circ[i] = plt.Circle((0, 0), R, color=player_colors[i])
     ball_circ = plt.Circle((0, 0), R, color=[1, 0.4, 0])
 
     # vector fields
@@ -286,11 +312,14 @@ def animate_event(
         interval=1,
         repeat=False,
     )
-    plt.show()
-    # basename = play_description +"_" + filename_postfix + ".mp4"
-    # filepath = os.path.join(save_dir, basename)
-    # ani.save(filepath, dpi=100,fps=5)
-    # plt.close('all') #close the plot
+    if save_dir is not None:
+        basename = play_description + "_" + filename_postfix + ".mp4"
+        filepath = os.path.join(save_dir, basename)
+        ani.save(filepath, dpi=100, fps=5)
+        plt.close("all")  # close the plot
+
+    else:
+        plt.show()
 
 
 def animate_events_over_vector_field_for_one_player(
@@ -317,9 +346,7 @@ def animate_events_over_vector_field_for_one_player(
             event_start_stop_idxs[event_idx][0],
             event_start_stop_idxs[event_idx][1],
         )
-        entity_j_state_posterior_subsequence = entity_state_posterior[
-            event_start_idx:event_stop_idx, j_focal
-        ]
+        entity_j_state_posterior_subsequence = entity_state_posterior[event_start_idx:event_stop_idx, j_focal]
         A_j_init, b_j_init = CSP.As[j_focal], CSP.bs[j_focal]
         vector_field_dict_for_event = {
             "entity_j_state_posterior_subsequence": entity_j_state_posterior_subsequence,

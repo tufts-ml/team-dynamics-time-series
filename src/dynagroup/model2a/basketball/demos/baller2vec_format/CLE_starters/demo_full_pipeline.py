@@ -39,15 +39,6 @@ from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
 
-"""
-Module purpose: To explore the forecasts made on the "CLE Starters Dataset".  
-
-Compared to the full analysis:
-1) We run forecasts on the initialized model, not the model fully trained by CAVI.
-2) We just look at one test set event at a time.
-3) We make plots.
-"""
-
 ###
 # Configs
 ###a

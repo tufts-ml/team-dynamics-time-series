@@ -26,7 +26,7 @@ export PATH="/path/to/bin/micromamba:$PATH"
 
 # 2) Install a dedicated env for this project 
 
-Uses file `dynagroup_env.yml`
+Uses file `dynagroup_env.yml`, found in the root of this repo, [here](https://github.com/tufts-ml/team-dynamics-time-series/blob/mch_install/dynagroup_env.yml)
 
 ```
 $ cd $REPO_ROOT/

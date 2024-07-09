@@ -39,21 +39,12 @@ from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 
 
-"""
-Module purpose: To explore the forecasts made on the "CLE Starters Dataset".  
-
-Compared to the full analysis:
-1) We run forecasts on the initialized model, not the model fully trained by CAVI.
-2) We just look at one test set event at a time.
-3) We make plots.
-"""
-
 ###
 # Configs
 ###a
 
 # Model specification
-n_train_games_to_use = 1
+n_train_games_to_use = 20
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
 K = 10

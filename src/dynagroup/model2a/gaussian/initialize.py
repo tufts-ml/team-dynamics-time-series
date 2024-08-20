@@ -17,6 +17,7 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
 )
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.initialize import (
     InitializationResults,
     RawInitializationResults,
@@ -343,12 +344,14 @@ def fit_rARHMM_to_bottom_half_of_model(
         ###
 
         VES_expected_regimes__uniform = np.ones((T, L)) / L
+        VES_expected_regimes__good = system_regimes_gt(10, [1016, 2018, 2781, 4191, 6564, 7244, 8717])
+
         EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,
             ETP_JAX,
             IP_JAX,
             continuous_states,
-            VES_expected_regimes__uniform,
+            VES_expected_regimes__good, #added
             model,
             example_end_times,
         )
@@ -386,7 +389,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 ### New way: update ETP_JAX by using gradient descent
                 num_M_step_iterations_for_ETP_gradient_descent = 5
                 ES_summary_uniform = HMM_Posterior_Summary_JAX(
-                    expected_regimes=jnp.ones((T, L)) / L,
+                    expected_regimes=VES_expected_regimes__good,  #added
                     expected_joints=jnp.ones((T - 1, L, L)) / L,
                     log_normalizer=jnp.nan,
                 )
@@ -404,8 +407,8 @@ def fit_rARHMM_to_bottom_half_of_model(
                 )
 
             ###
-            # M-step (for CSP)
-            ###
+            # # M-step (for CSP)
+            # ###
             CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
                 EZ_summaries.expected_regimes,
                 continuous_states,

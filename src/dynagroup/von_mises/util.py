@@ -51,3 +51,4 @@ def two_angles_are_close(angle1, angle2, **kwargs):
     adjusted_angles = np.where(adjusted_angles <= 0, adjusted_angles + 2 * np.pi, adjusted_angles)
     check2 = np.isclose(adjusted_angles[0], adjusted_angles[1], **kwargs)
     return check1 or check2
+

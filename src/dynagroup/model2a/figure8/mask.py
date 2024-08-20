@@ -6,6 +6,8 @@ from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
 from dynagroup.types import NumpyArray2D, NumpyArray3D
 
 
+#WHAT DOES THE MASK MEAN? 
+
 def make_mask_of_which_continuous_states_to_use(continuous_states: NumpyArray3D) -> NumpyArray2D:
     """
     Arguments:

@@ -19,7 +19,7 @@ from dynagroup.types import (
     NumpyArray1D,
     NumpyArray2D,
 )
-from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.E_step_2 import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     ELBO_Decomposed,
     M_Step_Toggle_Value,
@@ -34,7 +34,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
+    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],  #IS THIS FOR MULTIPLE SEQUENCES?? 
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
@@ -306,30 +306,30 @@ def run_CAVI_with_JAX(
         ###
 
         all_params = run_M_step_for_CSP(
-            all_params,
-            M_step_toggles.CSP,
-            VEZ_summaries,
-            continuous_states,
-            i,
-            num_M_step_iters,
-            model,
-            example_end_times,
-            use_continuous_states,
+        all_params,
+        M_step_toggles.CSP,
+        VEZ_summaries,
+        continuous_states,
+        i,
+        num_M_step_iters,
+        model,
+        example_end_times,
+        use_continuous_states,
         )
 
         elbo_decomposed = compute_elbo_decomposed(
-            all_params,
-            VES_summary,
-            VEZ_summaries,
-            system_transition_prior,
-            continuous_states,
-            model,
-            example_end_times,
-            system_covariates,
+        all_params,
+        VES_summary,
+        VEZ_summaries,
+        system_transition_prior,
+        continuous_states,
+        model,
+        example_end_times,
+        system_covariates,
         )
         if verbose:
             print(
-                f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
         ###

@@ -255,7 +255,7 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_system_regim
     expected_log_transition_matrices = jnp.einsum(
         "tjlkd, tl -> tjkd",
         log_transition_matrices,
-        VES_expected_regimes[1:],
+        VES_expected_regimes[8:],  # og VES_expected_regimes[1:]
     )
 
     # TODO: Write unit test that the einsum is performing as expected.

@@ -160,7 +160,7 @@ def get_basketball_model_from_model_type(model_type: Model_Type) -> Model:
 def save_model_type(model_type: Model_Type, model_dir: str, basename_prefix: str = ""):
     filepath = os.path.join(model_dir, f"{basename_prefix}_model_type_string.txt")
     with open(filepath, "w") as file:
-        file.write(model_type.name)
+        file.write("marching_band")
 
 
 def load_model_from_model_type_string_filepath(filepath: str) -> Model:

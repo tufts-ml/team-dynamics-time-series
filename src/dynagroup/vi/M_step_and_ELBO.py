@@ -613,7 +613,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     bs = np.zeros((J, K, D))
     Qs = np.zeros((J, K, D, D))
 
-    MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 3.0
+    MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 0.5
     for j in range(J):
         xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):

@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
+from typing import List, Union
 
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
@@ -77,15 +78,15 @@ For inference, we use JAX.
 show_plots_of_samples = False
 
 # Masking and model adjustments
-mask_final_regime_transition_for_entity_2 = True
+mask_final_regime_transition_for_entity_2 = True            
 model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 # For initialization
-show_plots_after_init = False
+show_plots_after_init = False      
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
-preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION   
 
 
 # For inference
@@ -99,7 +100,7 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
-show_plots_after_learning = False
+show_plots_after_learning = False   
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [i + 1 for i in range(5)]
 entity_idxs_for_forecasting = [2]
@@ -136,7 +137,7 @@ if show_plots_of_samples:
 ###
 # MASKING
 ###
-if mask_final_regime_transition_for_entity_2:
+if mask_final_regime_transition_for_entity_2:    #QUESTION: WHAT DOES THIS DO? 
     use_continuous_states = make_mask_of_which_continuous_states_to_use(sample.xs)
 else:
     use_continuous_states = None
@@ -330,7 +331,7 @@ if show_plots_after_learning:
     )
 
 
-###  Plot Fit to Observations
+###  Plot Fit to Observations     #WHAT DO THESE PLOTS DO????? 
 if show_plots_after_learning:
     d = 0
     for j in range(DIMS.J):

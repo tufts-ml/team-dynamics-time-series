@@ -21,6 +21,7 @@ from dynagroup.util import (
     normalize_log_potentials_by_axis,
     segment_list
 )
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.model2a.marching_band.plots import (
     compute_next_step_predictive_means,
 )
@@ -68,12 +69,12 @@ model = marching_model_JAX
 GLOBAL_MSG = "LAUGH" * n_train_sequences
 N = 64
 T = 200
-total_time = 10350
+total_time = 10300
 
 # Initialization
 seed_for_initialization = 1
-num_em_iterations_for_bottom_half_init = 10
-num_em_iterations_for_top_half_init = 20
+num_em_iterations_for_bottom_half_init = 1
+num_em_iterations_for_top_half_init = 1
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 # Inference
@@ -117,6 +118,7 @@ gen = generate_training_data(GLOBAL_MSG, N, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
 cluster_states = gen[2]
+true_system_regimes = np.argmax(system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965]), axis=1)
 
 ###
 # MASKING
@@ -136,7 +138,6 @@ DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 ###
 # INITIALIZATION
 ###
-
 start_time = time.time() 
 print("Running smart initialization.")
 
@@ -192,9 +193,10 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     system_transition_prior,
     system_covariates,
     use_continuous_states,
+    true_system_regimes,
 )
 
-from IPython import embed; embed()
+
 end_time = time.time() 
 elapsed_time = end_time - start_time
 print(f"Code execution time: {elapsed_time} seconds")

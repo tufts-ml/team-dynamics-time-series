@@ -63,7 +63,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
         agents.append(a)
 
 
-    U = len(GLOBAL_MSG) * T + (49 * 30)
+    U = len(GLOBAL_MSG) * T + (50 * 30)
     pos_NU2 = np.zeros((U, N, 2))
     threshold = 7 #The amount of players that can become clumsy before the coach calls a cluster state. 
 
@@ -80,7 +80,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
         for t in range(T):
         
-            uu = ss*T + t + (49*c)
+            uu = ss*T + t + (50*c)
 
             for n in range(N):
                 if agents[n].clum_state == 1: 
@@ -102,13 +102,13 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                
                 trigger_index_list.append(uu)    
 
-                for l in range(50): 
+                for l in range(51): 
                     for n in range(N):
                         agents[n].step(STATEMAPS['cluster'], delta_N[n], 0.004, 0.0015, prng)
                         pos_NU2[l + uu , n, 0] = agents[n].x
                         pos_NU2[l + uu , n, 1] = agents[n].y
                 c+= 1
-            
+
             else: 
                 for n in range(N):
                     agents[n].step(STATEMAPS[cur_state], delta_N[n], 0.004, 0.0015, prng)
@@ -142,12 +142,10 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                 if step < 3 or step % 20 == 0 or step == U//5:
                     print('%s step %5d after %.1f sec' % (cur_state, step, time.time()-starttime))
 
-            
+        
         if ss > 0 and ((ss+6) % 5 == 0): 
             sequence_end_times.append(uu + 1)
-
     pos_NU2 = remove_zeros(pos_NU2)
-
     return pos_NU2, sequence_end_times, trigger_index_list
 
 
@@ -155,7 +153,6 @@ def remove_zeros(data):
 
     non_zero_subarrays = ~np.all(data == 0, axis=(1, 2))
     filtered_arr = data[non_zero_subarrays]
-
     return filtered_arr
 
 
@@ -232,11 +229,10 @@ if __name__ == '__main__':
     GLOBAL_MSG = 'LAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGH'
     N = 64
     T = 200
-    #array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
-    #data = array1[0]
-    #x
-    # trigger = array1[2]
-    x = system_regimes_gt(10, [1016, 2018, 2781, 4191, 6564, 7244, 8717])
-    from IPython import embed; embed()
+    array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
+    data = array1[0]
+    trigger = array1[2]
+    x = system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965])
+
     
     

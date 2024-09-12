@@ -67,7 +67,7 @@ model = marching_model_JAX
 GLOBAL_MSG = "LAUGH" * n_train_sequences
 N = 64
 T = 200
-total_time = 10300
+total_time = 10650
 
 # Initialization
 seed_for_initialization = 1
@@ -116,7 +116,7 @@ gen = generate_training_data(GLOBAL_MSG, N, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
 cluster_states = gen[2]
-true_system_regimes = np.argmax(system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965]), axis=1)
+true_system_regimes = np.argmax(system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376]), axis=1)
 
 ###
 # MASKING
@@ -132,7 +132,6 @@ D_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model)
 M_e = 0  # for now!
 DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 
-
 ###
 # INITIALIZATION
 ###
@@ -147,7 +146,7 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     DATA,
-    example_end_times, #DO I NEED THIS? 
+    example_end_times, 
     model,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,

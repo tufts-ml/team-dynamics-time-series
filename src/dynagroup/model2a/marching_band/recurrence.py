@@ -49,11 +49,10 @@ def direction_entity_recurrence_transformation(
     Arguments:
         x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's.
     """
-      
-    for num, entity in enumerate(x_prevs_reshaped[0:64]): 
-        grid_list = np.zeros(64 * 4)
-        for enum, elem in enumerate([0.2,0.4,0.6,0.8]): 
-            from IPython import embed; embed()
-            grid_list[num * enum + enum] = abs(elem-entity)
 
-    return jnp.array(grid_list)
+    grid1 = abs(x_prevs_reshaped[0] - 0.2) 
+    grid2 = abs(x_prevs_reshaped[0] - 0.4) 
+    grid3 = abs(x_prevs_reshaped[0] - 0.6) 
+    grid4 = abs(x_prevs_reshaped[0] - 0.8) 
+
+    return jnp.stack((grid1, grid2, grid3, grid4))

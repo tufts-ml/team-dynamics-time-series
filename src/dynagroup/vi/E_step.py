@@ -14,7 +14,6 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_hmm_posterior_summaries_JAX,
     compute_hmm_posterior_summary_JAX,
-    compute_hmm_posterior_summary_JAX_initialize,
 )
 from dynagroup.model import Model
 from dynagroup.params import (
@@ -23,7 +22,6 @@ from dynagroup.params import (
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -203,12 +201,12 @@ def run_VES_step_JAX(
         log_emissions, VEZ_summaries.expected_regimes, IP, example_end_times
     )
 
-    return compute_hmm_posterior_summary_JAX_initialize(
+    return compute_hmm_posterior_summary_JAX(
         log_transitions,
         log_emissions,
         IP.pi_system,
     )
-
+#Why does this not ouput the most_likely_regimes?????? 
 
 ###
 # VEZ Step

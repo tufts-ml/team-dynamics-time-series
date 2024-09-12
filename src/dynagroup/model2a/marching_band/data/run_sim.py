@@ -233,6 +233,6 @@ if __name__ == '__main__':
     data = array1[0]
     trigger = array1[2]
     x = system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965])
-
+    print(x)
     
     

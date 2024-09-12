@@ -47,7 +47,7 @@ from dynagroup.types import (
     NumpyArray3D,
 )
 from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.E_step_initialize import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggle_Value,
     run_M_step_for_CSP_in_closed_form__Gaussian_case,
@@ -344,7 +344,7 @@ def fit_rARHMM_to_bottom_half_of_model(
         ###
 
         VES_expected_regimes__uniform = np.ones((T, L)) / L
-        VES_expected_regimes__good = system_regimes_gt(10, [1016, 2018, 2781, 4191, 6564, 7244, 8717])
+        VES_expected_regimes__good = system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965])
 
         EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,

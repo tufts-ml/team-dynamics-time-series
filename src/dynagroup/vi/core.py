@@ -19,7 +19,7 @@ from dynagroup.types import (
     NumpyArray1D,
     NumpyArray2D,
 )
-from dynagroup.vi.E_step_2 import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     ELBO_Decomposed,
     M_Step_Toggle_Value,
@@ -233,7 +233,6 @@ def run_CAVI_with_JAX(
                 f"After E-step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-        from IPython import embed; embed()
 
         # TODO: I probably don't really need separate functions of the form run_M_step_for_<xxxx>.  Make this a single wrapper that in
         # turn calls the appropriate functions for closed-form or gradient descent inference.
@@ -271,7 +270,6 @@ def run_CAVI_with_JAX(
                 f"After ETP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-        from IPython import embed; embed()
 
         ###
         # M-step (STP)
@@ -308,7 +306,7 @@ def run_CAVI_with_JAX(
                 f"After STP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-        from IPython import embed; embed()
+
         ###
         # M-step (CSP)
         ###
@@ -340,7 +338,6 @@ def run_CAVI_with_JAX(
             f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-        from IPython import embed; embed()
 
         ###
         # M-step (IP)
@@ -372,7 +369,6 @@ def run_CAVI_with_JAX(
             system_covariates,
         )
 
-        from IPython import embed; embed()
         if verbose:
             print(
                 f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "

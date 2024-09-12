@@ -22,9 +22,7 @@ from dynagroup.util import (
     segment_list
 )
 from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
-from dynagroup.model2a.marching_band.plots import (
-    compute_next_step_predictive_means,
-)
+
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.model2a.marching_band.data.run_sim import generate_training_data

@@ -63,9 +63,9 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
         agents.append(a)
 
 
-    U = len(GLOBAL_MSG) * T + (50 * 30)
+    U = (len(GLOBAL_MSG) * T) + (50 * 50)
     pos_NU2 = np.zeros((U, N, 2))
-    threshold = 7 #The amount of players that can become clumsy before the coach calls a cluster state. 
+    threshold = 10 #The amount of players that can become clumsy before the coach calls a cluster state. 
 
     print("Running simulation for %d steps, recording every 5th step" % U)
 
@@ -86,11 +86,13 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                 if agents[n].clum_state == 1: 
                     pass
                 else: 
-                    agents[n].clum_state = prng.choice([0, 1], p=[0.9999, 0.0001]) 
+                    agents[n].clum_state = prng.choice([0, 1], p=[0.99999, 0.00001]) 
     
-            
-            k_list = [agents[n].clum_state for n in range(N)]
-            k = np.sum(k_list)
+            k = 0
+            k_list = [agents[n].x for n in range(N)]
+            for elem in k_list: 
+                if elem > 1 or elem < 0: 
+                    k+= 1 
             
             if k > threshold: 
                 for n in range(N): 
@@ -229,10 +231,9 @@ if __name__ == '__main__':
     GLOBAL_MSG = 'LAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGH'
     N = 64
     T = 200
-    array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
-    data = array1[0]
-    trigger = array1[2]
-    x = system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965])
-    print(x)
+    #array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
+    x = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
+
+    
     
     

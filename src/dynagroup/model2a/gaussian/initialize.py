@@ -47,7 +47,7 @@ from dynagroup.types import (
     NumpyArray3D,
 )
 from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step_initialize import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggle_Value,
     run_M_step_for_CSP_in_closed_form__Gaussian_case,
@@ -344,14 +344,14 @@ def fit_rARHMM_to_bottom_half_of_model(
         ###
 
         VES_expected_regimes__uniform = np.ones((T, L)) / L
-        VES_expected_regimes__good = system_regimes_gt(10, [1016, 2479, 4182, 6195, 7341, 8965])
+        VES_expected_regimes__good = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
 
         EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,
             ETP_JAX,
             IP_JAX,
             continuous_states,
-            VES_expected_regimes__good, #added
+            VES_expected_regimes__uniform, #added
             model,
             example_end_times,
         )
@@ -389,7 +389,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 ### New way: update ETP_JAX by using gradient descent
                 num_M_step_iterations_for_ETP_gradient_descent = 5
                 ES_summary_uniform = HMM_Posterior_Summary_JAX(
-                    expected_regimes=VES_expected_regimes__good,  #added
+                    expected_regimes=VES_expected_regimes__uniform,  #added
                     expected_joints=jnp.ones((T - 1, L, L)) / L,
                     log_normalizer=jnp.nan,
                 )

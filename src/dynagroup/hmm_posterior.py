@@ -350,7 +350,7 @@ def compute_hmm_posterior_summary_JAX_initialize(
         np.asarray(log_emissions, dtype=np.float64),
     )
 
-    expected_regimes = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
+    expected_regimes = system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680])
 
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
     # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where

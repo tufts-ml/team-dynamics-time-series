@@ -83,5 +83,5 @@ class BandAgent(object):
 
 		# Add noise
 		self.x += sigma_x * prng.random()
-		#self.y += sigma_y * prng.random()
+		self.y += sigma_y * prng.random() * 0.001
 

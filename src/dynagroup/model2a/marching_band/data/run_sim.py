@@ -65,7 +65,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
     U = (len(GLOBAL_MSG) * T) + (50 * 50)
     pos_NU2 = np.zeros((U, N, 2))
-    threshold = 10 #The amount of players that can become clumsy before the coach calls a cluster state. 
+    threshold = 11 #The amount of players that can go out of bounds. 
 
     print("Running simulation for %d steps, recording every 5th step" % U)
 
@@ -97,9 +97,9 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
             if k > threshold: 
                 for n in range(N): 
                     if agents[n].x > 1: 
-                        agents[n].x = agents[n].x - 1 
+                        agents[n].x = 0.5
                     if agents[n].x < 0: 
-                        agents[n].x = agents[n].x + 1
+                        agents[n].x = 0.5
                     agents[n].clum_state = 0
                
                 trigger_index_list.append(uu)    
@@ -231,8 +231,9 @@ if __name__ == '__main__':
     GLOBAL_MSG = 'LAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGH'
     N = 64
     T = 200
-    #array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
-    x = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
+    array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
+    from IPython import embed; embed()
+    #x = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
 
     
     

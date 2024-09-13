@@ -57,7 +57,7 @@ K = 12
 L = 6
 
 # Masking and model adjustments
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
 
 ###
 # SPECIFY MODEL
@@ -67,7 +67,7 @@ model = marching_model_JAX
 GLOBAL_MSG = "LAUGH" * n_train_sequences
 N = 64
 T = 200
-total_time = 10650
+total_time = 10300
 
 # Initialization
 seed_for_initialization = 1
@@ -116,7 +116,7 @@ gen = generate_training_data(GLOBAL_MSG, N, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
 cluster_states = gen[2]
-true_system_regimes = np.argmax(system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376]), axis=1)
+true_system_regimes = np.argmax(system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680]), axis=1)
 
 ###
 # MASKING

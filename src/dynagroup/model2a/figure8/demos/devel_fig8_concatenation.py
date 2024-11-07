@@ -3,9 +3,6 @@ import numpy as np
 import os
 
 from dynagroup.io import ensure_dir
-from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
-    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8,
-)
 from dynagroup.model2a.figure8.generate import (
     ALL_PARAMS,
     sample,
@@ -17,12 +14,15 @@ from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.util import (
-    get_current_datetime_as_string,
-)
 from dynagroup.params import dims_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
     plot_entity_regime_changepoints_for_figure_eight_dataset,
+)
+from dynagroup.util import (
+    get_current_datetime_as_string,
+)
+from dynagroup.model2a.figure8.diagnostics.posterior_mean_and_forward_simulation import (
+    evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice,
 )
 from dynagroup.plotting.sampling import plot_sample_with_system_regimes
 from dynagroup.plotting.unfolded_time_series import plot_unfolded_time_series
@@ -41,6 +41,7 @@ Model 2a is the special case of Model 2 where the continuous states are directly
     In the notes, it's called a meta-switching recurrent AR-HMM
     This has the advantage that CAVI is exact (no weird sampling), except for the Laplace VI.
 
+
 For inference, we use JAX.
 """
 
@@ -55,7 +56,8 @@ show_plots_of_samples = False
 
 # Masking and model adjustments
 mask_final_regime_transition_for_entity_2 = True
-MODEL_ADJUSTMENT = "complete_pooling"  # Options: None, "one_system_regime", "remove_recurrence", "complete_pooling"
+MODEL_ADJUSTMENT = "multi_channel"
+# Options for `MODEL_ADJUSTMENT`: None, "one_system_regime", "remove_recurrence", "complete_pooling", "multi_channel"
 
 # Events
 example_end_times = None
@@ -80,7 +82,6 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
-seed = 121
 show_plots_after_learning = False
 T_snippet_for_fit_to_observations = 400
 seeds_for_forecasting = [120, 121, 122, 123, 124]
@@ -90,10 +91,9 @@ T_slice_for_forecasting = 120
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"seed_{seed}_timestamp__{datetime_as_string}_pooling"
+run_description = f"seed_{seed}_timestamp__{datetime_as_string}_concatenation"
 home_dir = os.path.expanduser("~")
 plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
-
 
 
 
@@ -163,11 +163,25 @@ elif MODEL_ADJUSTMENT == "complete_pooling":
         # TODO: Do this via a proper function, don't hardcode it
         use_continuous_states = np.full((T_pooled, J), True)
         use_continuous_states[1080:,] = False
+elif MODEL_ADJUSTMENT == "multi_channel":
+    # TODO: move this to model adjustment repo
+    T, J, D = np.shape(sample.xs)
+    D_multi_channel = D * J
+    DIMS.J = 1
+    DIMS.D = D_multi_channel
+    xs_multi_channel = np.zeros((T, 1, D_multi_channel))
+    for j in range(J):
+        first_dim, last_dim = 2 * j, 2 * j + 1
+        xs_multi_channel[:, 0, first_dim : last_dim + 1] = sample.xs[:, j, :]
+    xs_for_inference = xs_multi_channel
+    example_end_times = np.array([-1, T])
+
 ###
 # I/O
 ###
 
 ensure_dir(plots_dir)
+ensure_dir(artifacts_dir)
 
 ###
 # INITIALIZATION
@@ -191,7 +205,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    plots_dir,
+    save_dir=plots_dir,
 )
 params_init = results_init.params
 
@@ -221,19 +235,26 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list
 
 
 ###
-# Forecasting...adjusted...
+# Forecasting
 ###
+
+
 entity_idxs_for_forecasting = [0]
-evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+
+find_forward_sim_t0_for_entity_sample = lambda x_vec: 280
+#Must change the indexing in this function to evaluate the MSE correctly for concatenation only. 
+evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     xs_for_inference,
     params_learned,
     VES_summary,
     VEZ_summaries,
-    T_slice_for_forecasting,
     model,
     seeds_for_forecasting,
     plots_dir,
     use_continuous_states,
     entity_idxs_for_forecasting,
+    find_forward_sim_t0_for_entity_sample,
+    T_slice_for_forecasting, 
+    y_lim=(-2.5, 2.5),
     filename_prefix=f"adjustment_{MODEL_ADJUSTMENT}_",
 )

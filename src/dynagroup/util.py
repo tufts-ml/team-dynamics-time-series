@@ -298,3 +298,8 @@ def segment_list(data, indexes):
         start = idx
     
     return segments
+
+def find_indices(lst, target):
+    # written by chatGPT!
+    """Return the indices where the target integer appears in the list."""
+    return [i for i, x in enumerate(lst) if x == target]

@@ -19,7 +19,7 @@ from dynagroup.types import (
     NumpyArray4D,
 )
 from dynagroup.util import soften_tpm
-from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt, system_transitions_gt
 
 
 ###
@@ -351,6 +351,7 @@ def compute_hmm_posterior_summary_JAX_initialize(
     )
 
     expected_regimes = system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680])
+
 
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
     # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where

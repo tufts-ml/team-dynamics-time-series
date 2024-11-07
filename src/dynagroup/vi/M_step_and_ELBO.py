@@ -73,6 +73,7 @@ from dynagroup.von_mises.inference.ar import (
 # ELBO
 ###
 
+np.random.seed(121)
 
 @jdc.pytree_dataclass
 class ELBO_Decomposed:

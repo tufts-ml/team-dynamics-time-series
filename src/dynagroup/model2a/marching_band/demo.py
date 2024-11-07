@@ -2,27 +2,30 @@ import numpy as np
 import jax.numpy as jnp
 import numpy.random as npr
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from matplotlib.animation import FuncAnimation
 import matplotlib.patches as patches
+from matplotlib.patches import Rectangle
 import time 
+import os
+
+from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
 
 from dynagroup.model2a.marching_band.model_factors import marching_model_JAX
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
 )
-from dynagroup.hmm_posterior import convert_hmm_posterior_summaries_from_jax_to_numpy
-from dynagroup.params import dims_from_params, numpy_params_from_params
-from dynagroup.sampler import sample_team_dynamics
-from dynagroup.sticky import sample_sticky_transition_matrix
-from dynagroup.types import NumpyArray4D
-from dynagroup.util import generate_random_covariance_matrix
+from dynagroup.metrics import get_aligned_estimate
 from dynagroup.util import (
     get_current_datetime_as_string,
-    normalize_log_potentials_by_axis,
-    segment_list
+    find_indices
 )
+from sklearn.cluster import KMeans
+from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
-
+from dynagroup.params import numpy_params_from_params
+from dynagroup.model2a.marching_band.metrics import compute_next_step_predictive_means
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
 from dynagroup.model2a.marching_band.data.run_sim import generate_training_data
@@ -33,14 +36,12 @@ from dynagroup.params import (
     get_dim_of_system_recurrence_output,
     save_params,
 )
-from dynagroup.plotting.sampling import plot_sample_with_system_regimes
-from dynagroup.model2a.basketball.model import (
-    Model_Type,
-    get_basketball_model,
+from dynagroup.model2a.marching_band.model import (
     save_model_type,
 )
 from dynagroup.hmm_posterior import save_hmm_posterior_summary
 from dynagroup.io import ensure_dir
+
 
 
 """
@@ -53,29 +54,29 @@ Model 2a refers to the fact that here we'll take the x's to be observed.
 
 # Model specification
 n_train_sequences = 10
-K = 12
+K = 4
 L = 6
-
-# Masking and model adjustments
-model_adjustment = "remove_recurrence"  # Options: None, "one_system_regime", "remove_recurrence"
 
 ###
 # SPECIFY MODEL
 ###
 model = marching_model_JAX
+model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
 
 GLOBAL_MSG = "LAUGH" * n_train_sequences
-N = 64
+J = 64
 T = 200
 total_time = 10300
+
 
 # Initialization
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 1
 num_em_iterations_for_top_half_init = 1
-preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION 
 
 # Inference
+seed = 121 #Need to change in Vi.Core if you want reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -88,9 +89,11 @@ show_system_states = False
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"weight_threshold={L}_K={K}_train_CAVI_its_{n_cavi_iterations}_timestamp__{datetime_as_string}"
-plots_dir = f"/Users/kgili/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/plots/{run_description}/"
-artifacts_dir = f"/Users/kgili/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/artifacts/{run_description}/"
+run_description = f"seed_{seed}_timestamp__{datetime_as_string}_none"
+home_dir = os.path.expanduser("~")
+plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/plots/{run_description}/"
+artifacts_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/artifacts/{run_description}/"
+frames_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/frames/"
 
 ###
 # I/O
@@ -108,29 +111,41 @@ T_snippet_for_fit_to_observations = 400
 ###
 system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
 
+
 ###
 # Data splitting and preprocessing
 ###
 
-gen = generate_training_data(GLOBAL_MSG, N, T, 0)
+gen = generate_training_data(GLOBAL_MSG, J, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
 cluster_states = gen[2]
 true_system_regimes = np.argmax(system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680]), axis=1)
-
 ###
 # MASKING
 ###
-use_continuous_states = None   #QUESTION: WHAT DOES THIS MEAN? 
+use_continuous_states = None  
+
 
 
 #### Setup Dims
-J = N
+N = 0
 D = 2
 D_e = get_dim_of_entity_recurrence_output(D, model)
 D_s = get_dim_of_system_recurrence_output(D, J, system_covariates, model)
-M_e = 0  # for now!
+M_e = 0 
 DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
+
+###
+# MODEL ADJUSTMENTS
+###
+if model_adjustment == "one_system_regime":
+    DIMS.L = 1
+elif model_adjustment == "remove_recurrence":
+    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX = (
+        lambda x_vec: np.zeros(DIMS.D_e)  
+    )
+
 
 ###
 # INITIALIZATION
@@ -138,10 +153,6 @@ DIMS = Dims(J, K, L, D, D_e, N, D_s, M_e)
 start_time = time.time() 
 print("Running smart initialization.")
 
-### TODO: Make smart initialization better. E.g.
-# 1) Run init x times, pick the one with the best ELBO.
-# 2) Find a way to do smarter init for the recurrence parameters
-# 3) Add prior into the M-step for the system-level tpm (currently it's doing closed form ML).
 
 results_init = smart_initialize_model_2a(
     DIMS,
@@ -168,13 +179,12 @@ elbo_init = compute_elbo_from_initialization_results(
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
-#QUESTION: HOW WOULD I INPUT A GOOD Q FOR THE MODEL HERE? 
 
 ####
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accuracy = run_CAVI_with_JAX(
     jnp.asarray(DATA),
     n_cavi_iterations,
     results_init,
@@ -198,128 +208,170 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"Code execution time: {elapsed_time} seconds")
 
+
+
 ### Save model, learned params, latent state distribution
 save_model_type(model, artifacts_dir, basename_prefix=run_description)
 save_params(params_learned, artifacts_dir, basename_prefix=run_description)
 save_hmm_posterior_summary(VES_summary, "qS", artifacts_dir, basename_prefix=run_description)
 save_hmm_posterior_summary(VEZ_summaries, "qZ", artifacts_dir, basename_prefix=run_description)
 
+####
+# Plotting and Model Validation for Data 
+####
+
+def plot_ca(classification_accuracy): 
+    fig, ax = plt.subplots(figsize=(10, 5))
+    plt.plot(classification_accuracy)
+    plt.xlabel("Number of CAVI Iterations")
+    plt.ylabel("Accuracy")
+    plt.title("Classification Accuracy")
+    plt.savefig(plots_dir + f"accuracy")
+    plt.show()
+
+def plot_system_segments(system_data): 
+    letters = ["L", "A", "U", "G", "H", "C"]
+    ground_truth = true_system_regimes
+    colors=['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
+
+    accuracy = compute_regime_labeling_accuracy(system_data, ground_truth)
+    print(accuracy)
+    unique_values = np.unique(system_data)
+    
+    color_map = dict(zip(unique_values, colors[:len(unique_values)]))
+    letter_map = dict(zip(unique_values, letters[:len(unique_values)]))
+    
+    fig, ax = plt.subplots(figsize=(10, 2))
+    for i, value in enumerate(system_data):
+        rect = patches.Rectangle((i, -1), 1, 2, linewidth=0, edgecolor='none', facecolor=color_map[value])
+        ax.add_patch(rect)
+        ax.text(i + 0.5, 0, letter_map[value], ha='center', va='center', fontsize=12, color='black')
+
+    ax.set_xlim(0, len(system_data))
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+    ax.set_title('HSRDM')
+    handles = [patches.Patch(color=color_map[val], label=f'{letter_map[val]}') for val in unique_values]
+    ax.legend(handles=handles, loc='upper right')
+    plt.show()
+    
+def check_cluster_similarity(system_data, true_data, target = 5):
+    index_list1 = find_indices(system_data, target)
+    index_list2 = find_indices(true_data, target)
+    similarity_score = len(set(index_list1).intersection(index_list2))
+    return similarity_score
+
+def plot_k_means_entities(entity_data):
+    letters = ["L", "A", "U", "G", "H", "C"]
+    ground_truth = true_system_regimes
+    k = 6
+    T = len(entity_data)
+    one_hot_encoded = np.eye(k)[entity_data]
+    reshaped_data = one_hot_encoded.reshape(T, -1)
+    kmeans = KMeans(n_clusters=6, random_state=0)
+    cluster_labels = kmeans.fit_predict(reshaped_data)
+    colors=['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
+
+    accuracy = compute_regime_labeling_accuracy(cluster_labels, ground_truth)
+    print(accuracy)
+    aligned_estimate = get_aligned_estimate(cluster_labels, ground_truth)
+    unique_values = np.unique(aligned_estimate)
+    
+    color_map = dict(zip(unique_values, colors[:len(unique_values)]))
+    letter_map = dict(zip(unique_values, letters[:len(unique_values)]))
+    
+    fig, ax = plt.subplots(figsize=(10, 2))
+    for i, value in enumerate(aligned_estimate):
+        # Draw the rectangle segment for each predicted cluster
+        rect = patches.Rectangle((i, -1), 1, 2, linewidth=0, edgecolor='none', facecolor=color_map[value])
+        ax.add_patch(rect)
+        # Add text to the middle of the rectangle for each segment
+        ax.text(i + 0.5, 0, letter_map[value], ha='center', va='center', fontsize=12, color='black')
+
+    # Customize plot
+    ax.set_xlim(0, len(aligned_estimate))
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+    ax.set_title('HSRDM No System')
+    handles = [patches.Patch(color=color_map[val], label=f'{letter_map[val]}') for val in unique_values]
+    ax.legend(handles=handles, loc='upper right')
+    plt.show()
 
 
-### CAN THE MODEL EXPLAIN COORDIANTED BEHAVIOR THAT IS CONTEXTUAL ON INDIDIVUAL ENTITY BEHAVIOR? AND INDIVIDUAL ENTITY BEHAVIOR THAT IS CONTEXTUAL ON COORDINATED BEHAVIOR? 
-###The soldier dataset does the latter; this dataset does the former. 
+
+def get_model_fitted_animation(sample): 
+    predictive_means = compute_next_step_predictive_means(
+                numpy_params_from_params(params_learned),
+                sample,
+                convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
+                after_learning=True,
+            )[1:]
+    
+    time_steps = list(range(0, len(sample), 10)) 
+    data_at_intervals = predictive_means[time_steps, :]  
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_xlim(0, 1)  
+    ax.set_ylim(np.min(data_at_intervals[:, :, 1]), np.max(data_at_intervals[:, :, 1])) 
+    
+    def update(frame):
+        current_time_step = time_steps[frame]  # Only the current frame's time step
+
+        ax.cla()
+
+        ax.set_xlim(0, 1)
+        ax.set_ylim(np.min(data_at_intervals[:, :, 1]), np.max(data_at_intervals[:, :, 1]))
+
+        X_current = data_at_intervals[frame, :, 0]  
+        Y_current = data_at_intervals[frame, :, 1] 
+
+        if frame < len(time_steps) - 1:
+            X_next = data_at_intervals[frame + 1, :, 0]
+            Y_next = data_at_intervals[frame + 1, :, 1]
+            U = X_next - X_current 
+            V = Y_next - Y_current  
+        else:
+            U = np.zeros_like(X_current)
+            V = np.zeros_like(Y_current)
+
+        for j in range(X_current.shape[0]):
+            ax.annotate('', xy=(X_current[j] + U[j], Y_current[j] + V[j]), xytext=(X_current[j], Y_current[j]),
+                        arrowprops=dict(facecolor='blue', edgecolor='black', shrink=0.05, width=1.5, headwidth=8, headlength=10, linestyle='-'))
+
+        fig.savefig(frames_dir + f'frame_{frame:04d}.png')
+        return ax
+
+    ani = FuncAnimation(fig, update, frames=len(time_steps), interval=500, blit=False)
+    
+    ani.save(frames_dir + 'animated_time_series_2D_larger_arrows_every_10_frames.gif', writer='pillow', fps=2) 
+    
+    plt.show()
+
+
 
 if show_plots_after_learning:
     most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1) 
     most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
 
-    data_np = np.asarray(most_likely_system_regimes)
-    split = segment_list(data_np, example_end_times[1:])
+    # Plot system sequence trained model plots 
+    system_aligned_sequence = get_aligned_estimate(most_likely_system_regimes, true_system_regimes)
+    system_raw = np.asarray(system_aligned_sequence)
+    plot_system_segments(system_raw)
 
-    for s, data in enumerate(split[:-1]): 
+    #Plot classification accuracy 
+    plot_ca(classification_accuracy)
 
-        #With help from ChatGPT4
-        print(f"Plotting the most likely system regimes in time with segments for sequence {s+1}")
-        unique_values = np.unique(data)
-        letters= ["L", "A", "U", "G", "H", "C"]
-        colors = ['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
-        color_map = dict(zip(unique_values, colors))
+    plot_k_means_entities(most_likely_entity_regimes)
 
-        # Create the plot
-        fig, ax = plt.subplots(figsize=(10, 5))
-
-        for i in range(len(data)):
-            value = data[i]
-            rect = patches.Rectangle((i, -1), 1, 2, linewidth=0, edgecolor='none', facecolor=color_map[value])
-            ax.add_patch(rect)
-
-        # Customize plot
-        ax.set_xlim(0, len(data))
-        ax.set_ylim(-1, 1)  # Narrow y-axis to fit the line segments
-        #ax.set_xticks([0, len(data)])
-        ax.set_yticks([])
-        ax.set_title(f'System State Segmentation for Sequence {s+1}')
-
-        # Add a legend
-        label_map = dict(zip(unique_values, letters))
-        handles = [patches.Patch(color=color_map[val], label=f'{label_map[val]}') for val in unique_values]
-        ax.legend(handles=handles, loc='upper right')
-
-        # Show plot
-        plt.savefig(plots_dir + f"seq{s+1}")
-        plt.show()
+    #Check cluster state accuracy 
+    cluster_metric = check_cluster_similarity(system_raw, true_system_regimes)
+    num_identified_cluster_states = np.count_nonzero(system_aligned_sequence == 5)
+    print(f"The cluster true positive classification accuracy is {cluster_metric/300}. The total number of identified cluster states is {num_identified_cluster_states}.")
 
 
-    # print("Plotting the number of individual players out of bounds in data")
+    #Generate an animation for the next sequence of the model given one sequence and trained parameters. 
+    get_model_fitted_animation(DATA[0:1000])
 
-    # num_out_of_bounds = []
-    # for i in range(total_time): 
-    #     j_list = DATA[i, 0:64, 0]
-    #     num_out = 0
-    #     for elem in j_list: 
-    #         if elem > 1 or elem < 0: 
-    #             num_out += 1 
-    #     num_out_of_bounds.append(num_out)
-    # from IPython import embed; embed()
-    # composite_list = [num_out_of_bounds[x:x+1000] for x in range(0, len(num_out_of_bounds),1000)]
-    # summed_list = []
-    # for sublist in composite_list:
-    #     for i in range(len(sublist)):
-    #         summed_list[i] += sublist[i]
-    
-    # ave_out_of_bounds = [element / 10 for element in summed_list]
-    # print(f"ave_out_of_bounds = {ave_out_of_bounds}")
-    # plt.figure(figsize=(8, 6))
-    # plt.plot(ave_out_of_bounds, color="black")
-    # plt.xlabel("Time")
-    # plt.ylabel("Number of Clumsy Entities")   
-    # plt.savefig(plots_dir + "num_clumsy")
-    # plt.show()
-
-
-    # print("Plotting the most likely entity regime for each entity in time")
-    # for j in range(DIMS.J):
-    #     plt.figure(figsize=(8, 6))
-    #     plt.scatter(most_likely_entity_regimes[j], color="black")
-    #     plt.xlabel("Time")
-    #     plt.ylabel("Entity State")   
-    #     plt.title(f"Most Likely Entity {j+1} Regime") 
-    #     plt.savefig(plots_dir + f"entity_regime_plot_{j+1}")
-    #     plt.show()
-
-
-    # print("Plotting the training data x-values for all j entities")
-    # for j in range(DIMS.J):
-    #     plt.figure(figsize=(8, 6))
-    #     plt.scatter(DATA[0:total_time:20, j, 0], color="black")
-    #     plt.xlabel("Time")
-    #     plt.ylabel("X-Value")  
-    #     plt.title(f"Training Data {j+1}")
-    #     plt.savefig(plots_dir + f"entity_regime_plot_{j+1}")
-    #     plt.show()
-
-
-# ###  Plot Fit to Observations     
-# if show_plots_after_learning:
-#     d = 0
-#     for j in range(DIMS.J):
-#         for after_learning in [False, True]:
-#             predictive_means = compute_next_step_predictive_means(
-#                 numpy_params_from_params(params_learned), total_time,
-#                 DATA,
-#                 convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
-#                 after_learning,
-#             )
-#             print(f"Plotting next-step predictive means for entity {j} and dim {d}")
-#             plt.figure(figsize=(8, 6))
-#             plt.plot(predictive_means[0:T_snippet_for_fit_to_observations, j, d], color="red")
-#             plt.plot(DATA[0:T_snippet_for_fit_to_observations, j, d], color="black")
-#             plt.xlabel("Time")
-#             plt.ylabel("X-Value")  
-#             plt.title(f"Entity {j+1}")
-#             plt.savefig(plots_dir + "fit_to_observations")
-#             plt.show()
-
+            
 
 
 

@@ -106,6 +106,7 @@ def run_CAVI_with_JAX(
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
     DIMS = dims_from_params(all_params)
     T = np.shape(continuous_states)[0]
+    classification_list = np.zeros(n_iterations)
 
 
     if continuous_states.ndim == 2:
@@ -195,6 +196,7 @@ def run_CAVI_with_JAX(
                 most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
                 pct_correct_system = compute_regime_labeling_accuracy(most_likely_system_regimes, true_system_regimes)
                 print(f"Percent correct classifications for system segmentations {pct_correct_system:.02f}")
+                classification_list[i] = pct_correct_system
 
         VEZ_summaries = run_VEZ_step_JAX(
             all_params.CSP,
@@ -306,6 +308,8 @@ def run_CAVI_with_JAX(
                 f"After STP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
+    
+
 
         ###
         # M-step (CSP)
@@ -374,4 +378,7 @@ def run_CAVI_with_JAX(
                 f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-    return VES_summary, VEZ_summaries, all_params, elbo_decomposed
+    
+        
+
+    return VES_summary, VEZ_summaries, all_params, elbo_decomposed, classification_list 

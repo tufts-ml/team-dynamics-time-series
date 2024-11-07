@@ -1,21 +1,8 @@
 import jax.numpy as jnp
 import numpy as np 
+import jax
 
 from dynagroup.types import JaxNumpyArray1D
-
-
-"""
-Module-level docstring:
-
-    System recurrence transformations map (JD,) to (D_s,), where
-        J: number of entities (for marching band J=64)
-        D: dimension of continuous states (for marching band D=2)
-        D_s: dimension of system recurrence information and system covariates after transformation
-
-    The flattened JD vector scrolls through j's for each d.  I.e. is can be indexed as
-    (j_1,0), (j_2, 0), .... (J,0), (j_1, 1), (j_2, 1), ..., (J,1), ... (J,D)
-
-"""
 
 
 def cluster_trigger_system_recurrence_transformation(
@@ -26,18 +13,22 @@ def cluster_trigger_system_recurrence_transformation(
     Returns the scalar value associated with the probability that the cluster state should be triggered based on how many players are currently out of bounds.
 
     Arguments:
-        x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's.
+        x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's. Cite[ChatGPT]
     """
-    count = 0
-    for entity in x_prevs_reshaped[:64]: 
-        if entity < 0 or entity > 1: 
-            count +=1
-   
-    if count >= 7: 
-        trigger = 1
-    else:
-        trigger = count/7   #What did you mean by probability? 
-    return jnp.array([trigger]) 
+    
+    condition1 = x_prevs_reshaped[0:64] > 1 
+    condition2 = x_prevs_reshaped[0:64] < 0 
+
+    count = jnp.sum(condition1) + jnp.sum(condition2)
+    
+    prob = jax.lax.cond(
+        count >= 11,             
+        lambda _: 1.0,           
+        lambda _: count / 11.0,  
+        operand=None             
+    )
+
+    return jnp.array([prob])
 
 
 def direction_entity_recurrence_transformation(
@@ -56,3 +47,28 @@ def direction_entity_recurrence_transformation(
     grid4 = abs(x_prevs_reshaped[0] - 0.8) 
 
     return jnp.stack((grid1, grid2, grid3, grid4))
+
+def identity_recurrence_entity(
+    x_prevs_reshaped: JaxNumpyArray1D,
+) -> JaxNumpyArray1D:
+    """
+    Returns the identity of the values. 
+
+    Arguments:
+        x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's.
+    """
+
+    return x_prevs_reshaped
+
+
+def identity_recurrence_system(
+    x_prevs_reshaped: JaxNumpyArray1D,
+    system_covariates: JaxNumpyArray1D,
+) -> JaxNumpyArray1D:
+    """
+    Returns the identity of the values. 
+
+    Arguments:
+        x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's.
+    """
+    return x_prevs_reshaped

@@ -23,7 +23,7 @@ from dynagroup.params import (
     InitializationParameters_JAX,
     SystemTransitionParameters_JAX,
 )
-from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt, system_transitions_gt
 from dynagroup.types import (
     JaxNumpyArray1D,
     JaxNumpyArray2D,
@@ -154,13 +154,15 @@ def run_VES_step_JAX(
         use_continuous_states = np.full((T, J), True)
 
     # `transitions` is (T-1) x L x L
-    log_transitions = model.compute_log_system_transition_probability_matrices_JAX(
-        STP,
-        T - 1,
-        system_covariates=system_covariates,
-        x_prevs=continuous_states[:-1],
-        system_recurrence_transformation=model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX,
-    )
+    # log_transitions = model.compute_log_system_transition_probability_matrices_JAX(
+    #     STP,
+    #     T - 1,
+    #     system_covariates=system_covariates,
+    #     x_prevs=continuous_states[:-1],
+    #     system_recurrence_transformation=model.transform_of_flattened_continuous_state_vectors_before_premultiplying_by_system_recurrence_matrix_JAX,
+    # )
+    expected_regimes = system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680])
+    log_transitions = jnp.log(system_transitions_gt(expected_regimes))
 
     # ` initial_log_emission_for_each_system_regime` is a float after summing over (J,K) objects
     initial_log_emission_for_each_system_regime = jnp.sum(VEZ_summaries.expected_regimes[0] * np.log(IP.pi_entities))

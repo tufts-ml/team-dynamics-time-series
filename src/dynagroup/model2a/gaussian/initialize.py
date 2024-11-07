@@ -17,6 +17,7 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
 )
+from dynagroup.metrics import compute_regime_labeling_accuracy
 from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.initialize import (
     InitializationResults,
@@ -47,7 +48,7 @@ from dynagroup.types import (
     NumpyArray3D,
 )
 from dynagroup.util import make_fixed_sticky_tpm_JAX
-from dynagroup.vi.E_step_initialize import run_VES_step_JAX, run_VEZ_step_JAX
+from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     M_Step_Toggle_Value,
     run_M_step_for_CSP_in_closed_form__Gaussian_case,
@@ -351,7 +352,7 @@ def fit_rARHMM_to_bottom_half_of_model(
             ETP_JAX,
             IP_JAX,
             continuous_states,
-            VES_expected_regimes__good, #added
+            VES_expected_regimes__uniform, #added
             model,
             example_end_times,
         )
@@ -389,7 +390,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 ### New way: update ETP_JAX by using gradient descent
                 num_M_step_iterations_for_ETP_gradient_descent = 5
                 ES_summary_uniform = HMM_Posterior_Summary_JAX(
-                    expected_regimes=VES_expected_regimes__good,  #added
+                    expected_regimes=VES_expected_regimes__uniform,  #added
                     expected_joints=jnp.ones((T - 1, L, L)) / L,
                     log_normalizer=jnp.nan,
                 )
@@ -415,7 +416,6 @@ def fit_rARHMM_to_bottom_half_of_model(
                 example_end_times,
                 use_continuous_states,
             )
-
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states, ETP_JAX)
 
 
@@ -478,9 +478,12 @@ def fit_ARHMM_to_top_half_of_model(
             system_covariates,
             use_continuous_states=use_continuous_states,
         )
+        
 
         record_of_most_likely_states[:, iteration] = np.array(np.argmax(ES_summary.expected_regimes, axis=1), dtype=int)
 
+
+       
         ###
         # M-step
         ###
@@ -526,7 +529,7 @@ def fit_ARHMM_to_top_half_of_model(
                     continuous_states,
                     verbose,
                 )
-
+    
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
 
@@ -713,5 +716,7 @@ def smart_initialize_model_2a(
             continuous_states,
             example_end_times,
         )
+
+
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw, params_frozen)

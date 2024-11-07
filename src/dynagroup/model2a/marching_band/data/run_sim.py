@@ -21,20 +21,8 @@ from dynagroup.model2a.marching_band.data.BandAgent import BandAgent
 from dynagroup.model2a.marching_band.data.templates import STATEMAP_ARRAYS_BY_NAME
 
 
-COLORS = [
-    '#a6cee3',
-    '#1f78b4',
-    '#b2df8a',
-    '#33a02c',
-    '#fb9a99',
-    '#e31a1c',
-    '#fdbf6f',
-    '#ff7f00',
-    '#cab2d6',
-    '#6a3d9a',
-    '#ffff99',
-    '#b15928',
-]
+COLORS =['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
+home_dir = os.path.expanduser("~")
 
 def generate_training_data(GLOBAL_MSG, N, T, seed): 
     G = 100
@@ -47,13 +35,12 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
     for k, v_AB in STATEMAP_ARRAYS_BY_NAME.items():
         v_GH = skimage.transform.resize(
             v_AB, (G, H), mode='constant', preserve_range=True)
-        # flip upside down so y indexing works with 0 as origin
+      
         STATEMAPS[k] = np.asarray(np.flipud(v_GH) > 0.01, dtype=np.int32) 
 
     prng = np.random.default_rng(seed)
 
     delta_N = prng.uniform(low=0.015, high=0.05, size=N)
-    color_N = prng.choice(COLORS, size=N, replace=True)
 
     agents = []
     for n in range(N):
@@ -65,7 +52,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
     U = (len(GLOBAL_MSG) * T) + (50 * 50)
     pos_NU2 = np.zeros((U, N, 2))
-    threshold = 11 #The amount of players that can go out of bounds. 
+    threshold = 11 #The amount of players that can go out of bounds before a cluster state is triggered. 
 
     print("Running simulation for %d steps, recording every 5th step" % U)
 
@@ -126,15 +113,15 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                 for n in range(N):
                     marker = '>' if agents[n].x_dir == 1 else '<'
                     plt.plot(pos_NU2[uu-5:uu,n,0], pos_NU2[uu-5:uu,n,1],
-                        '.-', color=color_N[n])
+                        '.-', color=COLORS[ss])
                     plt.plot(pos_NU2[uu,n,0], pos_NU2[uu,n,1],
-                        marker, color=color_N[n])
+                        marker, color=COLORS[ss])
                 ax = plt.gca()
                 ax.set_xlim([0,1])
                 ax.set_ylim([0,1])
                 ax.set_aspect('equal')
                 plt.show(block=False)
-                path = f'/Users/kgili/team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
+                path = f'{home_dir}team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
                 os.makedirs(path, exist_ok=True)
                 fpath = os.path.join(path, 'step%05d.png' % step)
                 plt.savefig(fpath)
@@ -143,7 +130,6 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
                 if step < 3 or step % 20 == 0 or step == U//5:
                     print('%s step %5d after %.1f sec' % (cur_state, step, time.time()-starttime))
-
         
         if ss > 0 and ((ss+6) % 5 == 0): 
             sequence_end_times.append(uu + 1)
@@ -152,57 +138,10 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
 
 def remove_zeros(data):
-
     non_zero_subarrays = ~np.all(data == 0, axis=(1, 2))
     filtered_arr = data[non_zero_subarrays]
     return filtered_arr
 
-
-def plot_segmentation_gt(data, sequence): 
-
-    sequence_end_times = data[1]
-    trigger_index_list = data[2]
-
-    start = sequence_end_times[sequence-1]
-    end = sequence_end_times[sequence]
-
-         
-    #ALWAYS START WITH NORMAL SEGMENTS 200, 400,.. AND THEN ADD IN WHERE THE CLUSTER STATES ARE
-    segments = [
-        {"label": "L", "start": start, "end": start + 200, "color": '#ff7f00'},
-        {"label": "A", "start": start + 200, "end": start + 450, "color": '#cab2d6'},
-        {"label": "U", "start": start + 450, "end": start + 650, "color": '#6a3d9a'},
-        {"label": "G", "start": start + 650, "end": start + 850, "color": '#ffff99'},
-        {"label": "H", "start": start + 850, "end": start + 1050, "color": '#b15928'}
-    ]    
-
-    for j in trigger_index_list: 
-        if j <= end and j >= start: 
-            segments.append({"label": "C", "start": j, "end": j+50, "color": '#a6cee3'})
-    
-    # Create a figure and axis
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    # Plot each segment
-    for segment in segments:
-        rect = patches.Rectangle((segment["start"], 0), segment["end"] - segment["start"], 1, 
-                                linewidth=1, edgecolor='black', facecolor=segment["color"])
-        ax.add_patch(rect)
-
-    # Add labels and grid
-    ax.set_yticks([])
-    # ax.set_xticks(np.arange(0, 121, 10))
-    # ax.set_xticklabels(np.arange(0, 121, 10))
-    ax.set_xlim(start, end)
-    # ax.set_ylim(0, 1)
-
-    # Add a legend
-    handles = [patches.Patch(color=segment["color"], label=segment["label"]) for segment in segments]
-    ax.legend(handles=handles, loc='upper right')
-
-    # Title and show plot
-    plt.title('System State Segmentation')
-    plt.show()
 
 def system_regimes_gt(num_sequences, trigger): 
     og = num_sequences*1000
@@ -225,15 +164,11 @@ def system_regimes_gt(num_sequences, trigger):
     return system_regimes
 
 
-
 if __name__ == '__main__':
-
     GLOBAL_MSG = 'LAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGH'
     N = 64
     T = 200
     array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
-    from IPython import embed; embed()
-    #x = system_regimes_gt(10, [3333,3394,3730,4824,4889,4969,8919,8977,9036,9093,9168,10314,10376])
 
     
     

@@ -60,7 +60,7 @@ C. Experiments from the paper can be reproduced by running the scripts/notebooks
 3. [_FigureEight_: HSRDM, rAR-HMM Concat.](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/results/plots)
 4. [_FigureEight_: DSARF Ind., Pool., Concat.](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_figure_8)
 5. [Basketball: HSRDM, rAR-HMM, no-recurrence ablation](src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py)
-6. [MarchingBand: HSRDM, rAR-HMM, no-recurrence ablation](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/marching_band/results/plots.py)
+6. [MarchingBand: HSRDM, rAR-HMM, no-recurrence ablation](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/marching_band/results/plots)
 7. [MarchingBand: DSARF Concat.](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_marching/plot_results.ipynb)
 
 

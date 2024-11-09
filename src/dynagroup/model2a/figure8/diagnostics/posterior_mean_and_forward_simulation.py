@@ -433,7 +433,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
     fig2 = plt.figure(figsize=(2, 6))
     cax = fig2.add_subplot()
-    cbar = fig1.colorbar(im, cax=cax)
+    cbar = fig1.colorbar(im, cax=cax, ticks = [280, 300, 320, 340, 360, 380, 400] )
     cbar.set_label("Timesteps", rotation=90)
     plt.tight_layout()
     fig2.savefig(save_dir + "colorbar_clip.pdf")

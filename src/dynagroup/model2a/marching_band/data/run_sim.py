@@ -21,7 +21,6 @@ from dynagroup.model2a.marching_band.data.BandAgent import BandAgent
 from dynagroup.model2a.marching_band.data.templates import STATEMAP_ARRAYS_BY_NAME
 
 
-COLORS =['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
 home_dir = os.path.expanduser("~")
 
 def generate_training_data(GLOBAL_MSG, N, T, seed): 
@@ -41,6 +40,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
     prng = np.random.default_rng(seed)
 
     delta_N = prng.uniform(low=0.015, high=0.05, size=N)
+    COLORS = prng.choice(['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3'], size=N) 
 
     agents = []
     for n in range(N):
@@ -113,15 +113,15 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                 for n in range(N):
                     marker = '>' if agents[n].x_dir == 1 else '<'
                     plt.plot(pos_NU2[uu-5:uu,n,0], pos_NU2[uu-5:uu,n,1],
-                        '.-', color=COLORS[ss])
+                        '.-', color=COLORS[n])
                     plt.plot(pos_NU2[uu,n,0], pos_NU2[uu,n,1],
-                        marker, color=COLORS[ss])
+                        marker, color=COLORS[n])
                 ax = plt.gca()
                 ax.set_xlim([0,1])
                 ax.set_ylim([0,1])
                 ax.set_aspect('equal')
                 plt.show(block=False)
-                path = f'{home_dir}team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
+                path = f'{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
                 os.makedirs(path, exist_ok=True)
                 fpath = os.path.join(path, 'step%05d.png' % step)
                 plt.savefig(fpath)

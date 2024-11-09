@@ -39,7 +39,7 @@ A. Baseline forecasts for non-ablation models can be obtained via the following 
 
 B. To train our model (HSRDM) as well as various ablations, use: 
 
-1. [_FigureEight_: HSRDM, rAR-HMM](src/dynagroup/model2a/figure8/demos/demo_cavi_on_figure8.py)
+1. [_FigureEight_: HSRDM, rAR-HMM](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/demos/demo_cavi_on_figure8.py)
 2. [_FigureEight_: HSRDM, rAR-HMM Pool.](src/dynagroup/model2a/figure8/demos/demo_fig8_complete_pooling.py)
 3. [_FigureEight_: HSRDM, rAR-HMM Concat.](src/dynagroup/model2a/figure8/demos/demo_fig8_concatenation.py)
 4. [Basketball: HSRDM, rAR-HMM, no-recurrence ablation](src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py)

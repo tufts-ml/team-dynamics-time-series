@@ -76,7 +76,7 @@ num_em_iterations_for_top_half_init = 1
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION 
 
 # Inference
-seed = 121 #Need to change in Vi.Core if you want reproducibility over entire training 
+seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"

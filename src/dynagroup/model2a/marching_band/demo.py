@@ -253,6 +253,7 @@ def plot_system_segments(system_data):
     ax.set_title('HSRDM')
     handles = [patches.Patch(color=color_map[val], label=f'{letter_map[val]}') for val in unique_values]
     ax.legend(handles=handles, loc='upper right')
+    plt.savefig(plots_dir + f"system_states")
     plt.show()
     
 def check_cluster_similarity(system_data, true_data, target = 5):
@@ -298,56 +299,6 @@ def plot_k_means_entities(entity_data):
     plt.show()
 
 
-
-def get_model_fitted_animation(sample): 
-    predictive_means = compute_next_step_predictive_means(
-                numpy_params_from_params(params_learned),
-                sample,
-                convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
-                after_learning=True,
-            )[1:]
-    
-    time_steps = list(range(0, len(sample), 10)) 
-    data_at_intervals = predictive_means[time_steps, :]  
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.set_xlim(0, 1)  
-    ax.set_ylim(np.min(data_at_intervals[:, :, 1]), np.max(data_at_intervals[:, :, 1])) 
-    
-    def update(frame):
-        current_time_step = time_steps[frame]  # Only the current frame's time step
-
-        ax.cla()
-
-        ax.set_xlim(0, 1)
-        ax.set_ylim(np.min(data_at_intervals[:, :, 1]), np.max(data_at_intervals[:, :, 1]))
-
-        X_current = data_at_intervals[frame, :, 0]  
-        Y_current = data_at_intervals[frame, :, 1] 
-
-        if frame < len(time_steps) - 1:
-            X_next = data_at_intervals[frame + 1, :, 0]
-            Y_next = data_at_intervals[frame + 1, :, 1]
-            U = X_next - X_current 
-            V = Y_next - Y_current  
-        else:
-            U = np.zeros_like(X_current)
-            V = np.zeros_like(Y_current)
-
-        for j in range(X_current.shape[0]):
-            ax.annotate('', xy=(X_current[j] + U[j], Y_current[j] + V[j]), xytext=(X_current[j], Y_current[j]),
-                        arrowprops=dict(facecolor='blue', edgecolor='black', shrink=0.05, width=1.5, headwidth=8, headlength=10, linestyle='-'))
-
-        fig.savefig(frames_dir + f'frame_{frame:04d}.png')
-        return ax
-
-    ani = FuncAnimation(fig, update, frames=len(time_steps), interval=500, blit=False)
-    
-    ani.save(frames_dir + 'animated_time_series_2D_larger_arrows_every_10_frames.gif', writer='pillow', fps=2) 
-    
-    plt.show()
-
-
-
 if show_plots_after_learning:
     most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1) 
     most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
@@ -357,7 +308,7 @@ if show_plots_after_learning:
     system_raw = np.asarray(system_aligned_sequence)
     plot_system_segments(system_raw)
 
-    #Plot classification accuracy 
+    #Plot classification accuracy throughout training
     plot_ca(classification_accuracy)
 
     plot_k_means_entities(most_likely_entity_regimes)
@@ -368,8 +319,7 @@ if show_plots_after_learning:
     print(f"The cluster true positive classification accuracy is {cluster_metric/300}. The total number of identified cluster states is {num_identified_cluster_states}.")
 
 
-    #Generate an animation for the next sequence of the model given one sequence and trained parameters. 
-    get_model_fitted_animation(DATA[0:1000])
+
 
             
 

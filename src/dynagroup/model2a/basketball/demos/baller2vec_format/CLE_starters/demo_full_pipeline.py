@@ -218,7 +218,7 @@ if animate_initialization:
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accuracy = run_CAVI_with_JAX(
     jnp.asarray(DATA_TRAIN.player_coords),
     n_cavi_iterations,
     results_init,   

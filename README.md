@@ -33,7 +33,7 @@ Here we provide scripts for reproducing experiments on publicly available data (
 A. Baseline forecasts for non-ablation models can be obtained via the following external repos:
 
 1. [_FigureEight_: DSARF](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_figure_8)
-2. [Basketball: AgentFormer](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/agentformer_on_bball) 
+2. [Basketball: AgentFormer](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/main/agentformer_on_bball) 
 3. [Basketball: GroupNet](https://github.com/mikewojnowicz/GroupNet/tree/aistats)
 4. [MarchingBand: DSARF](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_marching)
 

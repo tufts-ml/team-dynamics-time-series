@@ -311,7 +311,7 @@ if show_plots_after_learning:
     #Plot classification accuracy throughout training
     plot_ca(classification_accuracy)
 
-    plot_k_means_entities(most_likely_entity_regimes)
+    #plot_k_means_entities(most_likely_entity_regimes)
 
     #Check cluster state accuracy 
     cluster_metric = check_cluster_similarity(system_raw, true_system_regimes)

@@ -34,7 +34,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],  #IS THIS FOR MULTIPLE SEQUENCES?? 
+    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D], 
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
@@ -101,7 +101,7 @@ def run_CAVI_with_JAX(
     ###
     # SET-UP
     ###
-
+    
     IR = initialization_results
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
     DIMS = dims_from_params(all_params)

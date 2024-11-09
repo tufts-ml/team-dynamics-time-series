@@ -19,7 +19,7 @@ from dynagroup.types import (
     NumpyArray4D,
 )
 from dynagroup.util import soften_tpm
-from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt, system_transitions_gt
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 
 
 ###

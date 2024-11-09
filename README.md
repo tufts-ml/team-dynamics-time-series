@@ -55,9 +55,9 @@ C. To train baseline forecasts, use:
 
 C. Experiments from the paper can be reproduced by running the scripts/notebooks above. For exact reproducibility, exact hyperparameters and seeds need to be used. Results will either be automatically plotted and saved in the following folders, or can be easily reproduced in the following Jupyter Notebooks: 
 
-1. [_FigureEight_: HSRDM, rAR-HMM](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/demos/results/plots)
-2. [_FigureEight_: HSRDM, rAR-HMM Pool.](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/demos/results/plots)
-3. [_FigureEight_: HSRDM, rAR-HMM Concat.](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/demos/results/plots)
+1. [_FigureEight_: HSRDM, rAR-HMM](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/results/plots)
+2. [_FigureEight_: HSRDM, rAR-HMM Pool.](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/results/plots)
+3. [_FigureEight_: HSRDM, rAR-HMM Concat.](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/figure8/results/plots)
 4. [_FigureEight_: DSARF Ind., Pool., Concat.](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_figure_8)
 5. [Basketball: HSRDM, rAR-HMM, no-recurrence ablation](src/dynagroup/model2a/basketball/demos/baller2vec_format/CLE_starters/demo_full_pipeline.py)
 6. [MarchingBand: HSRDM, rAR-HMM, no-recurrence ablation](https://github.com/tufts-ml/team-dynamics-time-series/tree/kgdev/src/dynagroup/model2a/marching_band/results/plots.py)

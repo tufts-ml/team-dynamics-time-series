@@ -335,7 +335,8 @@ def fit_rARHMM_to_bottom_half_of_model(
 
     record_of_most_likely_states = np.zeros((T, J, num_EM_iterations), dtype=int)
 
-    print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
+    if verbose:
+        print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
     for i in range(num_EM_iterations):
         if verbose:
             print(f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a.")
@@ -456,7 +457,8 @@ def fit_ARHMM_to_top_half_of_model(
         # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
-    print("\n--- Now running AR-HMM on top half of Model 2a. ---")
+    if verbose:
+        print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
     for iteration in range(num_EM_iterations):
         if verbose:

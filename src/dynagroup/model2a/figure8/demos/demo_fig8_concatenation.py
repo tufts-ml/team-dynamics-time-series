@@ -64,14 +64,13 @@ example_end_times = None
 
 # For initialization
 show_plots_after_init = False
-seed_for_initialization = 1
+seed_for_initialization = 120
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
-seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -91,7 +90,7 @@ T_slice_for_forecasting = 120
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"seed_{seed}_timestamp__{datetime_as_string}_concatenation"
+run_description = f"seed_{seed_for_initialization}_timestamp__{datetime_as_string}_concatenation"
 home_dir = os.path.expanduser("~")
 plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
 
@@ -181,7 +180,6 @@ elif MODEL_ADJUSTMENT == "multi_channel":
 ###
 
 ensure_dir(plots_dir)
-ensure_dir(artifacts_dir)
 
 ###
 # INITIALIZATION
@@ -242,7 +240,6 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list
 entity_idxs_for_forecasting = [0]
 
 find_forward_sim_t0_for_entity_sample = lambda x_vec: 280
-#Must change the indexing in this function to evaluate the MSE correctly for concatenation only. 
 evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     xs_for_inference,
     params_learned,

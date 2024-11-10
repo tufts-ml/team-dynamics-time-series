@@ -70,13 +70,12 @@ total_time = 10300
 
 
 # Initialization
-seed_for_initialization = 1
+seed_for_initialization = 126
 num_em_iterations_for_bottom_half_init = 1
 num_em_iterations_for_top_half_init = 1
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION 
 
 # Inference
-seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "gradient_descent"  # "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -89,7 +88,7 @@ show_system_states = False
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"seed_{seed}_timestamp__{datetime_as_string}_none"
+run_description = f"seed_{seed_for_initialization}_timestamp__{datetime_as_string}_none"
 home_dir = os.path.expanduser("~")
 plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/plots/{run_description}/"
 artifacts_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/results/artifacts/{run_description}/"
@@ -119,7 +118,7 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 gen = generate_training_data(GLOBAL_MSG, J, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
-cluster_states = gen[2]
+cluster_states = gen[2] 
 true_system_regimes = np.argmax(system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680]), axis=1)
 ###
 # MASKING
@@ -168,6 +167,7 @@ results_init = smart_initialize_model_2a(
     save_dir=plots_dir,
 )
 params_init = results_init.params
+
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -235,7 +235,7 @@ def plot_system_segments(system_data):
     colors=['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
 
     accuracy = compute_regime_labeling_accuracy(system_data, ground_truth)
-    print(accuracy)
+    print(f"System State Classification Accuracy: {accuracy:.02f}")
     unique_values = np.unique(system_data)
     
     color_map = dict(zip(unique_values, colors[:len(unique_values)]))
@@ -250,18 +250,11 @@ def plot_system_segments(system_data):
     ax.set_xlim(0, len(system_data))
     ax.set_ylim(0, 1)
     ax.set_yticks([])
-    ax.set_title('HSRDM')
     handles = [patches.Patch(color=color_map[val], label=f'{letter_map[val]}') for val in unique_values]
     ax.legend(handles=handles, loc='upper right')
     plt.savefig(plots_dir + f"system_states")
     plt.show()
     
-def check_cluster_similarity(system_data, true_data, target = 5):
-    index_list1 = find_indices(system_data, target)
-    index_list2 = find_indices(true_data, target)
-    similarity_score = len(set(index_list1).intersection(index_list2))
-    return similarity_score
-
 def plot_k_means_entities(entity_data):
     letters = ["L", "A", "U", "G", "H", "C"]
     ground_truth = true_system_regimes
@@ -269,12 +262,12 @@ def plot_k_means_entities(entity_data):
     T = len(entity_data)
     one_hot_encoded = np.eye(k)[entity_data]
     reshaped_data = one_hot_encoded.reshape(T, -1)
-    kmeans = KMeans(n_clusters=6, random_state=0)
+    kmeans = KMeans(n_clusters=6, random_state=120)
     cluster_labels = kmeans.fit_predict(reshaped_data)
     colors=['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
 
     accuracy = compute_regime_labeling_accuracy(cluster_labels, ground_truth)
-    print(accuracy)
+    print(f"Entity Cluster Classification Accuracy: {accuracy}")
     aligned_estimate = get_aligned_estimate(cluster_labels, ground_truth)
     unique_values = np.unique(aligned_estimate)
     
@@ -293,30 +286,26 @@ def plot_k_means_entities(entity_data):
     ax.set_xlim(0, len(aligned_estimate))
     ax.set_ylim(0, 1)
     ax.set_yticks([])
-    ax.set_title('HSRDM No System')
     handles = [patches.Patch(color=color_map[val], label=f'{letter_map[val]}') for val in unique_values]
     ax.legend(handles=handles, loc='upper right')
     plt.show()
 
 
 if show_plots_after_learning:
-    most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1) 
-    most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
 
-    # Plot system sequence trained model plots 
-    system_aligned_sequence = get_aligned_estimate(most_likely_system_regimes, true_system_regimes)
-    system_raw = np.asarray(system_aligned_sequence)
-    plot_system_segments(system_raw)
+    if model_adjustment == "one_system_regime" : 
+        most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
+        plot_k_means_entities(most_likely_entity_regimes)
 
-    #Plot classification accuracy throughout training
-    plot_ca(classification_accuracy)
+    else: 
+        most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1) 
+        system_aligned_sequence = get_aligned_estimate(most_likely_system_regimes, true_system_regimes)
+        system_raw = np.asarray(system_aligned_sequence)
+        plot_system_segments(system_raw)
+        #plot_ca(classification_accuracy)
 
-    #plot_k_means_entities(most_likely_entity_regimes)
+    
 
-    #Check cluster state accuracy 
-    cluster_metric = check_cluster_similarity(system_raw, true_system_regimes)
-    num_identified_cluster_states = np.count_nonzero(system_aligned_sequence == 5)
-    print(f"The cluster true positive classification accuracy is {cluster_metric/300}. The total number of identified cluster states is {num_identified_cluster_states}.")
 
 
 

@@ -156,22 +156,23 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         ###
         # Plotting the truth for the whole entity.
         ###
-        print("Plotting the truth (whole)")
-        plt.close("all")
-        fig1 = plt.figure(figsize=figsize)
-        im = plt.scatter(
-            continuous_states[:, j, 0],
-            continuous_states[:, j, 1],
-            c=[i for i in range(T)],
-            cmap="cool",
-            alpha=1.0,
-        )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
-        fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
-
+        # print("Plotting the truth (whole)")
+        # plt.close("all")
+        # fig1 = plt.figure(figsize=figsize)
+        # im = plt.scatter(
+        #     continuous_states[:, j, 0],
+        #     continuous_states[:, j, 1],
+        #     c=[i for i in range(T)],
+        #     cmap="cool",
+        #     alpha=1.0,
+        # )
+        # if y_lim:
+        #     plt.ylim(y_lim)
+        # if x_lim:
+        #     plt.xlim(x_lim)
+        # plt.title("Ground Truth")
+        # fig1.savefig(save_dir + f"truth_whole_entity_{j}.pdf")
+    
         ###
         # Find starting and ending point for slice for entity
         ###
@@ -195,29 +196,29 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         ###
         # Plot true trajectory slices
         ###
-        plot_trajectory_slice(
-            continuous_states[:, j],
-            t_0_forward_sim,
-            max_forward_sim_window,
-            j,
-            x_lim,
-            y_lim,
-            save_dir,
-            figsize=figsize,
-            title_prefix="truth_for_forward_sim_clip",
-        )
+        # plot_trajectory_slice(
+        #     continuous_states[:, j],
+        #     t_0_forward_sim,
+        #     max_forward_sim_window,
+        #     j,
+        #     x_lim,
+        #     y_lim,
+        #     save_dir,
+        #     figsize=figsize,
+        #     title_prefix="truth_for_forward_sim_clip",
+        # )
 
-        plot_trajectory_slice(
-            continuous_states[:, j],
-            t_0_posterior_mean,
-            max_posterior_mean_window,
-            j,
-            x_lim,
-            y_lim,
-            save_dir,
-            figsize=figsize,
-            title_prefix="truth_for_posterior_mean_clip",
-        )
+        # plot_trajectory_slice(
+        #     continuous_states[:, j],
+        #     t_0_posterior_mean,
+        #     max_posterior_mean_window,
+        #     j,
+        #     x_lim,
+        #     y_lim,
+        #     save_dir,
+        #     figsize=figsize,
+        #     title_prefix="truth_for_posterior_mean_clip",
+        # )
 
         ###
         # Compute posterior means (useful for evaluting model fit)
@@ -242,43 +243,43 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
         MSEs_posterior_mean[j] = MSE_posterior_mean
 
         # plot
-        fig = plt.figure(figsize=figsize)
-        plt.scatter(
-            x_means[:, 0],
-            x_means[:, 1],
-            c=[i for i in range(T_slice_posterior_mean)],
-            cmap="cool",
-            alpha=1.0,
-        )
-        plt.scatter(
-            ground_truth_posterior_mean[:, 0],
-            ground_truth_posterior_mean[:, 1],
-            c=[i for i in range(T_slice_posterior_mean)],
-            cmap="cool",
-            marker="x",
-            alpha=0.25,
-        )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
+        # fig = plt.figure(figsize=figsize)
+        # plt.scatter(
+        #     x_means[:, 0],
+        #     x_means[:, 1],
+        #     c=[i for i in range(T_slice_posterior_mean)],
+        #     cmap="cool",
+        #     alpha=1.0,
+        # )
+        # plt.scatter(
+        #     ground_truth_posterior_mean[:, 0],
+        #     ground_truth_posterior_mean[:, 1],
+        #     c=[i for i in range(T_slice_posterior_mean)],
+        #     cmap="cool",
+        #     marker="x",
+        #     alpha=0.25,
+        # )
+        # if y_lim:
+        #     plt.ylim(y_lim)
+        # if x_lim:
+        #     plt.xlim(x_lim)
 
-        plt.title(f"MSE: {MSE_posterior_mean:.05f}")
-        tag_posterior_mean = _get_filename_tag(
-            use_continuous_states,
-            j,
-            t_0_posterior_mean,
-            t_end_posterior_mean,
-            filename_prefix,
-            DIMS.L,
-        )
-        fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf")
+        # plt.title(f"MSE: {MSE_posterior_mean:.05f}")
+        # tag_posterior_mean = _get_filename_tag(
+        #     use_continuous_states,
+        #     j,
+        #     t_0_posterior_mean,
+        #     t_end_posterior_mean,
+        #     filename_prefix,
+        #     DIMS.L,
+        # )
+        # fig.savefig(save_dir + f"fit_via_posterior_mean_{tag_posterior_mean}_MSE_{MSE_posterior_mean:.03f}.pdf")
 
         # An attempt to avoid inadventently retaining figures which consume too much memory.
         # References:
         # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
         # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
-        plt.close(plt.gcf())
+        #plt.close(plt.gcf())
 
         ###
         # Compute forward simulations (useful for evaluating partial forecasts)
@@ -323,29 +324,36 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
             forecasts[s, :, j_forecast, :] = sample_ahead.xs[:, j, :]
 
+            if filename_prefix == "adjustment_multi_channel_": 
+                idx1 = 4
+                idx2 = 5
+            else: 
+                idx1 = 0
+                idx2 = 1
+
             # MSE
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
-            MSE_forward_sim = np.mean((ground_truth_forward_sim[:, 0:2] - sample_ahead.xs[:, j, 0:2]) ** 2)
-            std_forward_sim = np.std((ground_truth_forward_sim[:, 0:2] - sample_ahead.xs[:, j, 0:2]) ** 2) / (np.sqrt(120))
+            MSE_forward_sim = np.mean((ground_truth_forward_sim[:, idx1:idx2+1] - sample_ahead.xs[:, j, idx1:idx2+1]) ** 2) 
+            std_forward_sim = np.std((ground_truth_forward_sim[:, idx1:idx2+1] - sample_ahead.xs[:, j, idx1:idx2+1]) ** 2)
             if had_masking:
                 MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
             # Main distinction is whether the VES step on q(s_t) incorporated info the relevant entity-level states
             # q(z_t^^j)'s or not.  There's also a difference in which information was used in the M-step, but for sufficiently
             # long and regular time series, this probably wouldn't play a big role.
-
+    
             # plot
-            fig1 = plt.figure(figsize=figsize)
+            fig2 = plt.figure(figsize=figsize)
             im = plt.scatter(
-                sample_ahead.xs[:, j, 0],
-                sample_ahead.xs[:, j, 1],
+                sample_ahead.xs[:, j, idx1], 
+                sample_ahead.xs[:, j, idx2], 
                 c=[i for i in range(t_0_forward_sim, t_end_forward_sim)],
                 cmap="cool",
                 alpha=1.0,
             )
             plt.scatter(
-                ground_truth_forward_sim[:, 0],
-                ground_truth_forward_sim[:, 1],
+                ground_truth_forward_sim[:, idx1],
+                ground_truth_forward_sim[:, idx2],
                 c=[i for i in range(T_slice_forward_sim)],
                 cmap="cool",
                 marker="x",
@@ -364,7 +372,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 DIMS.L,
             )
             plt.title(f"MSE: {MSE_forward_sim:.05f} + {std_forward_sim}.")
-            fig1.savefig(
+            fig2.savefig(
                 save_dir
                 + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
             )
@@ -373,70 +381,72 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
             # References:
             # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
             # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
+            plt.show()
             plt.close(plt.gcf())
 
         ###
         # Compute velocity baseline
         ###
         # RK: We reuse the forward sim params for the velocity baseline
-        discrete_derivative = continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
-        velocity_baseline = np.zeros((T_slice_forward_sim, 2))
-        velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
-        for t in range(1, T_slice_forward_sim):
-            velocity_baseline[t] = velocity_baseline[t - 1] + discrete_derivative
+        # discrete_derivative = continuous_states[t_0_forward_sim, j] - continuous_states[t_0_forward_sim - 1, j]
+        # velocity_baseline = np.zeros((T_slice_forward_sim, 2))
+        # velocity_baseline[0] = continuous_states[t_0_forward_sim, j]
+        # for t in range(1, T_slice_forward_sim):
+        #     velocity_baseline[t] = velocity_baseline[t - 1] + discrete_derivative
 
         # MSE
-        MSE_velocity_baseline = np.mean((ground_truth_forward_sim - velocity_baseline) ** 2)
-        if had_masking:
-            MSEs_velocity_baseline[j] = MSE_velocity_baseline
+        # MSE_velocity_baseline = np.mean((ground_truth_forward_sim - velocity_baseline) ** 2)
+        # if had_masking:
+        #     MSEs_velocity_baseline[j] = MSE_velocity_baseline
 
-        # Plot
-        fig = plt.figure(figsize=figsize)
-        plt.scatter(
-            velocity_baseline[:, 0],
-            velocity_baseline[:, 1],
-            c=[i for i in range(T_slice_forward_sim)],
-            cmap="cool",
-            alpha=1.0,
-        )
-        plt.scatter(
-            ground_truth_forward_sim[:, 0],
-            ground_truth_forward_sim[:, 1],
-            c=[i for i in range(T_slice_forward_sim)],
-            cmap="cool",
-            marker="x",
-            alpha=0.25,
-        )
-        if y_lim:
-            plt.ylim(y_lim)
-        if x_lim:
-            plt.xlim(x_lim)
+        # # Plot
+        # fig = plt.figure(figsize=figsize)
+        # plt.scatter(
+        #     velocity_baseline[:, 0],
+        #     velocity_baseline[:, 1],
+        #     c=[i for i in range(T_slice_forward_sim)],
+        #     cmap="cool",
+        #     alpha=1.0,
+        # )
+        # plt.scatter(
+        #     ground_truth_forward_sim[:, 0],
+        #     ground_truth_forward_sim[:, 1],
+        #     c=[i for i in range(T_slice_forward_sim)],
+        #     cmap="cool",
+        #     marker="x",
+        #     alpha=0.25,
+        # )
+        # if y_lim:
+        #     plt.ylim(y_lim)
+        # if x_lim:
+        #     plt.xlim(x_lim)
 
-        plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
-        tag_velocity_baseline = _get_filename_tag(
-            use_continuous_states,
-            j,
-            t_0_forward_sim,
-            t_end_forward_sim,
-            filename_prefix,
-            DIMS.L,
-        )
-        fig.savefig(
-            save_dir + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
-        )
+        # plt.title(f"MSE: {MSE_velocity_baseline:.05f}")
+        # tag_velocity_baseline = _get_filename_tag(
+        #     use_continuous_states,
+        #     j,
+        #     t_0_forward_sim,
+        #     t_end_forward_sim,
+        #     filename_prefix,
+        #     DIMS.L,
+        # )
+        # fig.savefig(
+        #     save_dir + f"fit_via_velocity_baseline_{tag_velocity_baseline}_MSE_{MSE_velocity_baseline:.03f}.pdf"
+        # )
 
         # An attempt to avoid inadventently retaining figures which consume too much memory.
         # References:
         # 1) https://stackoverflow.com/questions/21884271/warning-about-too-many-open-figures
         # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
-        plt.close(plt.gcf())
+        #plt.close(plt.gcf())
 
-    fig2 = plt.figure(figsize=(2, 6))
-    cax = fig2.add_subplot()
-    cbar = fig1.colorbar(im, cax=cax, ticks = [280, 300, 320, 340, 360, 380, 400] )
+    fig3 = plt.figure(figsize=(2, 6))
+    cax = fig3.add_subplot()
+    cbar = fig2.colorbar(im, cax=cax, ticks = [280, 300, 320, 340, 360, 380, 400])
     cbar.set_label("Timesteps", rotation=90)
     plt.tight_layout()
-    fig2.savefig(save_dir + "colorbar_clip.pdf")
+    fig3.savefig(save_dir + "colorbar_clip.pdf")
+    plt.show()
 
     # An attempt to avoid inadventently retaining figures which consume too much memory.
     # References:
@@ -444,6 +454,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     # 2) https://stackoverflow.com/questions/16334588/create-a-figure-that-is-reference-counted/16337909#16337909
     plt.close(plt.gcf())
 
+    MSEs_velocity_baseline = False
     return MSEs_posterior_mean, MSEs_forward_sims, MSEs_velocity_baseline, forecasts
 
 

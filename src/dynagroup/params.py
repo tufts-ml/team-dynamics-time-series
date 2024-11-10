@@ -7,7 +7,7 @@ from typing import Union
 import jax.numpy as jnp
 import jax_dataclasses as jdc
 import numpy as np
-import torch
+#import torch
 from jax import vmap
 
 from dynagroup.covariances import (
@@ -832,7 +832,7 @@ def normalize_log_tpms_within_parameter_group(param_group, name_of_param_to_log_
 # Count params
 ###
 
-
+'''
 def count_params(params: AllParameters_JAX):
     # TODO: don't hard-code (assume) what parameters live inside; do this programmatically
     return (
@@ -852,6 +852,7 @@ def count_params(params: AllParameters_JAX):
         + torch.tensor(np.array(params.STP.Pi)).numel()
         + torch.tensor(np.array(params.STP.Upsilon)).numel()
     )
+'''
 
 
 ####

@@ -1,32 +1,22 @@
 # dynagroup
 
-Welcome to `dynagroup`.   This is a Python repo for the under-review paper _Discovering group dynamics in synchronous time series via hierarchical recurrent switching-state models_.
+Welcome to `dynagroup`. This is a Python repo for the under-review paper _Discovering group dynamics in synchronous time series via hierarchical recurrent switching-state models_.
 
-# Installation
+## Installation
 
-The package currently only works on python3.8 (or possibly below). It does not work out-of-the-box on python 3.9 or python 3.10, due to issues inherited from dependencies.
+See [INSTALL.md](#INSTALL.md) to setup this project's micromamba environment.
 
-Installation (to a virtual environment, using pyenv) can be done as follows:
+You'll have an environment with Python 3.10 called `dynagroup_env_310`
 
-```
-pyenv virtualenv 3.8.18 env
-pip install -e . 
-pip install -r dev-requirements.txt
-```
-where we have assumed that pyenv has already installed python 3.8.18 to the computer.   
-
-These commands install a virtual environment with python 3.8.18, editably install `dynagroup`, and then install development requirements (such as `pytest`, used for running unit tests).   The last step can be skipped if desired. 
-
-# Unit tests
-
+## Verifying install
 
 Unit tests can be run from within the activated virtual environment using 
 
 ```
-python -m python
+python -m pytest
 ```
 
-# Experiment reproduction
+## Experiment reproduction
 
 Here we provide scripts for reproducing experiments on publicly available data (_FigureEight_, Basketball, and MarchingBand).  Experiments from the paper can be reproduced by running the scripts/notebooks below. For exact reproducibility, hyperparameters and seeds described in the paper Appendix are required. 
 

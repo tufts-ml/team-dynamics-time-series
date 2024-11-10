@@ -28,7 +28,7 @@ python -m python
 
 # Experiment reproduction
 
-Here we provide scripts for reproducing experiments on publicly available data (_FigureEight_, Basketball, and MarchingBand).Experiments from the paper can be reproduced by running the scripts/notebooks below. For exact reproducibility, exact hyperparameters and seeds need to be used. 
+Here we provide scripts for reproducing experiments on publicly available data (_FigureEight_, Basketball, and MarchingBand).  Experiments from the paper can be reproduced by running the scripts/notebooks below. For exact reproducibility, hyperparameters and seeds described the paper Appendix need to be used. 
 
 A. To train our model (HSRDM) as well as various ablations, use: 
 

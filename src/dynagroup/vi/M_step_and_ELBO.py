@@ -74,6 +74,8 @@ from dynagroup.von_mises.inference.ar import (
 ###
 
 
+
+
 @jdc.pytree_dataclass
 class ELBO_Decomposed:
     energy: float
@@ -613,7 +615,7 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
     bs = np.zeros((J, K, D))
     Qs = np.zeros((J, K, D, D))
 
-    MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 3.0
+    MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS = 0.5
     for j in range(J):
         xs = np.asarray(continuous_states[:, j, :])
         for k in range(K):
@@ -763,7 +765,7 @@ def run_M_step_for_ETP_via_gradient_descent(
         example_end_times=example_end_times,
         use_continuous_states=use_continuous_states,
     )
-
+    
     # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
     # because we want to reset the EWMA now that we have new contextual information from the other substeps of
     # variational EM (as provided via the frozen arguments in the partial function representation of cost_function_ETP).
@@ -870,6 +872,8 @@ def run_M_step_for_STP_via_gradient_descent(
         system_covariates=system_covariates,
         continuous_states=continuous_states,
     )
+
+    
 
     # We reset the optimizer state to None before each run of the optimizer (which is ADAM)
     # because we want to reset the EWMA now that we have new contextual information (here, VES_summary).

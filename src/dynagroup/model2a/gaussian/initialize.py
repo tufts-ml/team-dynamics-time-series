@@ -17,6 +17,8 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
 )
+from dynagroup.metrics import compute_regime_labeling_accuracy
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.initialize import (
     InitializationResults,
     RawInitializationResults,
@@ -228,7 +230,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             #   FutureWarning: The default value of `n_init` will change from 10 to 'auto' in 1.4.
             #   Set the value of `n_init` explicitly to suppress the warning
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            kms[j] = KMeans(K).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
+            kms[j] = KMeans(K, random_state=120).fit(data_for_kmeans[:, j, :], sample_weight=weights_for_kmeans[:, j])
 
     # ### Plot K-means fits
     if plotbose:
@@ -271,7 +273,7 @@ def make_kmeans_preinitialization_of_CSP_JAX(
             ### run vector autoregression
             lr = LinearRegression(fit_intercept=True)
             lr.fit(predictors_jk, outcomes_jk)
-            As[j, k] = lr.coef_
+            As[j, k] = lr.coef_ 
             bs[j, k] = lr.intercept_
             expectations_jk = (As[j, k] @ predictors_jk.T).T + bs[j, k]
             residuals_jk = outcomes_jk - expectations_jk
@@ -343,12 +345,14 @@ def fit_rARHMM_to_bottom_half_of_model(
         ###
 
         VES_expected_regimes__uniform = np.ones((T, L)) / L
+        VES_expected_regimes__good = system_regimes_gt(10, [1227, 2840, 6128, 7392, 9553, 9680])
+
         EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,
             ETP_JAX,
             IP_JAX,
             continuous_states,
-            VES_expected_regimes__uniform,
+            VES_expected_regimes__uniform, 
             model,
             example_end_times,
         )
@@ -386,7 +390,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 ### New way: update ETP_JAX by using gradient descent
                 num_M_step_iterations_for_ETP_gradient_descent = 5
                 ES_summary_uniform = HMM_Posterior_Summary_JAX(
-                    expected_regimes=jnp.ones((T, L)) / L,
+                    expected_regimes=VES_expected_regimes__uniform,  
                     expected_joints=jnp.ones((T - 1, L, L)) / L,
                     log_normalizer=jnp.nan,
                 )
@@ -404,15 +408,14 @@ def fit_rARHMM_to_bottom_half_of_model(
                 )
 
             ###
-            # M-step (for CSP)
-            ###
+            # # M-step (for CSP)
+            # ###
             CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
                 EZ_summaries.expected_regimes,
                 continuous_states,
                 example_end_times,
                 use_continuous_states,
             )
-
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states, ETP_JAX)
 
 
@@ -475,9 +478,12 @@ def fit_ARHMM_to_top_half_of_model(
             system_covariates,
             use_continuous_states=use_continuous_states,
         )
+        
 
         record_of_most_likely_states[:, iteration] = np.array(np.argmax(ES_summary.expected_regimes, axis=1), dtype=int)
 
+
+       
         ###
         # M-step
         ###
@@ -523,7 +529,7 @@ def fit_ARHMM_to_top_half_of_model(
                     continuous_states,
                     verbose,
                 )
-
+    
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
 
@@ -540,7 +546,7 @@ def smart_initialize_model_2a(
     preinitialization_strategy_for_CSP: PreInitialization_Strategy_For_CSP,
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
-    seed: int = 0,
+    seed: int = 120,
     system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     save_dir: Optional[str] = None,
@@ -675,7 +681,7 @@ def smart_initialize_model_2a(
             seed=seed,
         )
         # TODO: Is there a better way to init the recurrence matrices and covariances matrices in STP_JAX and ETP_JAX than randomly?
-
+  
     ### run HMM
     num_M_step_iterations_for_ETP_gradient_descent = 5
 
@@ -710,5 +716,7 @@ def smart_initialize_model_2a(
             continuous_states,
             example_end_times,
         )
+
+
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw, params_frozen)

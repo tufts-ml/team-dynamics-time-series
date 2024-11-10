@@ -21,4 +21,5 @@ def transform_of_continuous_state_vector_before_premultiplying_by_entity_recurre
     SIGMA = 0.2
     KAPPA = 20.0
 
-    return jnp.asarray([KAPPA * jnp.exp(-jnp.sum(x_vec**2) / (2 * SIGMA**2))])
+    result = jnp.asarray([KAPPA * jnp.exp(-jnp.sum(x_vec**2) / (2 * SIGMA**2))])
+    return result

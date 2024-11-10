@@ -105,31 +105,31 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
                     pos_NU2[uu, n, 1] = agents[n].y
 
 
-            if t > 3 and t % 5 == 0:
-                if k <= threshold: 
-                    plt.title(cur_state, fontsize=14)
-                else: 
-                    plt.title('C', fontsize=14)
-                for n in range(N):
-                    marker = '>' if agents[n].x_dir == 1 else '<'
-                    plt.plot(pos_NU2[uu-5:uu,n,0], pos_NU2[uu-5:uu,n,1],
-                        '.-', color=COLORS[n])
-                    plt.plot(pos_NU2[uu,n,0], pos_NU2[uu,n,1],
-                        marker, color=COLORS[n])
-                ax = plt.gca()
-                ax.set_xlim([0,1])
-                ax.set_ylim([0,1])
-                ax.set_aspect('equal')
-                plt.show(block=False)
-                path = f'{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
-                os.makedirs(path, exist_ok=True)
-                fpath = os.path.join(path, 'step%05d.png' % step)
-                plt.savefig(fpath)
-                plt.clf()
-                step += 1
+            # if t > 3 and t % 5 == 0:
+            #     if k <= threshold: 
+            #         plt.title(cur_state, fontsize=14)
+            #     else: 
+            #         plt.title('C', fontsize=14)
+            #     for n in range(N):
+            #         marker = '>' if agents[n].x_dir == 1 else '<'
+            #         plt.plot(pos_NU2[uu-5:uu,n,0], pos_NU2[uu-5:uu,n,1],
+            #             '.-', color=COLORS[n])
+            #         plt.plot(pos_NU2[uu,n,0], pos_NU2[uu,n,1],
+            #             marker, color=COLORS[n])
+            #     ax = plt.gca()
+            #     ax.set_xlim([0,1])
+            #     ax.set_ylim([0,1])
+            #     ax.set_aspect('equal')
+            #     plt.show(block=False)
+            #     path = f'{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/marching_band/data/frames/{seed}'
+            #     os.makedirs(path, exist_ok=True)
+            #     fpath = os.path.join(path, 'step%05d.png' % step)
+            #     plt.savefig(fpath)
+            #     plt.clf()
+            #     step += 1
 
-                if step < 3 or step % 20 == 0 or step == U//5:
-                    print('%s step %5d after %.1f sec' % (cur_state, step, time.time()-starttime))
+            #     if step < 3 or step % 20 == 0 or step == U//5:
+            #         print('%s step %5d after %.1f sec' % (cur_state, step, time.time()-starttime))
         
         if ss > 0 and ((ss+6) % 5 == 0): 
             sequence_end_times.append(uu + 1)
@@ -170,6 +170,6 @@ if __name__ == '__main__':
     T = 200
     array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
 
+
     
-    
-    
+   

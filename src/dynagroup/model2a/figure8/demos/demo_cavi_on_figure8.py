@@ -84,14 +84,13 @@ model_adjustment = None # Options: None, "one_system_regime", "remove_recurrence
 
 # For initialization
 show_plots_after_init = True
-seed_for_initialization = 1
+seed_for_initialization = 120
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION   
 
 
 # For inference
-seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -104,14 +103,14 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 # For diagnostics
 show_plots_after_learning = True   
 T_snippet_for_fit_to_observations = 400
-seeds_for_forecasting = [120, 121, 122, 123, 124, 125]
+seeds_for_forecasting = [120, 121, 122, 123, 124]
 entity_idxs_for_forecasting = [2]
 T_slice_for_forecasting = 120
 
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"seed_{seed}_timestamp__{datetime_as_string}_normal"
+run_description = f"seed_{seed_for_initialization}_timestamp__{datetime_as_string}_normal"
 home_dir = os.path.expanduser("~")
 plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
 
@@ -205,7 +204,6 @@ inspect_system_level_segmentations_over_EM_iterations(results_init.record_of_mos
 
 ### print regime occupancies
 print_multi_level_regime_occupancies_after_init(results_init)
-
 
 ### print elbo
 elbo_init = compute_elbo_from_initialization_results(

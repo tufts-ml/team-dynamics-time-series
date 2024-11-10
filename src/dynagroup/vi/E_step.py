@@ -36,6 +36,7 @@ from dynagroup.types import (
 ###
 
 
+
 def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regimes_JAX(
     ETP: EntityTransitionParameters_MetaSwitch_JAX,
     variationally_expected_joints_for_entity_regimes: JaxNumpyArray4D,
@@ -206,7 +207,6 @@ def run_VES_step_JAX(
         log_emissions,
         IP.pi_system,
     )
-#Why does this not ouput the most_likely_regimes?????? 
 
 ###
 # VEZ Step

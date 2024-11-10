@@ -1,6 +1,6 @@
-How MCH got things to install on both Tufts HPC and his laptop
+# Environment setup instructions
 
-# 1) Install micromamba
+## 1) Install micromamba
 
 Follow these directions
 
@@ -12,7 +12,7 @@ Usually, just as simple as
 "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
 ```
 
-NB: on Tufts cluster, just use
+NB: on an HPC cluster, you can try to use an existing install:
 
 ```
 export PATH="/cluster/tufts/hugheslab/micromamba/bin/:$PATH"
@@ -24,9 +24,11 @@ Otherwise, on your laptop, be sure your path is updated
 export PATH="/path/to/bin/micromamba:$PATH"
 ```
 
-# 2) Install a dedicated env for this project 
+## 2) Install a dedicated env for this project 
 
-Uses file `dynagroup_env.yml`, found in the root of this repo, [here](https://github.com/tufts-ml/team-dynamics-time-series/blob/mch_install/dynagroup_env.yml)
+Uses file [`dynagroup_env.yml`](https://github.com/tufts-ml/team-dynamics-time-series/blob/mch_install/dynagroup_env.yml)
+
+Found in the root of this git repo
 
 ```
 $ cd $REPO_ROOT/
@@ -35,7 +37,7 @@ $ micromamba create -f dynagroup_env.yml
 
 Will take about 5-10 min (on a laptop), somehow much longer on cluster
 
-# 3) Activate and run a test
+## 3) Activate and run a test
 
 ```
 $ micromamba activate dynagroup_env_310

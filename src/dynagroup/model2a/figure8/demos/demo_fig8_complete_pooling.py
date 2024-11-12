@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import numpy as np
+import os
 
 from dynagroup.io import ensure_dir
 from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
@@ -15,6 +16,9 @@ from dynagroup.model2a.figure8.model_factors import figure8_model_JAX
 from dynagroup.model2a.gaussian.initialize import (
     PreInitialization_Strategy_For_CSP,
     smart_initialize_model_2a,
+)
+from dynagroup.util import (
+    get_current_datetime_as_string,
 )
 from dynagroup.params import dims_from_params
 from dynagroup.plotting.entity_regime_changepoints import (
@@ -36,7 +40,6 @@ Model 2 is the "top-down meta-switching model" from the notes.
 Model 2a is the special case of Model 2 where the continuous states are directly observed.
     In the notes, it's called a meta-switching recurrent AR-HMM
     This has the advantage that CAVI is exact (no weird sampling), except for the Laplace VI.
-
 
 For inference, we use JAX.
 """
@@ -66,6 +69,7 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
+seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -77,12 +81,19 @@ alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
 show_plots_after_learning = False
-save_dir = "results/fig8/analyses/NEW_TRY_fig8_complete_pooling/"
 T_snippet_for_fit_to_observations = 400
-seeds_for_forecasting = [i + 1 for i in range(5)]
+seeds_for_forecasting = [120, 121, 122, 123, 124]
 entity_idxs_for_forecasting = [2]
-T_slice_for_forecasting = 70
-T_slice_for_old_forecasting = 70
+T_slice_for_forecasting = 120
+
+
+# Directories
+datetime_as_string = get_current_datetime_as_string()
+run_description = f"seed_{seed}_timestamp__{datetime_as_string}_pooling"
+home_dir = os.path.expanduser("~")
+plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
+
+
 
 
 ###
@@ -155,7 +166,7 @@ elif MODEL_ADJUSTMENT == "complete_pooling":
 # I/O
 ###
 
-ensure_dir(save_dir)
+ensure_dir(plots_dir)
 
 ###
 # INITIALIZATION
@@ -179,7 +190,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    save_dir,
+    plots_dir,
 )
 params_init = results_init.params
 
@@ -189,7 +200,7 @@ params_init = results_init.params
 ###
 
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list = run_CAVI_with_JAX(
     jnp.asarray(xs_for_inference),
     n_cavi_iterations,
     results_init,
@@ -204,7 +215,7 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
     num_M_step_iters,
     system_transition_prior,
     system_covariates,
-    jnp.asarray(use_continuous_states),
+    use_continuous_states,
 )
 
 
@@ -220,7 +231,7 @@ evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
     T_slice_for_forecasting,
     model,
     seeds_for_forecasting,
-    save_dir,
+    plots_dir,
     use_continuous_states,
     entity_idxs_for_forecasting,
     filename_prefix=f"adjustment_{MODEL_ADJUSTMENT}_",

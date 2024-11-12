@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
+from typing import List, Union
+import os
 
 from dynagroup.diagnostics.occupancies import (
     print_multi_level_regime_occupancies_after_init,
@@ -77,18 +79,19 @@ For inference, we use JAX.
 show_plots_of_samples = False
 
 # Masking and model adjustments
-mask_final_regime_transition_for_entity_2 = True
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+mask_final_regime_transition_for_entity_2 = True            
+model_adjustment = None # Options: None, "one_system_regime", "remove_recurrence"
 
 # For initialization
-show_plots_after_init = False
+show_plots_after_init = True
 seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
-preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
+preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION   
 
 
 # For inference
+seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
@@ -99,16 +102,18 @@ num_M_step_iters = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
 
 # For diagnostics
-show_plots_after_learning = False
+show_plots_after_learning = True   
 T_snippet_for_fit_to_observations = 400
-seeds_for_forecasting = [i + 1 for i in range(5)]
+seeds_for_forecasting = [120, 121, 122, 123, 124, 125]
 entity_idxs_for_forecasting = [2]
-T_slice_for_forecasting = 70
-T_slice_for_old_forecasting = 70
+T_slice_for_forecasting = 120
+
 
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-save_dir = f"results/fig8/analyses/REDO_{datetime_as_string}/"
+run_description = f"seed_{seed}_timestamp__{datetime_as_string}_normal"
+home_dir = os.path.expanduser("~")
+plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
 
 ###
 # PLOT SAMPLE
@@ -118,25 +123,25 @@ save_dir = f"results/fig8/analyses/REDO_{datetime_as_string}/"
 params_true = ALL_PARAMS
 DIMS = dims_from_params(params_true)
 
-### Plot sample
-if show_plots_of_samples:
-    plot_entity_regime_changepoints_for_figure_eight_dataset(
-        sample.z_probs,
-        times_of_system_regime_changepoints,
-        which_changepoint_to_show=2,
-        which_entity_regime_to_show=1,
-    )
+# ### Plot sample
+# if show_plots_of_samples:
+#     plot_entity_regime_changepoints_for_figure_eight_dataset(
+#         sample.z_probs,
+#         times_of_system_regime_changepoints,
+#         which_changepoint_to_show=2,
+#         which_entity_regime_to_show=1,
+#     )
 
-    for j in range(DIMS.J):
-        print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s)
+#     for j in range(DIMS.J):
+#         print(f"Now plotting results for entity {j}")
+#         plot_sample_with_system_regimes(sample.xs[:, j, :], sample.ys[:, j, :], sample.zs[:, j], sample.s)
 
-    plot_unfolded_time_series(sample.xs, period_to_use=4)
+#     plot_unfolded_time_series(sample.xs, period_to_use=4)
 
 ###
 # MASKING
 ###
-if mask_final_regime_transition_for_entity_2:
+if mask_final_regime_transition_for_entity_2:    
     use_continuous_states = make_mask_of_which_continuous_states_to_use(sample.xs)
 else:
     use_continuous_states = None
@@ -166,7 +171,7 @@ elif model_adjustment == "remove_recurrence":
 # I/O
 ###
 
-ensure_dir(save_dir)
+ensure_dir(plots_dir)
 
 ###
 # INITIALIZATION
@@ -190,7 +195,7 @@ results_init = smart_initialize_model_2a(
     seed_for_initialization,
     system_covariates,
     use_continuous_states,
-    save_dir=save_dir,
+    save_dir=plots_dir,
 )
 params_init = results_init.params
 
@@ -213,47 +218,47 @@ elbo_init = compute_elbo_from_initialization_results(
 )
 print(f"ELBO after init: {elbo_init:.02f}")
 
-### Show plots of init
-if show_plots_after_init:
-    xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
-    plot_deterministic_trajectories(xs, "True")
+# ### Show plots of init
+# if show_plots_after_init:
+#     xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
+#     plot_deterministic_trajectories(xs, "True")
 
-    xs = get_deterministic_trajectories(params_init.CSP.As, params_init.CSP.bs, num_time_samples=100)
-    plot_deterministic_trajectories(xs, "Initialized")
+#     xs = get_deterministic_trajectories(params_init.CSP.As, params_init.CSP.bs, num_time_samples=100)
+#     plot_deterministic_trajectories(xs, "Initialized")
 
-    plot_results_of_old_forecasting_test(
-        params_true,
-        T_slice_for_old_forecasting,
-        model,
-        title_prefix="forecasted (via true params)",
-    )
-    plot_results_of_old_forecasting_test(
-        params_init,
-        T_slice_for_old_forecasting,
-        model,
-        title_prefix="forecasted (via init params)",
-    )
+    # plot_results_of_old_forecasting_test(
+    #     params_true,
+    #     T_slice_for_old_forecasting,
+    #     model,
+    #     title_prefix="forecasted (via true params)",
+    # )
+    # plot_results_of_old_forecasting_test(
+    #     params_init,
+    #     T_slice_for_old_forecasting,
+    #     model,
+    #     title_prefix="forecasted (via init params)",
+    # )
 
-    _, _, _, forecasts_init = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
-        sample.xs,
-        params_init,
-        results_init.ES_summary,
-        results_init.EZ_summaries,
-        T_slice_for_forecasting,
-        model,
-        seeds_for_forecasting,
-        save_dir,
-        use_continuous_states,
-        entity_idxs_for_forecasting,
-        filename_prefix=f"AFTER_INITIALIZATION_adjustment_{model_adjustment}_",
-    )
+#     _, _, _, forecasts_init = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+#         sample.xs,
+#         params_init,
+#         results_init.ES_summary,
+#         results_init.EZ_summaries,
+#         T_slice_for_forecasting,
+#         model,
+#         seeds_for_forecasting,
+#         save_dir,
+#         use_continuous_states,
+#         entity_idxs_for_forecasting,
+#         filename_prefix=f"AFTER_INITIALIZATION_adjustment_{model_adjustment}_",
+#     )
 
-###
+# ###
 # CAVI
 ###
 
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list = run_CAVI_with_JAX(
     jnp.asarray(sample.xs),
     n_cavi_iterations,
     results_init,
@@ -280,24 +285,24 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
 
 ### Plot Deterministic Trajectories (by regime)
 
-if show_plots_after_learning:
-    xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
-    plot_deterministic_trajectories(xs, "True")
+# if show_plots_after_learning:
+#     xs = get_deterministic_trajectories(params_true.CSP.As, params_true.CSP.bs, num_time_samples=100)
+#     plot_deterministic_trajectories(xs, "True")
 
-    xs = get_deterministic_trajectories(params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100)
-    plot_deterministic_trajectories(xs, "Learned")
+#     xs = get_deterministic_trajectories(params_learned.CSP.As, params_learned.CSP.bs, num_time_samples=100)
+#     plot_deterministic_trajectories(xs, "Learned")
 
-# Print the norms of the eigenvalues of the state matrix.  The
-# eigenvalues need to lie within the unit circle (in the complex plane)
-# to prevent the trajectories from going off to infinity.
-for j in range(DIMS.J):
-    for k in range(DIMS.K):
-        eigenvalues, eigenvectors = np.linalg.eig(params_learned.CSP.As[j, k])
-        eigenvalue_norms = [np.linalg.norm(lam) for lam in eigenvalues]
-        print(f"For entity {j} and regime {k}, the eigenvalue norms are {eigenvalue_norms}")
+# # Print the norms of the eigenvalues of the state matrix.  The
+# # eigenvalues need to lie within the unit circle (in the complex plane)
+# # to prevent the trajectories from going off to infinity.
+# for j in range(DIMS.J):
+#     for k in range(DIMS.K):
+#         eigenvalues, eigenvectors = np.linalg.eig(params_learned.CSP.As[j, k])
+#         eigenvalue_norms = [np.linalg.norm(lam) for lam in eigenvalues]
+#         print(f"For entity {j} and regime {k}, the eigenvalue norms are {eigenvalue_norms}")
 
 
-### Plot forecasting test
+# ### Plot forecasting test
 
 # forecasts has shape (S,T_forecast, J_forecast, D)
 _, _, _, forecasts = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
@@ -308,88 +313,88 @@ _, _, _, forecasts = evaluate_and_plot_posterior_mean_and_forward_simulation_on_
     T_slice_for_forecasting,
     model,
     seeds_for_forecasting,
-    save_dir,
+    plots_dir,
     use_continuous_states,
     entity_idxs_for_forecasting,
     filename_prefix=f"AFTER_CAVI_adjustment_{model_adjustment}_",
 )
 
-### Plot Old Forecasting test
-if show_plots_after_learning:
-    plot_results_of_old_forecasting_test(
-        params_true,
-        T_slice_for_old_forecasting,
-        model,
-        plot_filename_prefix="forecasted (via true params)",
-    )
-    plot_results_of_old_forecasting_test(
-        params_learned,
-        T_slice_for_old_forecasting,
-        model,
-        plot_filename_prefix="forecasted (via learned params)",
-    )
+# ### Plot Old Forecasting test
+# if show_plots_after_learning:
+#     plot_results_of_old_forecasting_test(
+#         params_true,
+#         T_slice_for_old_forecasting,
+#         model,
+#         plot_filename_prefix="forecasted (via true params)",
+#     )
+#     plot_results_of_old_forecasting_test(
+#         params_learned,
+#         T_slice_for_old_forecasting,
+#         model,
+#         plot_filename_prefix="forecasted (via learned params)",
+#     )
 
 
-###  Plot Fit to Observations
-if show_plots_after_learning:
-    d = 0
-    for j in range(DIMS.J):
-        for after_learning in [False, True]:
-            # TODO: This function needs to be sped up now that it can use JAX values as well.
-            predictive_means = compute_next_step_predictive_means(
-                numpy_params_from_params(params_learned),
-                sample,
-                convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
-                after_learning,
-            )
-            print(f"Plotting next-step predictive means for entity {j} and dim {d}. After learning ? {after_learning}")
-            plt.plot(predictive_means[0:T_snippet_for_fit_to_observations, j, d], color="red")
-            plt.plot(sample.xs[0:T_snippet_for_fit_to_observations, j, d], color="black")
-            plt.title(f"Entity {j+1}. After learning ? {after_learning}")
-            plt.show()
+# ###  Plot Fit to Observations     
+# if show_plots_after_learning:
+#     d = 0
+#     for j in range(DIMS.J):
+#         for after_learning in [False, True]:
+#             # TODO: This function needs to be sped up now that it can use JAX values as well.
+#             predictive_means = compute_next_step_predictive_means(
+#                 numpy_params_from_params(params_learned),
+#                 sample,
+#                 convert_hmm_posterior_summaries_from_jax_to_numpy(VEZ_summaries),
+#                 after_learning,
+#             )
+#             print(f"Plotting next-step predictive means for entity {j} and dim {d}. After learning ? {after_learning}")
+#             plt.plot(predictive_means[0:T_snippet_for_fit_to_observations, j, d], color="red")
+#             plt.plot(sample.xs[0:T_snippet_for_fit_to_observations, j, d], color="black")
+#             plt.title(f"Entity {j+1}. After learning ? {after_learning}")
+#             plt.show()
 
 
-### Plot Estimated Regimes
-if show_plots_after_learning:
-    most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
-    most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
-    for j in range(DIMS.J):
-        print(f"Now plotting results for entity {j}")
-        plot_sample_with_system_regimes(
-            sample.xs[:, j, :],
-            sample.ys[:, j, :],
-            most_likely_entity_regimes[:, j],
-            most_likely_system_regimes,
-        )
+# ### Plot Estimated Regimes
+# if show_plots_after_learning:
+#     most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
+#     most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
+#     for j in range(DIMS.J):
+#         print(f"Now plotting results for entity {j}")
+#         plot_sample_with_system_regimes(
+#             sample.xs[:, j, :],
+#             sample.ys[:, j, :],
+#             most_likely_entity_regimes[:, j],
+#             most_likely_system_regimes,
+#         )
 
 
-### Diagnostics Parameter investigation
+# ### Diagnostics Parameter investigation
 
-# Parameter investigation :  endogenous transition preferences
-learned_system_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.STP.Pi, axis=1))
-print(f"Learned system tpm: \n{learned_system_tpm}")
-for j in range(DIMS.J):
-    for l in range(DIMS.L):
-        learned_entity_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.ETP.Ps[j, l], axis=1))
-        print(f"Learned tpm for entity {j} under system regime {l}: \n{learned_entity_tpm}")
+# # Parameter investigation :  endogenous transition preferences
+# learned_system_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.STP.Pi, axis=1))
+# print(f"Learned system tpm: \n{learned_system_tpm}")
+# for j in range(DIMS.J):
+#     for l in range(DIMS.L):
+#         learned_entity_tpm = np.exp(normalize_log_potentials_by_axis(params_learned.ETP.Ps[j, l], axis=1))
+#         print(f"Learned tpm for entity {j} under system regime {l}: \n{learned_entity_tpm}")
 
-# Parameter investigation: Entity transition probabilities under different system regimes and closeness-to-origin statuses.
-investigate_entity_transition_probs_in_different_contexts(
-    params_true.ETP,
-    sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
-)
-input("Above is report with TRUE params.  Press any key to continue.")
-investigate_entity_transition_probs_in_different_contexts(
-    params_init.ETP,
-    sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
-)
-input("Above is report with INITIALIZED params.  Press any key to continue.")
-investigate_entity_transition_probs_in_different_contexts(
-    params_learned.ETP,
-    sample.xs,
-    model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
-    save_dir,
-)
-input("Above is report with LEARNED params.  Press any key to continue.")
+# # Parameter investigation: Entity transition probabilities under different system regimes and closeness-to-origin statuses.
+# investigate_entity_transition_probs_in_different_contexts(
+#     params_true.ETP,
+#     sample.xs,
+#     model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
+# )
+# input("Above is report with TRUE params.  Press any key to continue.")
+# investigate_entity_transition_probs_in_different_contexts(
+#     params_init.ETP,
+#     sample.xs,
+#     model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
+# )
+# input("Above is report with INITIALIZED params.  Press any key to continue.")
+# investigate_entity_transition_probs_in_different_contexts(
+#     params_learned.ETP,
+#     sample.xs,
+#     model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
+#     save_dir,
+# )
+# input("Above is report with LEARNED params.  Press any key to continue.")

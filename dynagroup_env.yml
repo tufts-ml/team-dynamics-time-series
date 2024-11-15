@@ -1,0 +1,26 @@
+name: dynagroup_env_310
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - git
+  - cython
+  ## DataSci tools
+  - numpy
+  - scipy
+  - statsmodels
+  ## Visualization
+  - notebook
+  - matplotlib
+  - seaborn
+  ## Data I/O
+  - pandas
+  ## Packages installed via pip
+  - pip:
+    - jax
+    - jaxlib
+    - jax-dataclasses
+    - tensorflow-probability
+    - "git+https://github.com/lindermanlab/ssm@6c856ad3#egg=ssm"
+    - dynamax
+    - pomegranate

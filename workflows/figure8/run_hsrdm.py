@@ -186,6 +186,7 @@ if __name__ == '__main__':
     n_tok = np.sum(mask_TJ) * DIMS.D
     elbo_pertok = elbo_obj.elbo / n_tok
     print("ELBO after CAVI: ", "%.3f" % elbo_pertok)
+    print("Entropy term   : ", "%.3f" % elbo_obj.entropy)
 
     logp_pertok = jstats.norm.logpdf(data_TJD[mask_TJ], 0., 1.).sum() / n_tok
     print("baseline std normal log pdf:", "%.3f" % logp_pertok)

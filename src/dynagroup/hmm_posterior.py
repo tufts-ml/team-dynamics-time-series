@@ -20,7 +20,7 @@ from dynagroup.types import (
 )
 from dynagroup.util import soften_tpm
 from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
-
+from dynagroup.vi.hmm_entropy_utils import calc_entropy_hmm_posterior
 
 ###
 # Structs
@@ -290,7 +290,20 @@ def compute_hmm_posterior_summary_JAX(
         np.asarray(transitions, dtype=np.float64),
         np.asarray(log_emissions, dtype=np.float64),
     )
-
+    r_TL = jnp.asarray(expected_regimes)
+    s_ULL = jnp.asarray(expected_joints)
+    entropy = calc_entropy_hmm_posterior(r_TL, s_ULL).item()
+    if not np.isfinite(entropy):
+        raise ValueError("Entropy not a finite float value")
+    if entropy < -1e-5:
+        raise ValueError("Entropy of discrete rv seq should not be below zero")
+    return HMM_Posterior_Summary_JAX(
+        r_TL,
+        s_ULL,
+        jnp.asarray(log_normalizer),
+        entropy
+    )
+    '''
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
     # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where
     # ### there are time-dependent parameters.
@@ -320,6 +333,7 @@ def compute_hmm_posterior_summary_JAX(
         jnp.asarray(log_normalizer),
         entropy,
     )
+    '''
 
 def compute_hmm_posterior_summary_JAX_initialize(
     log_transitions: JaxNumpyArray3D,

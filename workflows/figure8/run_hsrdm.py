@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import jax.scipy.stats as jstats
 import numpy as np
 from matplotlib import pyplot as plt
 import os
@@ -12,6 +13,7 @@ from dynagroup.model2a.gaussian.initialize import (
     smart_initialize_model_2a,
 )
 from dynagroup.vi.core import run_CAVI_with_JAX
+from dynagroup.vi.M_step_and_ELBO import compute_elbo_decomposed
 from dynagroup.util import (
     get_current_datetime_as_string,
     normalize_log_potentials_by_axis,
@@ -34,6 +36,7 @@ DEFAULT_RESULTS_DIR = os.path.join(
 
 
 if __name__ == '__main__':
+    np.set_printoptions(precision=3, suppress=True)
     parser = argparse.ArgumentParser()
     parser.add_argument('--results_dir',
         default=os.environ.get(
@@ -48,7 +51,24 @@ if __name__ == '__main__':
     parser.add_argument('--seeds_for_forecasting',
         type=str,
         default='120,121,122,123,124,125')
+    # Allow user input to override default train_info vals
+    train_info_keys = list()
+    for key, val in train_info.__dict__.items():
+        val_is_numeric = isinstance(val, (int, float, bool))
+        if val_is_numeric:
+            train_info_keys.append(key)
+            parser.add_argument('--%s' % key,
+                default=val,
+                type=type(val))    
     args = parser.parse_args()
+    # Fill in train_info
+    for key in train_info_keys:
+        val = args.__dict__.get(key)
+        if val != getattr(train_info, key):
+            print("USER-PROVIDED OPTION: --%s %s" % (key, val))
+            setattr(train_info, key, val)
+    
+
     seed = args.seed
     datetime_as_string = get_current_datetime_as_string()
     run_description = f"seed{seed:03d}_timestamp{datetime_as_string}"
@@ -62,7 +82,10 @@ if __name__ == '__main__':
         mask_TJ,
         TRUE_PARAMS,
         )
+    T, J = mask_TJ.shape
     DIMS = dims_from_params(TRUE_PARAMS)
+    if dataset.example_end_times is None:
+        dataset.example_end_times = np.array([-1, T])
 
     # dataset : contains observations as well as true s/z values
     #
@@ -75,6 +98,10 @@ if __name__ == '__main__':
     print(" T=%d : num timesteps" % (dataset.xs.shape[0]))
     print(" D=%d : num obs dims" % (dataset.xs.shape[1]))
     print(" J=%d : num entities" % (DIMS.J))
+    print("First 3 timesteps of first entity:")
+    print(dataset.xs[:3, 0, :])
+    print("Last 3 timesteps of last entity:")
+    print(dataset.xs[-3:, -1, :])
     print("MODEL DIMS")
     print(" L=%d : num sys states\n K=%d : num entity states" % (
         DIMS.L, DIMS.K))
@@ -86,7 +113,7 @@ if __name__ == '__main__':
         'strategy_for_CSP'
         ])
     init_args = InitArgs(
-        seed=1,
+        seed=seed,
         num_em_iters_top=20,
         num_em_iters_bottom=5,
         strategy_for_CSP=PreInitialization_Strategy_For_CSP.LOCATION)
@@ -112,9 +139,19 @@ if __name__ == '__main__':
     # - STP : system transitions
     # - ETP : entity transitions
     # - EP : emissions params
+    print("Params at Init")
+    print("--------------")
+    print("STP.Pi")
+    print(params_init.STP.Pi[:3,:3])
+    print("CSP.bs[j=0]")
+    print(params_init.CSP.bs[0])
+    print("CSP.bs[j=2]")
+    print(params_init.CSP.bs[2])
 
-    VES, VEZ, params_learned, *_ = run_CAVI_with_JAX(
-        jnp.asarray(dataset.xs),
+    data_TJD = jnp.asarray(dataset.xs)
+
+    VES, VEZ, params, *_ = run_CAVI_with_JAX(
+        data_TJD,
         train_info.n_cavi_iterations,
         init_result,
         figure8_model_JAX,
@@ -127,24 +164,51 @@ if __name__ == '__main__':
         verbose=args.verbose,
         )
 
-    ismissing_T = np.max(1-mask_TJ, axis=1)
-    Tforecast = np.sum(ismissing_T)
-    entity_idxs_for_forecasting = np.flatnonzero(
-        np.sum(1-mask_TJ,axis=0)).tolist()
+    print("Params after CAVI")
+    print("--------------")
+    print("STP.Pi")
+    print(params.STP.Pi[:3,:3])
+    print("CSP.bs[j=0]")
+    print(params.CSP.bs[0])
+    print("CSP.bs[j=2]")
+    print(params.CSP.bs[2])
 
-    seeds_for_forecasting = np.asarray(
-        [int(s) for s in args.seeds_for_forecasting.split(',')])
-    _, _, _, forecasts = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
-        dataset.xs,
-        params_learned,
+    elbo_obj = compute_elbo_decomposed(
+        params,
         VES,
         VEZ,
-        Tforecast,
+        STP_prior,
+        data_TJD,
         figure8_model_JAX,
-        seeds_for_forecasting,
-        results_dir,
-        use_continuous_states=mask_TJ,
-        entity_idxs=entity_idxs_for_forecasting,
-        filename_prefix="HSRDM",
-        )
+        dataset.example_end_times,
+        system_covariates=None,
+    )
+    n_tok = np.sum(mask_TJ) * DIMS.D
+    elbo_pertok = elbo_obj.elbo / n_tok
+    print("ELBO after CAVI: ", "%.3f" % elbo_pertok)
 
+    logp_pertok = jstats.norm.logpdf(data_TJD[mask_TJ], 0., 1.).sum() / n_tok
+    print("baseline std normal log pdf:", "%.3f" % logp_pertok)
+
+    ismissing_T = np.max(1-mask_TJ, axis=1)
+    Tforecast = np.sum(ismissing_T)
+    seeds_for_forecasting = None
+    if len(args.seeds_for_forecasting) > 0:
+        seeds_for_forecasting = np.asarray(
+            [int(s) for s in args.seeds_for_forecasting.split(',')])
+    if seeds_for_forecasting is not None and seeds_for_forecasting.size > 0:
+        entity_idxs_for_forecasting = np.flatnonzero(
+            np.sum(1-mask_TJ,axis=0)).tolist()
+        _, _, _, forecasts = evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_8(
+            dataset.xs,
+            params,
+            VES,
+            VEZ,
+            Tforecast,
+            figure8_model_JAX,
+            seeds_for_forecasting,
+            results_dir,
+            use_continuous_states=mask_TJ,
+            entity_idxs=entity_idxs_for_forecasting,
+            filename_prefix="HSRDM",
+            )

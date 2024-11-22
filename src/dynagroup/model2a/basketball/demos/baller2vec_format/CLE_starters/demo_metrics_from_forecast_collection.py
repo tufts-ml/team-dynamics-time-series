@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from typing import Optional
+
 import numpy as np
 
 from dynagroup.model2a.basketball.forecast.main_analysis import (
@@ -6,6 +9,17 @@ from dynagroup.model2a.basketball.forecast.main_analysis import (
     load_dynagroup_forecasts,
     load_groupnet_forecasts,
 )
+
+
+SAVE_DIR = "/Users/miw267/Repos/tmlr-2024/images/basketball"
+
+
+@dataclass
+class Result_For_Data_Size:
+    name: str
+    mean_dist: float
+    SE_diff: Optional[float] = np.nan
+    reject_hypoth: Optional[bool] = np.nan
 
 
 ### Get forecasts (agentformer)
@@ -75,6 +89,18 @@ for model_name in metrics_dict.keys():
         f"MEAN DIST (SE) - CLE for {model_name} is {metrics_dict[model_name].CLE__MEAN_DIST : .02f} ({metrics_dict[model_name].CLE__SE_MEAN_DIST : .02f} )"
     )
 
+### make results dict for paper
+results_dict = {"small": [], "medium": [], "large": []}
+
+for model_name in metrics_dict.keys():
+    size = model_name.split("_")[-1]
+    if model_name.endswith(f"_{size}"):
+        name = model_name[: -len(f"_{size}")]
+    mean_dist = metrics_dict[model_name].CLE__MEAN_DIST
+    # mean_dist=metrics_dict[model_name].BOTH_TEAMS__MEAN_DIST
+    result = Result_For_Data_Size(name, mean_dist)
+    results_dict[size].append(result)
+
 
 ####
 # Paired difference test
@@ -102,8 +128,8 @@ for size in ["small", "medium", "large"]:
     for focal_model, competitor_models in focal_models_to_competitor_models.items():
         for competitor in competitor_models:
             diffs = (
-                metrics_dict[f"{competitor}_{size}"].BOTH_TEAMS__MEAN_DIST_E
-                - metrics_dict[f"{focal_model}_{size}"].BOTH_TEAMS__MEAN_DIST_E
+                metrics_dict[f"{competitor}_{size}"].CLE__MEAN_DIST_E
+                - metrics_dict[f"{focal_model}_{size}"].CLE__MEAN_DIST_E
             )
             SE_diff = np.nanstd(diffs) / np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples)
             # t_stat_by_hand = np.nanmean(diffs)/np.nanstd(diffs)/np.sqrt(metrics_dict[f"ours_{size}"].num_valid_examples)
@@ -121,11 +147,31 @@ reject_hypoth, pvals_corrected = fdrcorrection(
 test_results_dict = OrderedDict()
 for i, comparison in enumerate(uncorrected_p_vals_dict.keys()):
     test_results_dict.update([(comparison, (reject_hypoth[i], f"{pvals_corrected[i]:.3e}", f"{SE_diffs[i]:.3f}"))])
+    size = comparison[0]
+    competitor = comparison[-1]
+    results_list_for_size = results_dict[size]
+    name_matches = [results_list_for_size[i].name == competitor for i in range(len(results_list_for_size))]
+    idx_of_name_match = next((i for i, value in enumerate(name_matches) if value), None)
+    results_dict[size][idx_of_name_match].SE_diff = SE_diffs[i]
+    results_dict[size][idx_of_name_match].reject_hypoth = reject_hypoth[i]
 
 ### Print results
 
 print(f"\nFormal comparisons")
 pprint.pprint(test_results_dict)
+
+### Make latex table
+from dataclasses import asdict
+
+import pandas as pd
+
+
+for size, results_list_for_size in results_dict.items():
+    dict_list = [asdict(rl) for rl in results_list_for_size]
+    df = pd.DataFrame(dict_list)
+    latex_str = df.to_latex(float_format="%.1f", index=False)
+    print(f"\n ---- {size} --- ")
+    print(latex_str)
 
 
 ###
@@ -144,8 +190,8 @@ focal_models_to_competitor_models = {
 }
 
 parameters_for_model_comparison_on_forecast_statistics = {
-    Forecast_Statistic.Pct_In_Bounds: {"alpha": 0.01, "alternative": "less"},
-    Forecast_Statistic.Directional_Variabilities: {"alpha": 0.01, "alternative": "greater"},
+    Forecast_Statistic.Pct_In_Bounds: {"alpha": 0.05, "alternative": "two-sided"},
+    Forecast_Statistic.Directional_Variabilities: {"alpha": 0.05, "alternative": "two-sided"},
 }
 
 
@@ -218,7 +264,7 @@ for m, model in enumerate(models_list):
             np.min(y_mins),
             np.max(y_maxes),
             show_plot=False,
-            save_dir="/Users/miw267/Repos/aistats-2024/images/basketball/",
+            save_dir=SAVE_DIR,
             basename_before_extension=f"forecasts_by_{model}_for_player_{j}",
         )
 

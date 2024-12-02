@@ -61,17 +61,16 @@ MODEL_ADJUSTMENT = "complete_pooling"  # Options: None, "one_system_regime", "re
 example_end_times = None
 
 # For initialization
+seed_for_initialization = 123
 show_plots_after_init = False
-seed_for_initialization = 1
 num_em_iterations_for_bottom_half_init = 5
 num_em_iterations_for_top_half_init = 20
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
-seed = 121 #Need to change in Vi.M_STEP_and_ELBO if you want EXACT reproducibility over entire training 
 n_cavi_iterations = 10
-M_step_toggle_for_STP = "closed_form_tpm"
+M_step_toggle_for_STP = "closed_form_tpm" #"gradient_descent"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
@@ -86,14 +85,11 @@ seeds_for_forecasting = [120, 121, 122, 123, 124]
 entity_idxs_for_forecasting = [2]
 T_slice_for_forecasting = 120
 
-
 # Directories
 datetime_as_string = get_current_datetime_as_string()
-run_description = f"seed_{seed}_timestamp__{datetime_as_string}_pooling"
+run_description = f"seed_{seed_for_initialization}_timestamp__{datetime_as_string}_pooling"
 home_dir = os.path.expanduser("~")
 plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
-
-
 
 
 ###
@@ -218,6 +214,8 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list
     use_continuous_states,
 )
 
+most_likely_entity_regimes = np.argmax(VEZ_summaries.expected_regimes, axis=2)
+print(most_likely_entity_regimes)
 
 ###
 # Forecasting...adjusted...

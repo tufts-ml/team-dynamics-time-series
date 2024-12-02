@@ -140,7 +140,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
     MSEs_velocity_baseline = np.full(J, np.nan)  # value is NaN if entity was not masked.
 
     ### Construct forecasts return object
-    J_forecast = len(entity_idxs)
+    J_forecast = len(entity_idxs) 
 
     # Guess at T_forecast_universal_across_j . If it's not the same for all j_forecasts then
     j_star = entity_idxs[0]
@@ -325,7 +325,8 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
             # MSE
             ground_truth_forward_sim = continuous_states[t_0_forward_sim:t_end_forward_sim, j]
-            MSE_forward_sim = np.mean((ground_truth_forward_sim - sample_ahead.xs[:, j]) ** 2)
+            MSE_forward_sim = np.mean((ground_truth_forward_sim[:, 0:2] - sample_ahead.xs[:, j, 0:2]) ** 2)
+            std_forward_sim = np.std((ground_truth_forward_sim[:, 0:2] - sample_ahead.xs[:, j, 0:2]) ** 2) / (np.sqrt(120))
             if had_masking:
                 MSEs_forward_sims[j, s] = MSE_forward_sim
             # Rk: `MSE_forward_sim` mixes entities with seen vs unseen data in the forecasting window.
@@ -362,7 +363,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
                 filename_prefix,
                 DIMS.L,
             )
-            plt.title(f"MSE: {MSE_forward_sim:.05f}.")
+            plt.title(f"MSE: {MSE_forward_sim:.05f} + {std_forward_sim}.")
             fig1.savefig(
                 save_dir
                 + f"forward_simulation_{tag_forward_sim}_seed_{forward_simulation_seed}_MSE_{MSE_forward_sim:.03f}.pdf"
@@ -432,7 +433,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice(
 
     fig2 = plt.figure(figsize=(2, 6))
     cax = fig2.add_subplot()
-    cbar = fig1.colorbar(im, cax=cax)
+    cbar = fig1.colorbar(im, cax=cax, ticks = [280, 300, 320, 340, 360, 380, 400] )
     cbar.set_label("Timesteps", rotation=90)
     plt.tight_layout()
     fig2.savefig(save_dir + "colorbar_clip.pdf")

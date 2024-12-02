@@ -19,6 +19,7 @@ from dynagroup.types import (
     NumpyArray4D,
 )
 from dynagroup.util import soften_tpm
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 
 
 ###
@@ -289,6 +290,68 @@ def compute_hmm_posterior_summary_JAX(
         np.asarray(transitions, dtype=np.float64),
         np.asarray(log_emissions, dtype=np.float64),
     )
+
+    # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
+    # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where
+    # ### there are time-dependent parameters.
+    # ### See https://github.com/probml/dynamax/issues/310.
+    # ### TODO: The problem is that trans_probs is one timestep too short! check how dynamax does this!
+    # from dynamax.hidden_markov_model import hmm_smoother
+    # result=hmm_smoother(init_dist_over_system_regimes, transitions, log_emissions)
+    # expected_regimes, expected_joints, log_normalizer  =  result.smoothed_probs, result.trans_probs, float(result.marginal_loglik)
+
+    hmm_posterior_summary_without_entropy = HMM_Posterior_Summary_JAX(
+        jnp.asarray(expected_regimes),
+        jnp.asarray(expected_joints),
+        jnp.asarray(log_normalizer),
+        entropy=None,
+    )
+
+    log_init = jnp.log(init_dist_over_regimes)
+    entropy = compute_entropy_of_HMM_posterior(
+        log_transitions,
+        log_emissions,
+        log_init,
+        hmm_posterior_summary_without_entropy,
+    )
+    return HMM_Posterior_Summary_JAX(
+        jnp.asarray(expected_regimes),
+        jnp.asarray(expected_joints),
+        jnp.asarray(log_normalizer),
+        entropy,
+    )
+
+def compute_hmm_posterior_summary_JAX_initialize(
+    log_transitions: JaxNumpyArray3D,
+    log_emissions: JaxNumpyArray2D,
+    init_dist_over_regimes: JaxNumpyArray1D,
+) -> HMM_Posterior_Summary_JAX:
+    """
+    Arguments:
+        log_transitions: An array of shape (T-1,K,K),
+            whose (t,k,k')-th entry gives the MODEL's log probability
+            of p(x_t = k' | x_{t-1}=k)
+        log_emissions : An array of shape (T,K),
+            whose (t,k)-th entry gives the MODEL's log emissions density
+            of p(y_t | x_t=k)
+        init_dist_over_regimes: An array of shape (K,)
+            whose k-th entry gives the MODEL's init state probability
+            p(x_1 =k)
+    """
+    transitions = jnp.exp(log_transitions)
+
+    # TODO: Here is where we lose jax-ness...Questions
+    # 1) Does the conversion to numpy slow things down?
+    # 2) Should we convert the return values to jax arrays?
+    # 3) Is there a function in dynamax which does hmm_expected_states but with jax i/o?
+    expected_regimes, expected_joints, log_normalizer = hmm_expected_states(
+        np.asarray(init_dist_over_regimes, dtype=np.float64),
+        np.asarray(transitions, dtype=np.float64),
+        np.asarray(log_emissions, dtype=np.float64),
+    )
+
+    expected_regimes = system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680])
+
 
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
     # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where

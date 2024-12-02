@@ -648,9 +648,9 @@ def numpy_params_from_params(all_params: AllParameters_JAX) -> AllParameters:
     return AllParameters_JAX(
         numpyify_param_group(all_params.STP, SystemTransitionParameters),
         numpyify_param_group(all_params.ETP, EntityTransitionParameters_MetaSwitch),
-        numpyify_param_group(all_params.CSP, ContinuousStateParameters),
+        numpyify_param_group(all_params.CSP, ContinuousStateParameters_Gaussian),
         numpyify_param_group(all_params.EP, EmissionsParameters),
-        numpyify_param_group(all_params.IP, InitializationParameters),
+        numpyify_param_group(all_params.IP, InitializationParameters_Gaussian),
     )
 
 

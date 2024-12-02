@@ -34,7 +34,7 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D],
+    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D], 
     n_iterations: int,
     initialization_results: InitializationResults,
     model: Model,
@@ -101,11 +101,13 @@ def run_CAVI_with_JAX(
     ###
     # SET-UP
     ###
-
+    
     IR = initialization_results
     all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
     DIMS = dims_from_params(all_params)
     T = np.shape(continuous_states)[0]
+    classification_list = np.zeros(n_iterations)
+
 
     if continuous_states.ndim == 2:
         print("Continuous states has only two array dimensions; now adding a third array dimension with 1 element.")
@@ -187,12 +189,14 @@ def run_CAVI_with_JAX(
             use_continuous_states,
         )
 
+
         if verbose:
             print(f"\nVES step's log normalizer: {VES_summary.log_normalizer:.02f}")
             if true_system_regimes is not None:
                 most_likely_system_regimes = np.argmax(VES_summary.expected_regimes, axis=1)
                 pct_correct_system = compute_regime_labeling_accuracy(most_likely_system_regimes, true_system_regimes)
                 print(f"Percent correct classifications for system segmentations {pct_correct_system:.02f}")
+                classification_list[i] = pct_correct_system
 
         VEZ_summaries = run_VEZ_step_JAX(
             all_params.CSP,
@@ -231,6 +235,7 @@ def run_CAVI_with_JAX(
                 f"After E-step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
+
         # TODO: I probably don't really need separate functions of the form run_M_step_for_<xxxx>.  Make this a single wrapper that in
         # turn calls the appropriate functions for closed-form or gradient descent inference.
 
@@ -267,6 +272,7 @@ def run_CAVI_with_JAX(
                 f"After ETP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
+
         ###
         # M-step (STP)
         ###
@@ -286,6 +292,7 @@ def run_CAVI_with_JAX(
             verbose,
         )
 
+
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
             VES_summary,
@@ -301,36 +308,40 @@ def run_CAVI_with_JAX(
                 f"After STP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
+    
+
+
         ###
         # M-step (CSP)
         ###
 
         all_params = run_M_step_for_CSP(
-            all_params,
-            M_step_toggles.CSP,
-            VEZ_summaries,
-            continuous_states,
-            i,
-            num_M_step_iters,
-            model,
-            example_end_times,
-            use_continuous_states,
+        all_params,
+        M_step_toggles.CSP,
+        VEZ_summaries,
+        continuous_states,
+        i,
+        num_M_step_iters,
+        model,
+        example_end_times,
+        use_continuous_states,
         )
 
         elbo_decomposed = compute_elbo_decomposed(
-            all_params,
-            VES_summary,
-            VEZ_summaries,
-            system_transition_prior,
-            continuous_states,
-            model,
-            example_end_times,
-            system_covariates,
+        all_params,
+        VES_summary,
+        VEZ_summaries,
+        system_transition_prior,
+        continuous_states,
+        model,
+        example_end_times,
+        system_covariates,
         )
         if verbose:
             print(
-                f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
+            f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
+
 
         ###
         # M-step (IP)
@@ -344,6 +355,7 @@ def run_CAVI_with_JAX(
             continuous_states,
             example_end_times,
         )
+
         all_params = AllParameters_JAX(all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new)
         # TODO: Make all `run_M_step[...]` have consistent call signatures.
         # I think the current more compact one is better; otherwise we have to construct
@@ -360,9 +372,13 @@ def run_CAVI_with_JAX(
             example_end_times,
             system_covariates,
         )
+
         if verbose:
             print(
                 f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
 
-    return VES_summary, VEZ_summaries, all_params, elbo_decomposed
+    
+        
+
+    return VES_summary, VEZ_summaries, all_params, elbo_decomposed, classification_list 

@@ -26,7 +26,7 @@ def find_last_index_in_interval_where_array_value_is_close_to_desired_point(
     starting_index: int,
     ending_index: int,
 ) -> float:
-    closeness_threshold = 0.15
+    closeness_threshold = 0.2
 
     for t in reversed(range(starting_index, ending_index)):
         if np.linalg.norm(array[t] - desired_point) < closeness_threshold:
@@ -70,7 +70,7 @@ def evaluate_and_plot_posterior_mean_and_forward_simulation_on_slice_for_figure_
 
     find_forward_sim_t0_for_entity_sample = functools.partial(
         find_last_index_in_interval_where_array_value_is_close_to_desired_point,
-        desired_point=np.array([1, 1]),
+        desired_point=np.array([0.6,0.1]),
         starting_index=0,
         ending_index=len(continuous_states),
     )

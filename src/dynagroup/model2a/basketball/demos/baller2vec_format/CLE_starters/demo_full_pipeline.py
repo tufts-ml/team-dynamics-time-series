@@ -47,7 +47,7 @@ from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 n_train_games_to_use = 20
 model_type = Model_Type.Linear_And_Out_Of_Bounds_Entity_Recurrence__and__All_Player_Locations_System_Recurrence
 # model_type = Model_Type.No_Recurrence
-K = 10
+K = 10  
 L = 5
 
 # Exploratory Data Analysis
@@ -157,16 +157,16 @@ print("Running smart initialization.")
 results_init = smart_initialize_model_2a(
     DIMS,
     DATA_TRAIN.player_coords,
-    DATA_TRAIN.example_stop_idxs,
+    DATA_TRAIN.example_stop_idxs,  #QUESTION: What does this mean? 
     model_basketball,
     preinitialization_strategy_for_CSP,
     num_em_iterations_for_bottom_half_init,
     num_em_iterations_for_top_half_init,
     seed_for_initialization,
     system_covariates,
-    use_continuous_states,
+    use_continuous_states,  #QUESTION: What does this mean? 
     plots_dir,
-    verbose=True,
+    verbose=True,  #QUESTION: What does this mean? 
     plotbose=make_verbose_initialization_plots,
 )
 params_init = results_init.params
@@ -218,10 +218,10 @@ if animate_initialization:
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accuracy = run_CAVI_with_JAX(
     jnp.asarray(DATA_TRAIN.player_coords),
     n_cavi_iterations,
-    results_init,
+    results_init,   
     model_basketball,
     DATA_TRAIN.example_stop_idxs,
     M_step_toggles_from_strings(

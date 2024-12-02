@@ -17,6 +17,8 @@ from dynagroup.hmm_posterior import (
     HMM_Posterior_Summary_JAX,
     compute_closed_form_M_step_on_posterior_summaries,
 )
+from dynagroup.metrics import compute_regime_labeling_accuracy
+from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.initialize import (
     InitializationResults,
     RawInitializationResults,
@@ -333,7 +335,8 @@ def fit_rARHMM_to_bottom_half_of_model(
 
     record_of_most_likely_states = np.zeros((T, J, num_EM_iterations), dtype=int)
 
-    print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
+    if verbose:
+        print("\n--- Now running AR-HMM on bottom half of Model 2a. ---")
     for i in range(num_EM_iterations):
         if verbose:
             print(f"Now running EM iteration {i+1}/{num_EM_iterations} for AR-HMM on bottom half of Model 2a.")
@@ -343,12 +346,14 @@ def fit_rARHMM_to_bottom_half_of_model(
         ###
 
         VES_expected_regimes__uniform = np.ones((T, L)) / L
+        VES_expected_regimes__good = system_regimes_gt(10, [1227, 2840, 6128, 7392, 9553, 9680])
+
         EZ_summaries = run_VEZ_step_JAX(
             CSP_JAX,
             ETP_JAX,
             IP_JAX,
             continuous_states,
-            VES_expected_regimes__uniform,
+            VES_expected_regimes__uniform, #added
             model,
             example_end_times,
         )
@@ -386,7 +391,7 @@ def fit_rARHMM_to_bottom_half_of_model(
                 ### New way: update ETP_JAX by using gradient descent
                 num_M_step_iterations_for_ETP_gradient_descent = 5
                 ES_summary_uniform = HMM_Posterior_Summary_JAX(
-                    expected_regimes=jnp.ones((T, L)) / L,
+                    expected_regimes=VES_expected_regimes__uniform,  #added
                     expected_joints=jnp.ones((T - 1, L, L)) / L,
                     log_normalizer=jnp.nan,
                 )
@@ -404,15 +409,14 @@ def fit_rARHMM_to_bottom_half_of_model(
                 )
 
             ###
-            # M-step (for CSP)
-            ###
+            # # M-step (for CSP)
+            # ###
             CSP_JAX = run_M_step_for_CSP_in_closed_form__Gaussian_case(
                 EZ_summaries.expected_regimes,
                 continuous_states,
                 example_end_times,
                 use_continuous_states,
             )
-
     return ResultsFromBottomHalfInit(CSP_JAX, EZ_summaries, record_of_most_likely_states, ETP_JAX)
 
 
@@ -453,7 +457,8 @@ def fit_ARHMM_to_top_half_of_model(
         # TODO: Check that D_s=0 as well; if not there is an inconsistency in the implied desire of the caller.
         system_covariates = np.zeros((T, 0))
 
-    print("\n--- Now running AR-HMM on top half of Model 2a. ---")
+    if verbose:
+        print("\n--- Now running AR-HMM on top half of Model 2a. ---")
 
     for iteration in range(num_EM_iterations):
         if verbose:
@@ -475,9 +480,12 @@ def fit_ARHMM_to_top_half_of_model(
             system_covariates,
             use_continuous_states=use_continuous_states,
         )
+        
 
         record_of_most_likely_states[:, iteration] = np.array(np.argmax(ES_summary.expected_regimes, axis=1), dtype=int)
 
+
+       
         ###
         # M-step
         ###
@@ -523,7 +531,7 @@ def fit_ARHMM_to_top_half_of_model(
                     continuous_states,
                     verbose,
                 )
-
+    
     return ResultsFromTopHalfInit(STP_JAX, ETP_JAX, ES_summary, record_of_most_likely_states)
 
 
@@ -710,5 +718,7 @@ def smart_initialize_model_2a(
             continuous_states,
             example_end_times,
         )
+
+
     results_raw = RawInitializationResults(results_bottom, results_top, IP_JAX, EP_JAX)
     return initialization_results_from_raw_initialization_results(results_raw, params_frozen)

@@ -282,3 +282,24 @@ def flatten_list_of_lists(list_of_lists):
 
 def get_current_datetime_as_string():
     return datetime.datetime.now().strftime("%m-%d-%Y_%Hh%Mm%Ss")
+
+def segment_list(data, indexes):
+    # written by chatGPT! Ensure indexes are sorted
+    indexes = sorted(indexes)
+    
+    # Add the end of the list as the final segment endpoint
+    indexes = indexes + [len(data)]
+    
+    segments = []
+    start = 0
+    
+    for idx in indexes:
+        segments.append(data[start:idx])
+        start = idx
+    
+    return segments
+
+def find_indices(lst, target):
+    # written by chatGPT!
+    """Return the indices where the target integer appears in the list."""
+    return [i for i, x in enumerate(lst) if x == target]

@@ -6,6 +6,8 @@ from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
 from dynagroup.types import NumpyArray2D, NumpyArray3D
 
 
+
+
 def make_mask_of_which_continuous_states_to_use(continuous_states: NumpyArray3D) -> NumpyArray2D:
     """
     Arguments:
@@ -27,7 +29,6 @@ def make_mask_of_which_continuous_states_to_use(continuous_states: NumpyArray3D)
             ending_index=T,
         )
     )
-
     use_continuous_states = np.full((T, J), True)
     use_continuous_states[last_training_idx_for_entity:, ENTITY_TO_MASK] = False
     return use_continuous_states

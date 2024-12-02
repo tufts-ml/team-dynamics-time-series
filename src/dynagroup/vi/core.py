@@ -2,7 +2,6 @@ import warnings
 from typing import Optional, Tuple, Union
 
 import numpy as np
-
 from dynagroup.examples import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
     HMM_Posterior_Summaries_JAX,
@@ -19,6 +18,7 @@ from dynagroup.types import (
     NumpyArray1D,
     NumpyArray2D,
 )
+import dynagroup.vi.elbo_utils as elbo_utils
 from dynagroup.vi.E_step import run_VES_step_JAX, run_VEZ_step_JAX
 from dynagroup.vi.M_step_and_ELBO import (
     ELBO_Decomposed,
@@ -34,14 +34,16 @@ from dynagroup.vi.prior import SystemTransitionPrior_JAX
 
 
 def run_CAVI_with_JAX(
-    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D], 
-    n_iterations: int,
-    initialization_results: InitializationResults,
-    model: Model,
+    all_params: AllParameters_JAX,
+    VES_summary: HMM_Posterior_Summary_JAX,
+    VEZ_summaries: HMM_Posterior_Summaries_JAX,
+    system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
+    model: Model = None,
+    continuous_states: Union[JaxNumpyArray2D, JaxNumpyArray3D] = None, 
     example_end_times: Optional[JaxNumpyArray1D] = None,
+    n_iterations: int = 1,
     M_step_toggles: Optional[M_Step_Toggles] = None,
     num_M_step_iters: int = 50,
-    system_transition_prior: Optional[SystemTransitionPrior_JAX] = None,
     system_covariates: Optional[JaxNumpyArray2D] = None,
     use_continuous_states: Optional[NumpyArray2D] = None,
     true_system_regimes: Optional[NumpyArray1D] = None,
@@ -102,12 +104,10 @@ def run_CAVI_with_JAX(
     # SET-UP
     ###
     
-    IR = initialization_results
-    all_params, VES_summary, VEZ_summaries = IR.params, IR.ES_summary, IR.EZ_summaries
     DIMS = dims_from_params(all_params)
     T = np.shape(continuous_states)[0]
     classification_list = np.zeros(n_iterations)
-
+    ed_list = list()
 
     if continuous_states.ndim == 2:
         print("Continuous states has only two array dimensions; now adding a third array dimension with 1 element.")
@@ -154,8 +154,33 @@ def run_CAVI_with_JAX(
     # TODO:  I need to have a way to do a DUMB (default/non-data-informed) init for both VEZ and VES summaries
     # so that we can get ELBO baselines BEFORE the smart-initialization.... Maybe make VEZ, VES uniform? And
     # use the data-free inits for everything else?
+    def local_calc_elbo(**kws):
+        all_params = kws.get('all_params')
+        VES_summary, VEZ_summaries = kws.get('VES_summary'), kws.get('VEZ_summaries')
+        STP_prior = kws.get('system_transition_prior')
+        model = kws.get('model')
+        data_TJD, example_end_times, mask_TJ = [
+            kws.get(s) for s in [
+                'continuous_states', 'example_end_times', 'use_continuous_states']]
+        elbo_dict = elbo_utils.calc_elbo(
+            all_params, VES_summary, VEZ_summaries, STP_prior,
+            model, data_TJD, example_end_times, mask_TJ, return_dict=True)
+        return elbo_dict
+    def pretty_print_elbo(**elbo_kws):
+        fstr = "elbo={elbo:9.5f} energy={energy:9.5f} entrp={entropy:9.5f}"
+        msg = fstr.format(**elbo_kws)
+        try:
+            print("%-32s" % elbo_kws["status"], msg)
+        except KeyError:
+            print(msg)
 
+
+    elbo_dict = local_calc_elbo(**locals())
+    elbo_dict['status'] = "at init"
+    ed_list.append(elbo_dict)
     if verbose:
+        pretty_print_elbo(**elbo_dict)
+        '''
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
             VES_summary,
@@ -169,6 +194,7 @@ def run_CAVI_with_JAX(
         print(
             f"After (possibly smart) initialization, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
         )
+        '''
 
     ###
     # CAVI
@@ -188,8 +214,13 @@ def run_CAVI_with_JAX(
             system_covariates,
             use_continuous_states,
         )
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after VES"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
 
-
+        '''
         if verbose:
             print(f"\nVES step's log normalizer: {VES_summary.log_normalizer:.02f}")
             if true_system_regimes is not None:
@@ -197,7 +228,7 @@ def run_CAVI_with_JAX(
                 pct_correct_system = compute_regime_labeling_accuracy(most_likely_system_regimes, true_system_regimes)
                 print(f"Percent correct classifications for system segmentations {pct_correct_system:.02f}")
                 classification_list[i] = pct_correct_system
-
+        '''
         VEZ_summaries = run_VEZ_step_JAX(
             all_params.CSP,
             all_params.ETP,
@@ -207,7 +238,12 @@ def run_CAVI_with_JAX(
             model,
             example_end_times,
         )
-
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after VEZ"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
+        '''
         if verbose:
             print(
                 f"\nVEZ step's log normalizer by entities for continuous state emissions when we use VES inits for q(S): {VEZ_summaries.log_normalizers}"
@@ -234,7 +270,7 @@ def run_CAVI_with_JAX(
             print(
                 f"After E-step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
-
+        '''
 
         # TODO: I probably don't really need separate functions of the form run_M_step_for_<xxxx>.  Make this a single wrapper that in
         # turn calls the appropriate functions for closed-form or gradient descent inference.
@@ -254,9 +290,14 @@ def run_CAVI_with_JAX(
             model,
             example_end_times,
             use_continuous_states,
-            verbose,
+            verbose-1,
         )
-
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after Mstep:ETP"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
+        '''
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
             VES_summary,
@@ -271,6 +312,7 @@ def run_CAVI_with_JAX(
             print(
                 f"After ETP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
+        '''
 
 
         ###
@@ -289,10 +331,14 @@ def run_CAVI_with_JAX(
             example_end_times,
             system_covariates,
             continuous_states,
-            verbose,
+            verbose-1,
         )
-
-
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after Mstep:STP"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
+        '''
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
             VES_summary,
@@ -307,7 +353,7 @@ def run_CAVI_with_JAX(
             print(
                 f"After STP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
-
+        '''
     
 
 
@@ -316,17 +362,22 @@ def run_CAVI_with_JAX(
         ###
 
         all_params = run_M_step_for_CSP(
-        all_params,
-        M_step_toggles.CSP,
-        VEZ_summaries,
-        continuous_states,
-        i,
-        num_M_step_iters,
-        model,
-        example_end_times,
-        use_continuous_states,
+            all_params,
+            M_step_toggles.CSP,
+            VEZ_summaries,
+            continuous_states,
+            i,
+            num_M_step_iters,
+            model,
+            example_end_times,
+            use_continuous_states,
         )
-
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after Mstep:CSP"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
+        '''
         elbo_decomposed = compute_elbo_decomposed(
         all_params,
         VES_summary,
@@ -341,7 +392,7 @@ def run_CAVI_with_JAX(
             print(
             f"After CSP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
-
+        '''
 
         ###
         # M-step (IP)
@@ -355,13 +406,18 @@ def run_CAVI_with_JAX(
             continuous_states,
             example_end_times,
         )
-
         all_params = AllParameters_JAX(all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new)
+        elbo_dict = local_calc_elbo(**locals())
+        elbo_dict['status'] = f"iter {i:3d} after Mstep:IP"
+        ed_list.append(elbo_dict)
+        if verbose:
+            pretty_print_elbo(**elbo_dict)
+
         # TODO: Make all `run_M_step[...]` have consistent call signatures.
         # I think the current more compact one is better; otherwise we have to construct
         # a full all parameters instance (with lots of extraneous info) when all we want to do is an operation
         # on the initial params.
-
+        '''
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
             VES_summary,
@@ -377,8 +433,5 @@ def run_CAVI_with_JAX(
             print(
                 f"After IP-M step on iteration {i+1}, we have Elbo: {elbo_decomposed.elbo:.02f}. Energy: {elbo_decomposed.energy:.02f}. Entropy: { elbo_decomposed.entropy:.02f}. "
             )
-
-    
-        
-
-    return VES_summary, VEZ_summaries, all_params, elbo_decomposed, classification_list 
+        '''
+    return VES_summary, VEZ_summaries, all_params, ed_list, classification_list 

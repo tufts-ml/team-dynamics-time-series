@@ -20,4 +20,4 @@ figure8_model_JAX = Model(
 )
 
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
-STP_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)
+STP_prior = None #SystemTransitionPrior_JAX(alpha_system_prior, kappa_system_prior)

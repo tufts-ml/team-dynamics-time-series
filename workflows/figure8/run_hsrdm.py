@@ -14,6 +14,8 @@ from dynagroup.model2a.gaussian.initialize import (
 )
 from dynagroup.vi.core import run_CAVI_with_JAX
 from dynagroup.vi.M_step_and_ELBO import compute_elbo_decomposed
+import dynagroup.vi.elbo_utils as elbo_utils
+
 from dynagroup.util import (
     get_current_datetime_as_string,
     normalize_log_potentials_by_axis,
@@ -27,6 +29,7 @@ from dynagroup.model2a.figure8.diagnostics.fit_and_forecasting import (
 from setup_model import figure8_model_JAX, STP_prior
 
 import setup_training as train_info
+import setup_init as init_info
 
 DEFAULT_RESULTS_DIR = os.path.join(
     os.environ.get("HOME"),
@@ -48,6 +51,9 @@ if __name__ == '__main__':
     parser.add_argument('--verbose',
         default=0,
         type=int)
+    parser.add_argument('--use_provided_data_mask',
+        default=1,
+        type=int)
     parser.add_argument('--seeds_for_forecasting',
         type=str,
         default='120,121,122,123,124,125')
@@ -60,6 +66,15 @@ if __name__ == '__main__':
             parser.add_argument('--%s' % key,
                 default=val,
                 type=type(val))    
+    # Allow user input to override default train_info vals
+    init_info_keys = list()
+    for key, val in init_info.__dict__.items():
+        val_is_numeric = isinstance(val, (int, float, bool))
+        if val_is_numeric:
+            init_info_keys.append(key)
+            parser.add_argument('--%s' % key,
+                default=val,
+                type=type(val))
     args = parser.parse_args()
     # Fill in train_info
     for key in train_info_keys:
@@ -67,11 +82,17 @@ if __name__ == '__main__':
         if val != getattr(train_info, key):
             print("USER-PROVIDED OPTION: --%s %s" % (key, val))
             setattr(train_info, key, val)
-    
+    # Fill in init_info
+    for key in init_info_keys:
+        val = args.__dict__.get(key)
+        if val != getattr(init_info, key):
+            print("USER-PROVIDED OPTION: --%s %s" % (key, val))
+            setattr(init_info, key, val)
 
     seed = args.seed
     datetime_as_string = get_current_datetime_as_string()
-    run_description = f"seed{seed:03d}_timestamp{datetime_as_string}"
+    use_provided_data_mask = args.use_provided_data_mask
+    run_description = f"seed{seed:03d}_mask{use_provided_data_mask}_timestamp{datetime_as_string}"
     results_dir = os.path.join(
         args.results_dir, run_description) + os.path.sep
     ensure_dir(results_dir)
@@ -83,6 +104,8 @@ if __name__ == '__main__':
         TRUE_PARAMS,
         )
     T, J = mask_TJ.shape
+    if not args.use_provided_data_mask:
+        mask_TJ[:] = True
     DIMS = dims_from_params(TRUE_PARAMS)
     if dataset.example_end_times is None:
         dataset.example_end_times = np.array([-1, T])
@@ -102,21 +125,12 @@ if __name__ == '__main__':
     print(dataset.xs[:3, 0, :])
     print("Last 3 timesteps of last entity:")
     print(dataset.xs[-3:, -1, :])
+    print("Num timesteps per entity hidden by mask:")
+    print(T - mask_TJ.sum(axis=0)[:10])
     print("MODEL DIMS")
     print(" L=%d : num sys states\n K=%d : num entity states" % (
         DIMS.L, DIMS.K))
 
-    InitArgs = namedtuple('InitArgs', [
-        'seed', 
-        'num_em_iters_top',
-        'num_em_iters_bottom',
-        'strategy_for_CSP'
-        ])
-    init_args = InitArgs(
-        seed=seed,
-        num_em_iters_top=20,
-        num_em_iters_bottom=5,
-        strategy_for_CSP=PreInitialization_Strategy_For_CSP.LOCATION)
 
     # Initialize model
     init_result = smart_initialize_model_2a(
@@ -124,16 +138,18 @@ if __name__ == '__main__':
         dataset.xs,
         dataset.example_end_times,
         figure8_model_JAX,
-        init_args.strategy_for_CSP,
-        init_args.num_em_iters_bottom,
-        init_args.num_em_iters_top,
-        init_args.seed,
+        init_info.strategy_for_CSP,
+        init_info.init_n_em_iters_bottom,
+        init_info.init_n_em_iters_top,
+        seed,
         system_covariates=None,
         use_continuous_states=mask_TJ,
         save_dir=results_dir,
-        verbose=args.verbose,
+        verbose=args.verbose-1,
     )
     params_init = init_result.params
+    VES_init, VEZ_init = init_result.ES_summary, init_result.EZ_summaries
+
     # params_init contains
     # - IP : initial tstep params
     # - STP : system transitions
@@ -150,15 +166,15 @@ if __name__ == '__main__':
 
     data_TJD = jnp.asarray(dataset.xs)
 
-    VES, VEZ, params, *_ = run_CAVI_with_JAX(
-        data_TJD,
-        train_info.n_cavi_iterations,
-        init_result,
+    VES, VEZ, params, ed_list, *_ = run_CAVI_with_JAX(
+        params_init,
+        VES_init, VEZ_init, STP_prior,
         figure8_model_JAX,
+        data_TJD,
         dataset.example_end_times,
+        train_info.n_cavi_iterations,
         train_info.Mstep_toggles,
         train_info.num_M_step_iters,
-        STP_prior,
         system_covariates=None,
         use_continuous_states=mask_TJ,
         verbose=args.verbose,
@@ -185,11 +201,26 @@ if __name__ == '__main__':
     )
     n_tok = np.sum(mask_TJ) * DIMS.D
     elbo_pertok = elbo_obj.elbo / n_tok
-    print("ELBO after CAVI: ", "%.3f" % elbo_pertok)
+    print("oldELBO after CAVI: ", "%.3f" % elbo_pertok)
     print("Entropy term   : ", "%.3f" % elbo_obj.entropy)
+
+    elbo_dict = elbo_utils.calc_elbo(params, VES, VEZ, STP_prior,
+        figure8_model_JAX,
+        data_TJD, dataset.example_end_times, mask_TJ,
+        return_dict=True)
+    newelbo_pertok = float(elbo_dict['elbo']) / n_tok
+    print("newELBO after CAVI: ", "%.3f" % newelbo_pertok)
+
 
     logp_pertok = jstats.norm.logpdf(data_TJD[mask_TJ], 0., 1.).sum() / n_tok
     print("baseline std normal log pdf:", "%.3f" % logp_pertok)
+
+    import pandas as pd
+    df = pd.DataFrame(ed_list)
+    df['step'] = np.arange(df.shape[0])
+    df[['step', 'elbo', 'energy', 'entropy', 'status']].to_csv(
+        os.path.join(results_dir, 'info_per_step.csv'),
+        index=False)
 
     ismissing_T = np.max(1-mask_TJ, axis=1)
     Tforecast = np.sum(ismissing_T)

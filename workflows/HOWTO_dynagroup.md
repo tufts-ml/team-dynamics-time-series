@@ -26,7 +26,7 @@ $ micromamba activate dynagroup_env_310
 export PYTHONPATH=/cluster/tufts/hugheslab/code/team-dynamics-time-series/src/
 ```
 
-### Step 3: Run code that demos performance on figure8
+#### Step 4: Run code that demos performance on figure8
 
 ```
 $ cd /cluster/tufts/hugheslab/code/team-dynamics-time-series/src/dynagroup/model2a/figure8/demos

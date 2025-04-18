@@ -6,7 +6,10 @@ cython # for Linderman's ssm package
 # for some reason doing an editable install to this package pip install -e .
 # requires that the below is installed manually.
 #
-# -e git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm 
+# That is, do
+#
+# USE_OPENMP=True pip install git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm
+
 
 pomegranate # just for Gaussian mixture models with sample weights (used to initialize vonMises AR-HMM)
 

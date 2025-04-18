@@ -36,3 +36,7 @@ data/basketball/baller2vec_format/processed/
 #unit test outputs
 tests/outputs/
 
+# this magically appeared somehow. not sure why. perhaps when
+# installing linderman's repo.
+src/ssm/
+

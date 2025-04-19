@@ -148,6 +148,7 @@ results_init = smart_initialize_model_2a_for_circles(
     parallelize_the_CSP_M_step_for_the_bottom_half_model=False,
 )
 params_init = results_init.params
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 
 ###
@@ -218,11 +219,13 @@ report_on_directional_attractors(params_init)
 
 # TODO: Check if results_init (or something ele?) needs to be jax numpyified
 VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
-    jnp.asarray(snip.squad_angles),
-    n_cavi_iterations,
-    results_init,
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
     circle_model_JAX,
+    jnp.asarray(snip.squad_angles),
     example_end_times,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,

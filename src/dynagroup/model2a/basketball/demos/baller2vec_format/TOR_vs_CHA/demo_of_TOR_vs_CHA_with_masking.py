@@ -162,6 +162,7 @@ results_init = smart_initialize_model_2a(
 )
 params_init = results_init.params
 CSP_init = params_init.CSP  # JxKxDxD
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 
 ###
@@ -233,11 +234,13 @@ find_forward_sim_t0_for_entity_sample = lambda x: np.shape(xs)[0] - forecast_hor
 ####
 
 VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
-    jnp.asarray(xs),
-    n_cavi_iterations,
-    results_init,
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
     model_basketball,
+    jnp.asarray(xs),
     event_stop_idxs,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -245,7 +248,6 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,
-    system_transition_prior,
     system_covariates,
     use_continuous_states,
 )

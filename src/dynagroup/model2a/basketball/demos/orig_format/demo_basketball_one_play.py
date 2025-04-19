@@ -123,6 +123,7 @@ results_init = smart_initialize_model_2a(
     save_dir=save_dir,
 )
 params_init = results_init.params
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 # initialization_results
 
@@ -149,11 +150,13 @@ print_multi_level_regime_occupancies_after_init(results_init)
 ####
 
 VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
-    jnp.asarray(xs),
-    n_cavi_iterations,
-    results_init,
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
     model_basketball,
+    jnp.asarray(xs),
     example_end_times,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -161,6 +164,5 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed = run_CAVI_with_JAX(
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,
-    system_transition_prior,
     system_covariates,
 )

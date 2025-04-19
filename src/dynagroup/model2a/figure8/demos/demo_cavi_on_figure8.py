@@ -79,7 +79,7 @@ For inference, we use JAX.
 show_plots_of_samples = False
 
 # Masking and model adjustments
-mask_final_regime_transition_for_entity_2 = True            
+mask_final_regime_transition_for_entity_2 = False           
 model_adjustment = None # Options: None, "one_system_regime", "remove_recurrence"
 
 # For initialization
@@ -91,14 +91,15 @@ preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION
 
 
 # For inference
-n_cavi_iterations = 10
+num_cavi_iterations = 10
 M_step_toggle_for_STP = "closed_form_tpm"
 M_step_toggle_for_ETP = "gradient_descent"
 M_step_toggle_for_continuous_state_parameters = "closed_form_gaussian"
 M_step_toggle_for_IP = "closed_form_gaussian"
 system_covariates = None
-num_M_step_iters = 50
+num_M_step_iterations = 50
 alpha_system_prior, kappa_system_prior = 1.0, 10.0
+verbose = True
 
 # For diagnostics
 show_plots_after_learning = True   
@@ -112,7 +113,7 @@ T_slice_for_forecasting = 120
 datetime_as_string = get_current_datetime_as_string()
 run_description = f"seed_{seed_for_initialization}_timestamp__{datetime_as_string}_normal"
 home_dir = os.path.expanduser("~")
-plots_dir = f"{home_dir}/team-dynamics-time-series/src/dynagroup/model2a/figure8/results/plots/{run_description}/"
+plots_dir = f"{home_dir}/Repos/team-dynamics-time-series/results/plots/{run_description}/"
 
 ###
 # PLOT SAMPLE
@@ -197,6 +198,7 @@ results_init = smart_initialize_model_2a(
     save_dir=plots_dir,
 )
 params_init = results_init.params
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 ### inspect quality of initialization
 inspect_entity_level_segmentations_over_EM_iterations(results_init.record_of_most_likely_entity_states, sample.zs)
@@ -256,22 +258,24 @@ print(f"ELBO after init: {elbo_init:.02f}")
 ###
 
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list = run_CAVI_with_JAX(
+VES_summary, VEZ_summaries, params_learned, elbo_list, classification_list = run_CAVI_with_JAX(
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
+    figure8_model_JAX,
     jnp.asarray(sample.xs),
-    n_cavi_iterations,
-    results_init,
-    model,
     sample.example_end_times,
+    num_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
         M_step_toggle_for_continuous_state_parameters,
         M_step_toggle_for_IP,
     ),
-    num_M_step_iters,
-    system_transition_prior,
+    num_M_step_iterations,
     system_covariates,
     use_continuous_states,
+    verbose=verbose,
     true_system_regimes=sample.s,
     true_entity_regimes=sample.zs,
 )

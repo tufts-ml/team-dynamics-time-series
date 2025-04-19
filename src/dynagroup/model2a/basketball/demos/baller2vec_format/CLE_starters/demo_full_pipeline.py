@@ -171,6 +171,7 @@ results_init = smart_initialize_model_2a(
 )
 params_init = results_init.params
 most_likely_entity_states_after_init = results_init.record_of_most_likely_entity_states[:, :, -1]  # TxJ
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 elbo_init = compute_elbo_from_initialization_results(
     results_init,
@@ -218,22 +219,22 @@ if animate_initialization:
 # Inference
 ####
 
-VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accuracy = run_CAVI_with_JAX(
-    jnp.asarray(DATA_TRAIN.player_coords),
-    n_cavi_iterations,
-    results_init,   
+VES_summary, VEZ_summaries, params_learned, elbo_list, classification_list = run_CAVI_with_JAX(
+    params_init,
+    VES_init, VEZ_init, system_transition_prior,
     model_basketball,
+    jnp.asarray(DATA_TRAIN.player_coords),
     DATA_TRAIN.example_stop_idxs,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
         M_step_toggle_for_continuous_state_parameters,
         M_step_toggle_for_IP,
     ),
-    num_M_step_iters,
-    system_transition_prior,
-    system_covariates,
-    use_continuous_states,
+    num_M_step_iters = num_M_step_iters,
+    system_covariates= system_covariates,
+    use_continuous_states=use_continuous_states,
 )
 
 if make_verbose_CAVI_plots:

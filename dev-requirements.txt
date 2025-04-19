@@ -5,6 +5,7 @@ pylint
 coverage
 flake8
 ipython
+pyqt5 # seems to be needed for ipython
 isort; python_version >= '3.8'
 pytest
 pytest-cov

@@ -40,7 +40,7 @@ array([[[0.1 , 0.2 ],
     # hence we can fill it in with [a,1-a] for any a in [0,1].
 
     return HMM_Posterior_Summary_NUMPY(
-        expected_regimes, expected_joints, log_normalizer=None, entropy=None
+        expected_regimes, expected_joints, log_normalizer=np.nan, entropy=np.nan
     )
 
 
@@ -73,7 +73,7 @@ def posterior_summary_2():
     # hence we can fill it in with [a,1-a] for any a in [0,1].
 
     return HMM_Posterior_Summary_NUMPY(
-        expected_regimes, expected_joints, log_normalizer=None, entropy=None
+        expected_regimes, expected_joints, log_normalizer=np.nan, entropy=np.nan
     )
 
 

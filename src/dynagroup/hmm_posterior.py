@@ -478,7 +478,7 @@ def make_hmm_posterior_summaries_from_list(
         expected_joints_list,
         log_normalizers_list,
         entropies_list,
-    ) = ([None] * J, [None] * J, [None] * J, [None] * J)
+    ) = ([jnp.nan] * J, [jnp.nan] * J, [jnp.nan] * J, [jnp.nan] * J)
     for j in range(J):
         expected_regimes_list[j] = list_of_hmm_posterior_summaries[j].expected_regimes
         expected_joints_list[j] = list_of_hmm_posterior_summaries[j].expected_joints

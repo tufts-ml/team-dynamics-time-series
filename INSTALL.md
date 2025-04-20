@@ -79,3 +79,7 @@ pip install .
 cd src/dynagroup/model2a/figure8/demos/
 python demo_cavi_on_figure8.py 
 ``` 
+
+### Appendix: On the `ssm` dependency
+
+We must use additional care when installing the `ssm` dependency. In particular, we install it with the `--no-build-isolation` flag.   Why? As of PEP 517, setuptools runs setup.py in a clean build environment (which doesn’t include the existing virtual environment or its packages).  But building `ssm` requires a pre-existing package (`numpy`). Current best practice (as of PEP 518) is for a package in this situation to  include a `pyproject.toml` file, using `[build-system] requires` to declare that build dependencies (`numpy` in this case) must be available at build time.   However, `ssm` does not have a `pyproject.toml` file. We circumvent this deficiency of `ssm` by using the `--no-build-isolation` flag to allow `numpy` to exist in the build environment (since we would have already installed it in `requirements.txt`).

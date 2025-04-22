@@ -32,5 +32,6 @@ $ micromamba activate redsds_env
 
 ```
 $ cd /cluster/tufts/hugheslab/code/REDSDS/
+$ export MXNET_HOME=/cluster/tufts/hugheslab/code/REDSDS/gluon-ts/  # Optional, use predefined dataset storage location that isn't your home directory
 $ python run_gts_univariate.py --config configs/traffic_duration.yaml --device cuda:0
 ```

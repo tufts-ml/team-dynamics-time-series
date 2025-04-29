@@ -78,6 +78,23 @@ def load_agentformer_forecasts(size: str) -> NumpyArray5D:
 
     return unnormalize_coords(forecasts_normalized)
 
+def load_SNLDS_forecasts(size: str) -> NumpyArray5D:
+    """
+    Argument:
+        size: in [small, medium, large]
+    Returns:
+        array of shape (E,S,T_forecast,J,D)
+    """
+
+    FILEPATH_SNLDS = (
+        f"results/basketball/CLE_starters/artifacts_external/SNLDS_sampled_trajectories_{size}_set.npy"
+    )
+
+    forecasts_normalized = np.load(FILEPATH_SNLDS)  # (E,S, T, J, D)
+
+    return unnormalize_coords(forecasts_normalized)
+
+
 
 def load_dynagroup_forecasts(dir_forecasts_ours: str) -> Tuple[NumpyArray5D, NumpyArray4D, NumpyArray4D]:
     """

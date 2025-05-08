@@ -21,6 +21,6 @@ dependencies:
     - jaxlib
     - jax-dataclasses
     - tensorflow-probability
-    - "git+https://github.com/lindermanlab/ssm@6c856ad3#egg=ssm"
+    - "git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60"
     - dynamax
     - pomegranate

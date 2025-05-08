@@ -167,6 +167,7 @@ results_init = smart_initialize_model_2a(
     save_dir=plots_dir,
 )
 params_init = results_init.params
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 
 elbo_init = compute_elbo_from_initialization_results(
@@ -185,11 +186,13 @@ print(f"ELBO after init: {elbo_init:.02f}")
 ####
 
 VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accuracy = run_CAVI_with_JAX(
-    jnp.asarray(DATA),
-    n_cavi_iterations,
-    results_init,
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
     model,
+    jnp.asarray(DATA),
     example_end_times,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -197,7 +200,6 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_accu
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,
-    system_transition_prior,
     system_covariates,
     use_continuous_states,
     true_system_regimes,

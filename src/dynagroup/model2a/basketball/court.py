@@ -29,8 +29,7 @@ Y_MAX_COURT = 50
 # TODO: Can I make a scheme where I plot the court in the NORMALIZED coords,
 # so that I don't have to unnormalize all the time?!
 COURT_AXIS_UNNORM = [X_MIN_COURT, X_MAX_COURT, Y_MIN_COURT, Y_MAX_COURT]
-image_path = os.path.abspath("image/nba_court_T.png")
-COURT_IMAGE = mpimg.imread(image_path)
+COURT_IMAGE = mpimg.imread("image/nba_court_T.png")
 
 ###
 # Normalize/Unnormalize

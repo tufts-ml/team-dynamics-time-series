@@ -189,6 +189,7 @@ results_init = smart_initialize_model_2a(
     plots_dir,
 )
 params_init = results_init.params
+VES_init, VEZ_init = results_init.ES_summary, results_init.EZ_summaries
 
 
 ###
@@ -197,11 +198,13 @@ params_init = results_init.params
 
 
 VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list = run_CAVI_with_JAX(
-    jnp.asarray(xs_for_inference),
-    n_cavi_iterations,
-    results_init,
+    params_init,
+    VES_init, VEZ_init,
+    system_transition_prior,
     model,
+    jnp.asarray(xs_for_inference),
     example_end_times,
+    n_cavi_iterations,
     M_step_toggles_from_strings(
         M_step_toggle_for_STP,
         M_step_toggle_for_ETP,
@@ -209,7 +212,6 @@ VES_summary, VEZ_summaries, params_learned, elbo_decomposed, classification_list
         M_step_toggle_for_IP,
     ),
     num_M_step_iters,
-    system_transition_prior,
     system_covariates,
     use_continuous_states,
 )

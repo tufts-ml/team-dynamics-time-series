@@ -1,12 +1,18 @@
 
 cython # for Linderman's ssm package 
+setuptools # for Linderman's ssm package 
 
 # `ssm` repo below is for forward backward algo (ssm.messages.hmm_expected_states)
 # we get an error if we try to install from pip; the github repo is newer.
 # for some reason doing an editable install to this package pip install -e .
 # requires that the below is installed manually.
 #
-# -e git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm 
+# That is, do
+#
+# USE_OPENMP=True pip install git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60#egg=ssm
+# or 
+#pip install --no-build-isolation git+https://github.com/lindermanlab/ssm@6c856ad3967941d176eb348bcd490cfaaa08ba60 
+# where `no build isolation` may be requured because ssm lacks pyproject.toml
 
 pomegranate # just for Gaussian mixture models with sample weights (used to initialize vonMises AR-HMM)
 
@@ -27,3 +33,7 @@ jax_dataclasses
 
 tensorflow_probability
 dynamax
+# or try pip install git+https://github.com/probml/dynamax.git@51b7dc5
+
+
+scikit-image # for marching band experiment 

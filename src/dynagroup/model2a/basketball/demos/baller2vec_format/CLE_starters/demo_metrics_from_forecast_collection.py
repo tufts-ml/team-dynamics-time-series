@@ -6,13 +6,13 @@ import numpy as np
 from dynagroup.model2a.basketball.forecast.main_analysis import (
     compute_metrics,
     load_agentformer_forecasts,
+    load_SNLDS_forecasts,
     load_dynagroup_forecasts,
     load_groupnet_forecasts,
 )
 
 
 SAVE_DIR = "/Users/miw267/Repos/tmlr-2024/images/basketball"
-
 
 @dataclass
 class Result_For_Data_Size:
@@ -24,9 +24,15 @@ class Result_For_Data_Size:
 
 ### Get forecasts (agentformer)
 forecasts_dict = {}
+
 forecasts_dict["agentformer_small"] = load_agentformer_forecasts("small")
 forecasts_dict["agentformer_medium"] = load_agentformer_forecasts("medium")
 forecasts_dict["agentformer_large"] = load_agentformer_forecasts("large")
+
+forecasts_dict["SNLDS_small"] = load_SNLDS_forecasts("small")
+forecasts_dict["SNLDS_medium"] = load_SNLDS_forecasts("medium")
+forecasts_dict["SNLDS_large"] = load_SNLDS_forecasts("large")
+
 
 forecasts_dict["groupnet_small"] = load_groupnet_forecasts("small", n_epochs=100, n_its_per_epoch=1000)
 forecasts_dict["groupnet_medium"] = load_groupnet_forecasts("medium", n_epochs=100, n_its_per_epoch=1000)
@@ -117,7 +123,7 @@ from statsmodels.stats.multitest import fdrcorrection
 
 
 focal_models_to_competitor_models = {
-    "ours": ["agentformer", "groupnet", "no_system_switches", "no_recurrence", "fixed_velocity"],
+    "ours": ["agentformer", "groupnet", "SNLDS", "no_system_switches", "no_recurrence", "fixed_velocity"],
 }
 
 uncorrected_p_vals_dict = OrderedDict()
@@ -219,7 +225,7 @@ from dynagroup.model2a.basketball.forecast.plots import (
 
 
 ### arguments
-models_list = ["ours_large", "no_system_switches_large", "no_recurrence_large", "agentformer_large", "groupnet_large"]
+models_list = ["ours_large", "no_system_switches_large", "no_recurrence_large", "agentformer_large", "groupnet_large", "SNLDS_large"]
 forecasts_list = [forecasts_dict[model] for model in models_list]
 metrics_list = [metrics_dict[model] for model in models_list]
 

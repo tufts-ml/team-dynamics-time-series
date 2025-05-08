@@ -33,7 +33,8 @@ B. To train baseline forecasts, use:
 1. [_FigureEight_: DSARF Ind., Pool., Concat.](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_figure_8/DSARF_on_figure_8.ipynb)
 2. [Basketball: AgentFormer](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/main/agentformer_on_bball) 
 3. [Basketball: GroupNet](https://github.com/mikewojnowicz/GroupNet/tree/aistats)
-4. [MarchingBand: DSARF](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_marching/DSARF_on_marchingband.ipynb) 
+4. [Basketball: SNLDS](https://github.com/mikewojnowicz/REDSDS) 
+5. [MarchingBand: DSARF](https://github.com/tufts-ml/dsarf_agentformer_baseline_for_hsrdm/tree/kgili/dsarf_on_marching/DSARF_on_marchingband.ipynb) 
 
 
 

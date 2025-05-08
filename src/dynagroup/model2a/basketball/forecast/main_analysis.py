@@ -91,7 +91,6 @@ def load_SNLDS_forecasts(size: str) -> NumpyArray5D:
     )
 
     forecasts_normalized = np.load(FILEPATH_SNLDS)  # (E,S, T, J, D)
-
     return unnormalize_coords(forecasts_normalized)
 
 

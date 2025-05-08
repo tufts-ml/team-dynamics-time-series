@@ -12,8 +12,7 @@ from dynagroup.model2a.basketball.forecast.main_analysis import (
 )
 
 
-#SAVE_DIR = "/Users/miw267/Repos/tmlr-2024/images/basketball"
-SAVE_DIR = "/Users/miw267/Desktop/tmp/"
+SAVE_DIR = "/Users/miw267/Repos/tmlr-2024/images/basketball"
 
 @dataclass
 class Result_For_Data_Size:

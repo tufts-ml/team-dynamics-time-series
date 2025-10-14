@@ -52,7 +52,7 @@ def generate_training_data(GLOBAL_MSG, N, T, seed):
 
     U = (len(GLOBAL_MSG) * T) + (50 * 50)
     pos_NU2 = np.zeros((U, N, 2))
-    threshold = 11 #The amount of players that can go out of bounds before a cluster state is triggered. 
+    threshold = 50 #The amount of players that can go out of bounds before a cluster state is triggered. 
 
     print("Running simulation for %d steps, recording every 5th step" % U)
 
@@ -163,12 +163,34 @@ def system_regimes_gt(num_sequences, trigger):
 
     return system_regimes
 
+import numpy as np
+
+def pad_to_50(arr):
+
+    # Get the original shape (T, J, 2)
+    T, J, original_last_dim = arr.shape
+
+    # Create a new array of zeros with the desired shape (T, J, 50)
+    result = np.zeros((T, J, 30), dtype=arr.dtype)
+
+    # Copy the values from the original array into the first 2 slices
+    # of the last dimension
+    result[:, :, :original_last_dim] = arr
+
+    return result
+
+
+import numpy as np
+
 
 if __name__ == '__main__':
     GLOBAL_MSG = 'LAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGHLAUGH'
-    N = 64
+    N = 150
     T = 200
     array1 = generate_training_data(GLOBAL_MSG, N, T, 0)
+    print(array1)
+
+    
 
 
     

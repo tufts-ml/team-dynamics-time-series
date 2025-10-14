@@ -546,7 +546,7 @@ def smart_initialize_model_2a(
     preinitialization_strategy_for_CSP: PreInitialization_Strategy_For_CSP,
     num_em_iterations_for_bottom_half: int = 5,
     num_em_iterations_for_top_half: int = 20,
-    seed: int = 120,
+    seed: int = 126,
     system_covariates: Optional[NumpyArray2D] = None,
     use_continuous_states: Optional[JaxNumpyArray2D] = None,
     save_dir: Optional[str] = None,

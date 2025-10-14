@@ -2,6 +2,7 @@ import warnings
 from typing import Optional, Tuple, Union
 
 import numpy as np
+import time
 
 from dynagroup.examples import example_end_times_are_proper
 from dynagroup.hmm_posterior import (
@@ -177,6 +178,7 @@ def run_CAVI_with_JAX(
     for i in range(n_iterations):
         print(f"\n ---- Now running iteration {i+1} ----")
 
+        start_time = time.time() 
         VES_summary = run_VES_step_JAX(
             all_params.STP,
             all_params.ETP,
@@ -189,6 +191,10 @@ def run_CAVI_with_JAX(
             use_continuous_states,
         )
 
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"VES Time: {elapsed_time} seconds")   
+
 
         if verbose:
             print(f"\nVES step's log normalizer: {VES_summary.log_normalizer:.02f}")
@@ -198,6 +204,7 @@ def run_CAVI_with_JAX(
                 print(f"Percent correct classifications for system segmentations {pct_correct_system:.02f}")
                 classification_list[i] = pct_correct_system
 
+        start_time = time.time() 
         VEZ_summaries = run_VEZ_step_JAX(
             all_params.CSP,
             all_params.ETP,
@@ -207,6 +214,9 @@ def run_CAVI_with_JAX(
             model,
             example_end_times,
         )
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"VEZ Time: {elapsed_time} seconds")   
 
         if verbose:
             print(
@@ -242,7 +252,7 @@ def run_CAVI_with_JAX(
         ###
         # M-step (ETP)
         ###
-
+        start_time = time.time() 
         all_params = run_M_step_for_ETP(
             all_params,
             M_step_toggles.ETP,
@@ -256,6 +266,10 @@ def run_CAVI_with_JAX(
             use_continuous_states,
             verbose,
         )
+
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"M-STEP ETP: {elapsed_time} seconds")   
 
         elbo_decomposed = compute_elbo_decomposed(
             all_params,
@@ -278,6 +292,7 @@ def run_CAVI_with_JAX(
         ###
 
         # Note the VES step has already taken care of the `use_continuous_states` mask.
+        start_time = time.time() 
         all_params = run_M_step_for_STP(
             all_params,
             M_step_toggles.STP,
@@ -291,6 +306,10 @@ def run_CAVI_with_JAX(
             continuous_states,
             verbose,
         )
+
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"M-STEP STP: {elapsed_time} seconds")   
 
 
         elbo_decomposed = compute_elbo_decomposed(
@@ -314,7 +333,7 @@ def run_CAVI_with_JAX(
         ###
         # M-step (CSP)
         ###
-
+        start_time = time.time() 
         all_params = run_M_step_for_CSP(
         all_params,
         M_step_toggles.CSP,
@@ -326,6 +345,10 @@ def run_CAVI_with_JAX(
         example_end_times,
         use_continuous_states,
         )
+
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"M-STEP CSP: {elapsed_time} seconds")   
 
         elbo_decomposed = compute_elbo_decomposed(
         all_params,
@@ -346,7 +369,7 @@ def run_CAVI_with_JAX(
         ###
         # M-step (IP)
         ###
-
+        start_time = time.time() 
         IP_new = run_M_step_for_IP(
             all_params.IP,
             M_step_toggles.IP,
@@ -355,6 +378,10 @@ def run_CAVI_with_JAX(
             continuous_states,
             example_end_times,
         )
+
+        end_time = time.time() 
+        elapsed_time = end_time - start_time
+        print(f"M-STEP IP: {elapsed_time} seconds")   
 
         all_params = AllParameters_JAX(all_params.STP, all_params.ETP, all_params.CSP, all_params.EP, IP_new)
         # TODO: Make all `run_M_step[...]` have consistent call signatures.

@@ -73,12 +73,13 @@ def compute_expected_log_entity_transition_probability_matrices_wrt_entity_regim
         continuous_states_JAX[:-1],
         model.transform_of_continuous_state_vector_before_premultiplying_by_entity_recurrence_matrix_JAX,
     )
-
+    
     expected_log_transition_matrices = jnp.einsum(
         "tjlkd, tjkd -> tjl",
         log_transition_matrices,
         variationally_expected_joints_for_entity_regimes,
     )
+    
     # TODO: Write unit test that the einsum is performing as expected.
     # Just check it on the (tjl)-th element.
     # e.g.

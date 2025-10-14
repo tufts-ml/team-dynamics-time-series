@@ -23,12 +23,13 @@ from dynagroup.util import (
 )
 from sklearn.cluster import KMeans
 from dynagroup.metrics import compute_regime_labeling_accuracy
-from dynagroup.model2a.marching_band.data.run_sim import system_regimes_gt
 from dynagroup.params import numpy_params_from_params
 from dynagroup.model2a.marching_band.metrics import compute_next_step_predictive_means
 from dynagroup.initialize import compute_elbo_from_initialization_results
 from dynagroup.vi.M_step_and_ELBO import M_step_toggles_from_strings
-from dynagroup.model2a.marching_band.data.run_sim import generate_training_data
+from dynagroup.model2a.marching_band.data.run_sim import generate_training_data, system_regimes_gt
+from dynagroup.model2a.marching_band.data.run_sim_noclumsy import generate_noclum_training_data, system_regimes_gt_noclum
+from dynagroup.model2a.marching_band.data.run_sim_birds import generate_bird_training_data
 from dynagroup.vi.core import SystemTransitionPrior_JAX, run_CAVI_with_JAX
 from dynagroup.params import (
     Dims,
@@ -55,22 +56,22 @@ Model 2a refers to the fact that here we'll take the x's to be observed.
 # Model specification
 n_train_sequences = 10
 K = 4
-L = 6
+L = 5
 
 ###
 # SPECIFY MODEL
 ###
 model = marching_model_JAX
-model_adjustment = None  # Options: None, "one_system_regime", "remove_recurrence"
+model_adjustment = None # Options: None, "one_system_regime", "remove_recurrence"
 
 GLOBAL_MSG = "LAUGH" * n_train_sequences
-J = 64
+J = 200
 T = 200
-total_time = 10300
+total_time = 10000
 
 
 # Initialization
-seed_for_initialization = 126
+seed_for_initialization = 120
 num_em_iterations_for_bottom_half_init = 1
 num_em_iterations_for_top_half_init = 1
 preinitialization_strategy_for_CSP = PreInitialization_Strategy_For_CSP.LOCATION 
@@ -115,11 +116,11 @@ system_transition_prior = SystemTransitionPrior_JAX(alpha_system_prior, kappa_sy
 # Data splitting and preprocessing
 ###
 
-gen = generate_training_data(GLOBAL_MSG, J, T, 0)
+gen = generate_noclum_training_data(GLOBAL_MSG, J, T, 0)
 DATA = gen[0]
 example_end_times = gen[1]
-cluster_states = gen[2] 
-true_system_regimes = np.argmax(system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680]), axis=1)
+#cluster_states = gen[2] 
+true_system_regimes = np.argmax(system_regimes_gt_noclum(10, []), axis=1)
 ###
 # MASKING
 ###
@@ -230,7 +231,7 @@ def plot_ca(classification_accuracy):
     plt.show()
 
 def plot_system_segments(system_data): 
-    letters = ["L", "A", "U", "G", "H", "C"]
+    letters = ["L", "A", "U", "G", "H"]
     ground_truth = true_system_regimes
     colors=['#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928','#a6cee3']
 

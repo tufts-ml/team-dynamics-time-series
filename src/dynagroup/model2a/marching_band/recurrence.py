@@ -16,15 +16,15 @@ def cluster_trigger_system_recurrence_transformation(
         x_prevs_reshaped: Has shape (JD,) where we scroll through j's first, and then d's. Cite[ChatGPT]
     """
     
-    condition1 = x_prevs_reshaped[0:64] > 1 
-    condition2 = x_prevs_reshaped[0:64] < 0 
+    condition1 = x_prevs_reshaped[0:200] > 1 
+    condition2 = x_prevs_reshaped[0:200] < 0 
 
     count = jnp.sum(condition1) + jnp.sum(condition2)
     
     prob = jax.lax.cond(
-        count >= 11,             
+        count >= 28,             
         lambda _: 1.0,           
-        lambda _: count / 11.0,  
+        lambda _: count / 28.0,  
         operand=None             
     )
 

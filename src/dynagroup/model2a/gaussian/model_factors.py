@@ -247,11 +247,13 @@ def compute_log_entity_transition_probability_matrices_JAX(
         2,
         x_prevs,
     )
+    
     bias_from_recurrence = jnp.einsum("jlkd,tjd->tjkl", ETP_JAX.Psis, x_prev_tildes)  # (T-1, J, K, L)
     bias_from_recurrence_reordered_axes = jnp.moveaxis(bias_from_recurrence, [2, 3], [3, 2])  # (T-1, J, L, K)
     log_potentials = (
         bias_from_recurrence_reordered_axes[:, :, :, None, :] + ETP_JAX.Ps[None, :, :, :, :]
     )  # (T-1, J, L, None, K) + (1,J,L, K,K ) = (T-1, J, L, K, K)
+
     return normalize_log_potentials_by_axis_JAX(log_potentials, axis=4)
 
 
@@ -417,5 +419,10 @@ def compute_log_initial_continuous_state_emissions_JAX(
     #         # We have x_0^j ~ N(mu_0[j,k], Sigma_0[j,k])
     #         mu_0, Sigma_0 = IP.mu_0s[j, k], IP.Sigma_0s[j, k]
     #         log_emissions.at[0, j, k].set(mvn_JAX.logpdf(continuous_states[0, j], mu_0, Sigma_0))
+
+    OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS = -1e12
+    log_pdfs_init_time = jnp.nan_to_num(
+        log_pdfs_init_time, nan=OVERWRITE_FOR_NANS_IN_LOG_EMISSIONS
+    )
 
     return log_pdfs_init_time

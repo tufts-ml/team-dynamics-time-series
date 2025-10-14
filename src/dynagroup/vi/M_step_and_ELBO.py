@@ -623,9 +623,11 @@ def run_M_step_for_CSP_in_closed_form__Gaussian_case(
             sum_of_response_weights = np.sum(response_weights)
             if sum_of_response_weights >= MIN_SUM_WEIGHTS_TO_UPDATE_PARAMS:
                 responses = xs[1:]
-                predictors = add_constant(xs[:-1], prepend=False)
+                predictors = add_constant(xs[:-1], prepend=False, has_constant='add')
                 wls_model = WLS(responses, predictors, hasconst=True, weights=response_weights)
                 results = wls_model.fit()
+                responses = xs[1:]
+
                 # WLS returns parameters where the d-th column gives the weights for predicting d-th element of response vector.
                 # So we need to transpose to get a state transition matrix
                 As[j, k] = results.params[:-1].T

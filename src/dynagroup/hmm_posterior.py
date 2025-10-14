@@ -279,8 +279,9 @@ def compute_hmm_posterior_summary_JAX(
             whose k-th entry gives the MODEL's init state probability
             p(x_1 =k)
     """
-    transitions = jnp.exp(log_transitions)
-
+    trans = jnp.exp(log_transitions)
+    transitions = jnp.where(trans == 0.0, 1e-12, trans)
+    
     # TODO: Here is where we lose jax-ness...Questions
     # 1) Does the conversion to numpy slow things down?
     # 2) Should we convert the return values to jax arrays?
@@ -290,6 +291,8 @@ def compute_hmm_posterior_summary_JAX(
         np.asarray(transitions, dtype=np.float64),
         np.asarray(log_emissions, dtype=np.float64),
     )
+
+    
 
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
     # ### but their dynamax funtion seems to be dropping a time-step for expected_joints in the setting where
@@ -338,7 +341,8 @@ def compute_hmm_posterior_summary_JAX_initialize(
             whose k-th entry gives the MODEL's init state probability
             p(x_1 =k)
     """
-    transitions = jnp.exp(log_transitions)
+    trans = jnp.exp(log_transitions)
+    transitions = jnp.where(trans == 0.0, 1e-12, trans)
 
     # TODO: Here is where we lose jax-ness...Questions
     # 1) Does the conversion to numpy slow things down?
@@ -350,7 +354,8 @@ def compute_hmm_posterior_summary_JAX_initialize(
         np.asarray(log_emissions, dtype=np.float64),
     )
 
-    expected_regimes = system_regimes_gt(10,  [1227, 2840, 6128, 7392, 9553, 9680])
+    expected_regimes = system_regimes_gt(10,   [1227, 2840, 6128, 7392, 9553, 9680])
+
 
 
     # ### RK: I tried running the corrresponding dynamax function,  so we don't have to convert to jax and back,
